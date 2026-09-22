@@ -142,13 +142,12 @@
 
             </LinearLayout>
 
-            <!-- 第二行：类型徽章 + 流量 + 延迟胶囊 -->
-            <LinearLayout
+            <!-- 第二行：类型徽章左贴(限长省略) + 延迟胶囊右贴节点框 -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
                 android:paddingStart="4dp"
+                android:paddingTop="4dp"
                 android:paddingEnd="10dp"
                 android:paddingBottom="10dp">
 
@@ -156,7 +155,11 @@
                     android:id="@+id/profile_type"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="start|center_vertical"
                     android:background="@drawable/zybox_type_badge"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:maxWidth="150dp"
                     android:paddingStart="6dp"
                     android:paddingTop="1dp"
                     android:paddingEnd="6dp"
@@ -164,16 +167,11 @@
                     android:textAppearance="?android:attr/textAppearanceSmall"
                     android:textColor="@color/zybox_ping_text" />
 
-                <LinearLayout
-                    android:id="@+id/profile_spacer"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-
                 <TextView
                     android:id="@+id/profile_status"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
                     android:background="@drawable/zybox_ping_capsule"
                     android:paddingStart="8dp"
                     android:paddingTop="2dp"
@@ -182,7 +180,7 @@
                     android:textAppearance="?android:attr/textAppearanceSmall"
                     android:textColor="@color/zybox_ping_text" />
 
-            </LinearLayout>
+            </FrameLayout>
 
         </LinearLayout>
 

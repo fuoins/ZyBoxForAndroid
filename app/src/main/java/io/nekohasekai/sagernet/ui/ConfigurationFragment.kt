@@ -384,7 +384,11 @@ class ConfigurationFragment @JvmOverloads constructor(
         onMainDispatcher {
             DataStore.editingGroup = targetId
             // ZyBox: 导入后立即刷新分组栏（新增分组马上出现），保持当前选中分组不变
-            if (::adapter.isInitialized) adapter.reload(true)
+            if (::adapter.isInitialized) {
+                adapter.reload(true)
+                // 目标分组的页面已存在时同步刷新节点列表，无需重进软件/切分组
+                adapter.groupFragments[targetId]?.adapter?.reloadProfiles()
+            }
             snackbar(
                 requireContext().resources.getQuantityString(
                     R.plurals.added, proxies.size, proxies.size
@@ -1854,9 +1858,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                 // ZyBox: 状态为空时收起右侧弹性空白，避免卡片内大片空白
                 val hasStatusText = !profileStatus.text.isNullOrEmpty()
                 profileStatus.isVisible = hasStatusText
-                val spacer = view.findViewById<android.view.View>(R.id.profile_spacer)
-                (spacer.layoutParams as android.widget.LinearLayout.LayoutParams).weight =
-                    if (hasStatusText) 1f else 0f
 
                 editButton.setOnClickListener {
                     it.context.startActivity(
