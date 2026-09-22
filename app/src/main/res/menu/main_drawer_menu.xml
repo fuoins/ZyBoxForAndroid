@@ -21,11 +21,7 @@
             android:id="@+id/nav_settings"
             android:icon="@drawable/ic_action_settings"
             android:title="@string/settings" />
-    </group>
 
-    <group
-        android:id="@+id/misc"
-        android:checkableBehavior="single">
         <item
             android:id="@+id/nav_logcat"
             android:icon="@drawable/ic_baseline_bug_report_24"
@@ -38,11 +34,6 @@
             android:id="@+id/nav_tools"
             android:icon="@drawable/baseline_construction_24"
             android:title="@string/menu_tools" />
-    </group>
-
-    <group
-        android:id="@+id/about"
-        android:checkableBehavior="single">
         <item
             android:id="@+id/nav_tuiguang"
             android:icon="@drawable/ic_social_share"
@@ -57,7 +48,7 @@
             android:title="@string/source_app_about" />
         <item
             android:id="@+id/nav_zybox_about"
-            android:icon="@drawable/zybox_badge_circle"
+            android:icon="@drawable/zybox_chest_icon"
             android:title="@string/zybox_about" />
         <item
             android:id="@+id/nav_zybox_optimization"

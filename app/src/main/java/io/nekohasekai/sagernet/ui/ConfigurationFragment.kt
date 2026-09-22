@@ -1989,10 +1989,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                         }
 
                         R.id.action_delete -> {
-                            runOnDefaultDispatcher {
-                                val index = adapter?.configurationIdList?.indexOf(proxyEntity.id)
-                                if (index != null && index >= 0) {
-                                    adapter?.remove(index)
+                            // ZyBox: 主线程删除（notifyItemRemoved 不能在后台线程调用），与按钮删除行为一致并支持撤销
+                            val index = adapter?.configurationIdList?.indexOf(proxyEntity.id)
+                            if (index != null && index >= 0) {
+                                adapter?.remove(index)
+                                if (::undoManager.isInitialized) {
+                                    undoManager.remove(index to proxyEntity)
                                 }
                             }
                             true

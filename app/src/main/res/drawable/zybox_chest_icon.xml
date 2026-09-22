@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox: 完整宝箱图标（菜单"关于与更新"用，跟随菜单 tint） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 宝箱盖（圆角拱形） -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4.2,10.5 C4.2,5.6 7.4,3.2 12,3.2 C16.6,3.2 19.8,5.6 19.8,10.5 Z" />
+    <!-- 箱体 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,10.5 L21,10.5 L20,20.5 L4,20.5 Z" />
+    <!-- 锁扣（盖体之间的小梯形，tint 后同色成整体轮廓） -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M11.2,10.5 L12.8,10.5 L12.3,15 L11.7,15 Z" />
+    <!-- 宝箱横带装饰（与 tint 同色，形成层次） -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,14.5 L21,14.5 L21,16 L3,16 Z" />
+</vector>
