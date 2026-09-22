@@ -363,6 +363,81 @@
                         android:textAppearance="?attr/textAppearanceBody2"
                         android:textColor="?android:textColorSecondary" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_multi_select"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_multi_select_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_init_dialog"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_init_dialog_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_import_refresh"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_import_refresh_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_about_update"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_about_update_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_classic_selected"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_classic_selected_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
 
 
                 </LinearLayout>

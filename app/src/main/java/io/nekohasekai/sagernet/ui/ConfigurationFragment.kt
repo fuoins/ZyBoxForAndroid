@@ -92,6 +92,7 @@ import io.nekohasekai.sagernet.ui.profile.TrojanSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.TuicSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.VMessSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.WireGuardSettingsActivity
+import io.nekohasekai.sagernet.widget.MultiQRCodeDialog
 import io.nekohasekai.sagernet.widget.QRCodeDialog
 import io.nekohasekai.sagernet.widget.UndoSnackbarManager
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -129,6 +130,187 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     interface SelectCallback {
         fun returnProfile(profileId: Long)
+    }
+
+    // ===== ZyBox: 多选模式 =====
+    var multiSelectMode = false
+        private set
+    val multiSelectedIds = LinkedHashSet<Long>()
+
+    fun refreshMultiSelectMenu() {
+        toolbar.menu.clear()
+        toolbar.inflateMenu(if (multiSelectMode) R.menu.multi_select_menu else R.menu.add_profile_menu)
+        if (!multiSelectMode) {
+            toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
+            toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
+            toolbar.menu.findItem(R.id.action_global_mode)?.isChecked = DataStore.globalMode
+        }
+    }
+
+    private fun enterMultiSelect() {
+        multiSelectMode = true
+        multiSelectedIds.clear()
+        refreshMultiSelectMenu()
+        adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
+        snackbar(getString(R.string.multi_select_hint)).show()
+    }
+
+    private fun exitMultiSelect() {
+        multiSelectMode = false
+        multiSelectedIds.clear()
+        refreshMultiSelectMenu()
+        adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
+    }
+
+    private fun multiLink(profile: ProxyEntity, withPing: Boolean, sn: Boolean): String {
+        return when {
+            sn -> profile.requireBean().toUniversalLink()
+            withPing -> profile.toStdLink(compact = true) +
+                    if (profile.ping > 0) "|ping=${profile.ping}" else ""
+            else -> profile.toStdLink()
+        }
+    }
+
+    // ZyBox: 批量删除确认与执行（toDelete 为待删配置）
+    private suspend fun confirmMultiDelete(toDelete: List<ProxyEntity>, messagePrefix: String) {
+        if (toDelete.isEmpty()) {
+            snackbar(getString(R.string.action_export_err)).show()
+            return
+        }
+        onMainDispatcher {
+            MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.confirm)
+                .setMessage(
+                    messagePrefix + "\n" +
+                            toDelete.mapIndexedNotNull { index, proxyEntity ->
+                                if (index < 20) proxyEntity.displayName()
+                                else if (index == 20) "......"
+                                else null
+                            }.joinToString("\n")
+                )
+                .setPositiveButton(R.string.yes) { _, _ ->
+                    for (profile in toDelete) {
+                        adapter.groupFragments[DataStore.selectedGroup]?.adapter?.apply {
+                            val index = configurationIdList.indexOf(profile.id)
+                            if (index >= 0) {
+                                configurationIdList.removeAt(index)
+                                configurationList.remove(profile.id)
+                                notifyItemRemoved(index)
+                            }
+                        }
+                    }
+                    multiSelectedIds.removeAll(toDelete.map { it.id })
+                    runOnDefaultDispatcher {
+                        for (profile in toDelete) {
+                            ProfileManager.deleteProfile2(profile.groupId, profile.id)
+                        }
+                    }
+                    adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
+                }
+                .setNegativeButton(R.string.no, null)
+                .show()
+        }
+    }
+
+    private fun multiClearTraffic() {
+        runOnDefaultDispatcher {
+            val profiles = selectedProfiles()
+            val toClear = mutableListOf<ProxyEntity>()
+            for (profile in profiles) {
+                if (profile.tx != 0L || profile.rx != 0L) {
+                    profile.tx = 0
+                    profile.rx = 0
+                    toClear.add(profile)
+                }
+            }
+            if (toClear.isNotEmpty()) ProfileManager.updateProfile(toClear)
+        }
+    }
+
+    private fun multiRemoveDuplicate(strict: Boolean) {
+        runOnDefaultDispatcher {
+            val profiles = selectedProfiles()
+            val toClear = mutableListOf<ProxyEntity>()
+            if (strict) {
+                val uniqueKeys = HashSet<String>()
+                for (pf in profiles) {
+                    val key = pf.requireBean().strictDedupKey()
+                    if (!uniqueKeys.add(key)) toClear += pf
+                }
+            } else {
+                val uniqueProxies = LinkedHashSet<Protocols.Deduplication>()
+                for (pf in profiles) {
+                    val proxy = Protocols.Deduplication(pf.requireBean(), pf.displayType())
+                    if (!uniqueProxies.add(proxy)) toClear += pf
+                }
+            }
+            confirmMultiDelete(toClear, getString(R.string.delete_confirm_prompt))
+        }
+    }
+
+    private fun multiClearResults() {
+        runOnDefaultDispatcher {
+            val profiles = selectedProfiles()
+            val toClear = mutableListOf<ProxyEntity>()
+            for (profile in profiles) {
+                if (profile.status != 0) {
+                    profile.status = 0
+                    profile.ping = 0
+                    profile.error = null
+                    toClear.add(profile)
+                }
+            }
+            if (toClear.isNotEmpty()) ProfileManager.updateProfile(toClear)
+        }
+    }
+
+    private fun multiDeleteUnavailable() {
+        runOnDefaultDispatcher {
+            val profiles = selectedProfiles()
+            val toDelete = mutableListOf<ProxyEntity>()
+            for (profile in profiles) {
+                if (profile.status != 0 && profile.status != 1) toDelete.add(profile)
+            }
+            confirmMultiDelete(toDelete, getString(R.string.delete_confirm_prompt))
+        }
+    }
+
+    private fun multiQr(withPing: Boolean, sn: Boolean) {
+        runOnDefaultDispatcher {
+            val profiles = selectedProfiles()
+            if (profiles.isEmpty()) {
+                onMainDispatcher { snackbar(getString(R.string.action_export_err)).show() }
+                return@runOnDefaultDispatcher
+            }
+            val links = profiles.mapNotNull { pf ->
+                val name = pf.displayName() ?: return@mapNotNull null
+                name to multiLink(pf, withPing, sn)
+            }
+            onMainDispatcher {
+                MultiQRCodeDialog(links).showAllowingStateLoss(parentFragmentManager)
+            }
+        }
+    }
+
+    private fun multiClipboard(withPing: Boolean, sn: Boolean) {
+        val text = selectedProfiles().joinToString("\n") { multiLink(it, withPing, sn) }
+        if (text.isEmpty()) {
+            snackbar(getString(R.string.action_export_err)).show()
+            return
+        }
+        val success = SagerNet.trySetPrimaryClip(text)
+        (activity as MainActivity).snackbar(
+            if (success) R.string.action_export_msg else R.string.action_export_err
+        ).show()
+    }
+
+    private fun currentGroupProfiles(): List<ProxyEntity> {
+        return SagerDatabase.proxyDao.getByGroup(DataStore.currentGroupId())
+    }
+
+    private fun selectedProfiles(): List<ProxyEntity> {
+        val ids = multiSelectedIds
+        if (ids.isEmpty()) return emptyList()
+        return currentGroupProfiles().filter { it.id in ids }
     }
 
     lateinit var adapter: GroupPagerAdapter
@@ -402,6 +584,52 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
+            // ===== ZyBox: 多选模式 =====
+            R.id.action_multi_select -> {
+                enterMultiSelect()
+            }
+            R.id.action_multi_select_all -> {
+                multiSelectedIds.clear()
+                multiSelectedIds.addAll(currentGroupProfiles().map { it.id })
+                adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
+            }
+            R.id.action_multi_select_invert -> {
+                val all = currentGroupProfiles().map { it.id }.toSet()
+                val keep = all - multiSelectedIds
+                multiSelectedIds.clear()
+                multiSelectedIds.addAll(keep)
+                adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
+            }
+            R.id.action_multi_select_exit -> {
+                exitMultiSelect()
+            }
+            R.id.action_multi_clear_traffic -> {
+                multiClearTraffic()
+            }
+            R.id.action_multi_remove_duplicate -> {
+                multiRemoveDuplicate(strict = false)
+            }
+            R.id.action_multi_remove_duplicate_strict -> {
+                multiRemoveDuplicate(strict = true)
+            }
+            R.id.action_multi_tcp_ping -> {
+                pingTest(false, multiSelectedIds.toSet())
+            }
+            R.id.action_multi_url_test -> {
+                urlTest(multiSelectedIds.toSet())
+            }
+            R.id.action_multi_clear_results -> {
+                multiClearResults()
+            }
+            R.id.action_multi_delete_unavailable -> {
+                multiDeleteUnavailable()
+            }
+            R.id.action_multi_qr_standard -> multiQr(withPing = false, sn = false)
+            R.id.action_multi_qr_standard_ping -> multiQr(withPing = true, sn = false)
+            R.id.action_multi_qr_sn -> multiQr(withPing = false, sn = true)
+            R.id.action_multi_clipboard_standard -> multiClipboard(withPing = false, sn = false)
+            R.id.action_multi_clipboard_standard_ping -> multiClipboard(withPing = true, sn = false)
+            R.id.action_multi_clipboard_sn -> multiClipboard(withPing = false, sn = true)
             // ZyBox: 回到顶部
             R.id.action_scroll_top -> {
                 adapter.groupFragments[DataStore.selectedGroup]
@@ -870,7 +1098,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     @OptIn(DelicateCoroutinesApi::class)
     @Suppress("EXPERIMENTAL_API_USAGE")
-    fun pingTest(icmpPing: Boolean) {
+    fun pingTest(icmpPing: Boolean, ids: Set<Long>? = null) {
         if (DataStore.runningTest) return else DataStore.runningTest = true
         val test = TestDialog()
         val dialog = test.builder.show()
@@ -879,6 +1107,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         val mainJob = runOnDefaultDispatcher {
             val profilesList = SagerDatabase.proxyDao.getByGroup(group.id).filter {
+                if (ids != null && it.id !in ids) return@filter false
                 if (icmpPing) {
                     if (it.requireBean().canICMPing()) {
                         return@filter true
@@ -1011,7 +1240,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun urlTest() {
+    fun urlTest(ids: Set<Long>? = null) {
         if (DataStore.runningTest) return else DataStore.runningTest = true
         val test = TestDialog()
         val dialog = test.builder.show()
@@ -1019,7 +1248,9 @@ class ConfigurationFragment @JvmOverloads constructor(
         val group = DataStore.currentGroup()
 
         val mainJob = runOnDefaultDispatcher {
-            val profilesList = SagerDatabase.proxyDao.getByGroup(group.id)
+            val profilesList = SagerDatabase.proxyDao.getByGroup(group.id).filter {
+                ids == null || it.id in ids
+            }
             test.proxyN = profilesList.size
             val profiles = ConcurrentLinkedQueue(profilesList)
             repeat(DataStore.connectionTestConcurrent) {
@@ -1772,6 +2003,13 @@ class ConfigurationFragment @JvmOverloads constructor(
                     view.setOnClickListener {
                         (requireActivity() as SelectCallback).returnProfile(proxyEntity.id)
                     }
+                } else if (pf.multiSelectMode) {
+                    // ZyBox: 多选模式点击只切换选中
+                    view.setOnClickListener {
+                        val id = proxyEntity.id
+                        if (!pf.multiSelectedIds.add(id)) pf.multiSelectedIds.remove(id)
+                        (view.parent as? androidx.recyclerview.widget.RecyclerView)?.adapter?.notifyDataSetChanged()
+                    }
                 } else {
                     view.setOnClickListener {
                         runOnDefaultDispatcher {
@@ -1899,7 +2137,12 @@ class ConfigurationFragment @JvmOverloads constructor(
 
                 // ZyBox: 按钮可见性同步设置（不包 async），避免双列下按钮闪现/空白
                 val isDoubleColumn = layoutManager is FixedGridLayoutManager
-                if (isDoubleColumn) {
+                if (pf.multiSelectMode) {
+                    editButton.isGone = true
+                    shareLayout.isGone = true
+                    removeButton.isGone = true
+                    doubleColumnMenuButton.isGone = true
+                } else if (isDoubleColumn) {
                     editButton.isGone = true
                     shareLayout.isGone = true
                     removeButton.isGone = true
@@ -1934,6 +2177,26 @@ class ConfigurationFragment @JvmOverloads constructor(
                         } else {
                             card.strokeWidth = 0
                             card.cardElevation = ctx.resources.getDimension(io.nekohasekai.sagernet.R.dimen.profile_card_elevation_classic)
+                            // ZyBox: 经典样式选中时背景染色（半透明主色），未选中恢复默认
+                            if (selected) {
+                                card.setCardBackgroundColor(
+                                    ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
+                                )
+                            } else {
+                                card.setCardBackgroundColor(
+                                    ctx.getColorAttr(android.R.attr.colorBackground)
+                                )
+                            }
+                        }
+                        // ZyBox: 多选模式选中态（粉色描边+浅粉底，覆盖在卡片样式之上）
+                        if (pf.multiSelectMode) {
+                            val multiSel = pf.multiSelectedIds.contains(proxyEntity.id)
+                            card.strokeWidth = if (multiSel) dp2px(2) else dp2px(0)
+                            card.strokeColor = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
+                            card.setCardBackgroundColor(
+                                if (multiSel) ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
+                                else ctx.getColorAttr(android.R.attr.colorBackground)
+                            )
                         }
                     }
 

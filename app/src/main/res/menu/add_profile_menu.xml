@@ -98,6 +98,10 @@
         android:title=""
         app:showAsAction="always">
         <menu>
+            <!-- ZyBox: 多选模式入口 -->
+            <item
+                android:id="@+id/action_multi_select"
+                android:title="@string/multi_select" />
             <!-- ZyBox: 可切换的开关项，默认开启 -->
             <item
                 android:id="@+id/action_toggle_auto_test"

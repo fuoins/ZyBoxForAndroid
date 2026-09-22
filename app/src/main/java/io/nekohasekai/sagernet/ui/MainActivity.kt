@@ -207,11 +207,11 @@ class MainActivity : ThemedActivity(),
         }
         view.findViewById<android.view.View>(R.id.init_btn_enter).setOnClickListener {
             val done = (if (isAutoInitDone) 1 else 0) +
-                    if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                    (if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                             this, POST_NOTIFICATIONS
                         ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
-                    ) 1 else 0 +
-                    if (VpnService.prepare(this) == null) 1 else 0
+                    ) 1 else 0) +
+                    (if (VpnService.prepare(this) == null) 1 else 0)
             if (done < 3) {
                 snackbar(getString(R.string.zybox_init_incomplete)).show()
             }
@@ -230,11 +230,11 @@ class MainActivity : ThemedActivity(),
     private fun refreshInitDialog(d: androidx.appcompat.app.AlertDialog) {
         val view = d.findViewById<android.widget.TextView>(R.id.init_progress) ?: return
         val done = (if (isAutoInitDone) 1 else 0) +
-                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                (if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                         this, POST_NOTIFICATIONS
                     ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
-                ) 1 else 0 +
-                if (VpnService.prepare(this) == null) 1 else 0
+                ) 1 else 0) +
+                (if (VpnService.prepare(this) == null) 1 else 0)
         view.text = "$done/3"
         d.findViewById<android.widget.TextView>(R.id.init_status_auto)?.text =
             if (isAutoInitDone) "✅" else "❌"
