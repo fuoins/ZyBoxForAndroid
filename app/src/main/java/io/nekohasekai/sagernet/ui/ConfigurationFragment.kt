@@ -185,6 +185,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     override fun onResume() {
         super.onResume()
+        // ZyBox: 从分组管理页/其他页返回时立即刷新分组栏（新导入的订阅/分组马上出现，保持当前选中分组不变）
+        if (!select && ::adapter.isInitialized) adapter.reload(true)
         // ZyBox: 从编辑页等返回时重放搜索关键字（SearchView 失焦收起会把搜索清空）
         if (savedSearchQuery.isNotEmpty()) {
             toolbar.findViewById<SearchView>(R.id.action_search)?.let { sv ->
