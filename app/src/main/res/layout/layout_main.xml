@@ -36,11 +36,11 @@
             android:id="@+id/fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:elevation="6dp"
+            android:elevation="8dp"
             android:nextFocusDown="@+id/stats"
             app:backgroundTint="?fabColorBackground"
             app:layout_anchor="@id/stats"
-            app:pressedTranslationZ="6dp"
+            app:pressedTranslationZ="10dp"
             app:srcCompat="@drawable/ic_service_idle" />
 
         <io.nekohasekai.sagernet.widget.StatsBar
@@ -91,7 +91,8 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="?whiteOrTextPrimary"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
                     tools:text="@string/connection_test_available" />
 
             </LinearLayout>
@@ -106,6 +107,7 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        app:headerLayout="@layout/layout_nav_header"
         app:itemIconTint="@color/navigation_icon"
         app:itemTextColor="@color/navigation_icon"
         app:menu="@menu/main_drawer_menu" />
@@ -120,6 +122,7 @@
         app:itemShapeAppearance="@style/ShapeAppearance.MaterialComponents.MediumComponent"
         app:itemShapeFillColor="@color/navigation_item"
         app:itemTextColor="@color/navigation_icon"
+        app:headerLayout="@layout/layout_nav_header"
         app:menu="@menu/main_drawer_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

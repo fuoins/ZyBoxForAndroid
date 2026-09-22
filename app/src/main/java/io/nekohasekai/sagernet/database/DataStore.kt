@@ -87,6 +87,9 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var appTLSVersion by configurationStore.string(Key.APP_TLS_VERSION)
     var enableClashAPI by configurationStore.boolean(Key.ENABLE_CLASH_API)
     var showBottomBar by configurationStore.boolean(Key.SHOW_BOTTOM_BAR)
+    // ZyBox: 连接后自动测速 / 测速同步节点列表（默认开启，可在主页 ⋮ 菜单切换）
+    var autoTestOnConnect by configurationStore.boolean(Key.AUTO_TEST_ON_CONNECT) { true }
+    var syncPingOnTest by configurationStore.boolean(Key.SYNC_PING_ON_TEST) { true }
 
     var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
     var networkChangeResetConnections by configurationStore.boolean(Key.NETWORK_CHANGE_RESET_CONNECTIONS) { true }

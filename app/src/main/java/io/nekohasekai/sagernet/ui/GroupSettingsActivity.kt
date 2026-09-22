@@ -63,7 +63,7 @@ class GroupSettingsActivity(
     }
 
     fun ProxyGroup.serialize() {
-        name = DataStore.groupName.takeIf { it.isNotBlank() } ?: "My group"
+        name = DataStore.groupName.takeIf { it.isNotBlank() } ?: "我爱宇神"
         type = DataStore.groupType
         order = DataStore.groupOrder
         isSelector = DataStore.groupIsSelector
@@ -140,6 +140,22 @@ class GroupSettingsActivity(
         groupType.setOnPreferenceChangeListener { _, newValue ->
             updateGroupType((newValue as String).toInt())
             true
+        }
+
+        // ZyBox: 导入分组（宇神神了）——分组类型显示"导入"不可修改，隐藏订阅/更新设置，显示提示
+        runOnDefaultDispatcher {
+            val editingId = DataStore.editingId
+            val isImportGroup = if (editingId == 0L) false
+            else SagerDatabase.groupDao.getById(editingId)?.ungrouped == true
+            if (isImportGroup) onMainDispatcher {
+                groupType.isEnabled = false
+                // useSimpleSummaryProvider 已内置 provider，需先移除再设摘要
+                groupType.summaryProvider = null
+                groupType.summary = getString(R.string.group_type_import)
+                groupSubscription.isVisible = false
+                subscriptionUpdate.isVisible = false
+                findPreference<Preference>(Key.IMPORT_GROUP_HINT)?.isVisible = true
+            }
         }
 
         val subscriptionAutoUpdate =

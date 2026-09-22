@@ -290,4 +290,17 @@
 
     <color name="preference_simple_menu_background">#FAFAFA</color>
 
+    <!-- ZyBox UI 3.0 设计 Token：靛蓝 · 潮汐 -->
+    <color name="zybox_primary">#5B7CFA</color>
+    <color name="zybox_primary_dark">#4566E8</color>
+    <color name="zybox_primary_light">#E8EDFF</color>
+    <color name="zybox_accent">#5B7CFA</color>
+    <color name="zybox_bg">#F6F7FB</color>
+    <color name="zybox_card">#FFFFFF</color>
+    <color name="zybox_text_primary">#1F2430</color>
+    <color name="zybox_text_secondary">#8A90A0</color>
+    <color name="zybox_ping_bg">#1A5B7CFA</color>
+    <color name="zybox_ping_text">#4566E8</color>
+    <color name="zybox_divider">#EEF0F6</color>
+
 </resources>

@@ -15,6 +15,14 @@
         app:title="@string/group_type"
         app:useSimpleSummaryProvider="true" />
 
+    <!-- ZyBox: 导入分组提示（仅导入分组显示） -->
+    <Preference
+        app:icon="@drawable/ic_baseline_info_24"
+        app:isPreferenceVisible="false"
+        app:key="importGroupHint"
+        app:summary="@string/import_group_hint_sum"
+        app:title="@string/import_group_hint" />
+
     <moe.matsuri.nb4a.ui.SimpleMenuPreference
         app:defaultValue="0"
         app:entries="@array/group_orders"

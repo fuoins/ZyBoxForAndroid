@@ -14,6 +14,7 @@ import androidx.activity.addCallback
 import androidx.annotation.IdRes
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceDataStore
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.navigation.NavigationView
@@ -48,6 +49,8 @@ import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.parseProxies
 import io.nekohasekai.sagernet.ktx.readableMessage
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import moe.matsuri.nb4a.utils.Util
 
 class MainActivity : ThemedActivity(),
@@ -346,6 +349,7 @@ class MainActivity : ThemedActivity(),
             }
 
             R.id.nav_about -> displayFragment(AboutFragment())
+            R.id.nav_zybox_optimization -> displayFragment(ZyBoxOptimizationFragment())
             R.id.nav_tuiguang -> {
                 launchCustomTab("https://neko-box.pages.dev/喵")
                 return false
@@ -380,6 +384,18 @@ class MainActivity : ThemedActivity(),
 
     override fun stateChanged(state: BaseService.State, profileName: String?, msg: String?) {
         changeState(state, msg, true)
+        autoTestOnConnect(state)
+    }
+
+    // 连接成功后自动测速（等效点击"已连接，点击此处自动测速"）。
+    // 只在状态刚进入 Connected 时触发一次，连接成功立即执行。
+    private var lastStateForAutoTest: BaseService.State? = null
+    private fun autoTestOnConnect(state: BaseService.State) {
+        val last = lastStateForAutoTest
+        lastStateForAutoTest = state
+        if (state != BaseService.State.Connected || last == BaseService.State.Connected) return
+        // ZyBox: 可在主页 ⋮ 菜单关闭"连接自动测速"
+        if (DataStore.autoTestOnConnect) binding.stats.testConnection()
     }
 
     val connection = SagerConnection(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_FOREGROUND, true)

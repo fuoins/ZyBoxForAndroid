@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 3.0: 选中指示条（圆角靛蓝） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/zybox_primary" />
+    <corners android:radius="2dp" />
+</shape>

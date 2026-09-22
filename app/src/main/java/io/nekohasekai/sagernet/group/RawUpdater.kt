@@ -1,6 +1,7 @@
 package io.nekohasekai.sagernet.group
 
 import android.annotation.SuppressLint
+import io.nekohasekai.sagernet.GroupType
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.*
 import io.nekohasekai.sagernet.fmt.AbstractBean
@@ -44,6 +45,43 @@ object RawUpdater : GroupUpdater() {
         userInterface: GroupManager.Interface?,
         byUser: Boolean
     ) {
+        doUpdateCore(
+            targetGroupId = proxyGroup.id,
+            subscriptionId = 0L,
+            subscription = subscription,
+            groupRef = proxyGroup,
+            entityRef = null,
+            userInterface = userInterface,
+            byUser = byUser
+        )
+    }
+
+    suspend fun doUpdate(
+        entity: SubscriptionEntity,
+        userInterface: GroupManager.Interface?,
+        byUser: Boolean
+    ) {
+        val subscription = entity.bean ?: error("Null subscription")
+        doUpdateCore(
+            targetGroupId = entity.groupId,
+            subscriptionId = entity.id,
+            subscription = subscription,
+            groupRef = null,
+            entityRef = entity,
+            userInterface = userInterface,
+            byUser = byUser
+        )
+    }
+
+    private suspend fun doUpdateCore(
+        targetGroupId: Long,
+        subscriptionId: Long,
+        subscription: SubscriptionBean,
+        groupRef: ProxyGroup?,
+        entityRef: SubscriptionEntity?,
+        userInterface: GroupManager.Interface?,
+        byUser: Boolean
+    ) {
 
         val link = subscription.link
         var proxies: List<AbstractBean>
@@ -76,12 +114,13 @@ object RawUpdater : GroupUpdater() {
                 Util.getStringBox(response.getHeader("Subscription-Userinfo"))
 
             // 修改默认名字
-            if (proxyGroup.name?.startsWith("Subscription #") == true) {
+            val currentName = groupRef?.name ?: entityRef?.name
+            if (currentName?.startsWith("Subscription #") == true) {
                 var remoteName = Util.getStringBox(response.getHeader("content-disposition"))
                 if (remoteName.isNotBlank()) {
                     remoteName = Util.decodeFilename(remoteName)
                     if (remoteName.isNotBlank()) {
-                        proxyGroup.name = remoteName
+                        if (groupRef != null) groupRef.name = remoteName else entityRef?.name = remoteName
                     }
                 }
             }
@@ -102,9 +141,13 @@ object RawUpdater : GroupUpdater() {
         }
         proxies = proxiesMap.values.toList()
 
-        if (subscription.forceResolve) forceResolve(proxies, proxyGroup.id)
+        if (subscription.forceResolve) forceResolve(proxies, targetGroupId)
 
-        val exists = SagerDatabase.proxyDao.getByGroup(proxyGroup.id)
+        val exists = if (subscriptionId == 0L) {
+            SagerDatabase.proxyDao.getByGroup(targetGroupId).filter { it.subscriptionId == 0L }
+        } else {
+            SagerDatabase.proxyDao.getByGroupAndSubscription(targetGroupId, subscriptionId)
+        }
         val duplicate = ArrayList<String>()
         if (subscription.deduplication) {
             Logs.d("Before deduplication: ${proxies.size}")
@@ -190,7 +233,7 @@ object RawUpdater : GroupUpdater() {
                 changed++
                 SagerDatabase.proxyDao.addProxy(
                     ProxyEntity(
-                        groupId = proxyGroup.id, userOrder = userOrder
+                        groupId = targetGroupId, subscriptionId = subscriptionId, userOrder = userOrder
                     ).apply {
                         putBean(bean)
                     })
@@ -208,18 +251,30 @@ object RawUpdater : GroupUpdater() {
             Logs.d("Deleted profiles: $it")
         }
 
-        val existCount = SagerDatabase.proxyDao.countByGroup(proxyGroup.id).toInt()
+        val existCount = if (subscriptionId == 0L) {
+            SagerDatabase.proxyDao.getByGroup(targetGroupId).count { it.subscriptionId == 0L }
+        } else {
+            SagerDatabase.proxyDao.getByGroupAndSubscription(targetGroupId, subscriptionId).size
+        }
 
         if (existCount != proxies.size) {
             Logs.e("Exist profiles: $existCount, new profiles: ${proxies.size}")
         }
 
         subscription.lastUpdated = (System.currentTimeMillis() / 1000).toInt()
-        SagerDatabase.groupDao.updateGroup(proxyGroup)
-        finishUpdate(proxyGroup)
+        if (entityRef != null) {
+            SagerDatabase.subscriptionDao.update(entityRef)
+        } else {
+            SagerDatabase.groupDao.updateGroup(groupRef!!)
+        }
+        finishUpdate(if (entityRef != null) -entityRef.id else targetGroupId, targetGroupId)
 
+        val resultGroup = groupRef ?: SagerDatabase.groupDao.getById(targetGroupId) ?: ProxyGroup().apply {
+            name = entityRef?.name
+            type = GroupType.SUBSCRIPTION
+        }
         userInterface?.onUpdateSuccess(
-            proxyGroup, changed, added, updated, deleted, duplicate, byUser
+            resultGroup, changed, added, updated, deleted, duplicate, byUser
         )
     }
 

@@ -1,10 +1,18 @@
 <resources>
     <!-- Base application theme. -->
     <style name="Theme.SagerNet" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- ZyBox UI 3.0：柔和浅色背景 -->
+        <item name="android:windowBackground">@color/zybox_bg</item>
+        <item name="android:colorBackground">@color/zybox_bg</item>
+        <item name="android:statusBarColor">@color/zybox_primary_dark</item>
+        <!-- ZyBox UI 3.0: 沉浸细节 —— 隐藏滚动条 / 去分隔线 / 去边缘光晕 -->
+        <item name="android:scrollbarSize">0.0dip</item>
+        <item name="android:listDivider">@null</item>
+        <item name="android:colorEdgeEffect">@null</item>
         <item name="actionBarStyle">@style/Widget.MaterialComponents.ActionBar.Solid</item>
         <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
         <item name="colorButtonNormal">?colorAccent</item>
-        <item name="android:navigationBarColor">?colorPrimaryDark</item>
+        <item name="android:navigationBarColor">@color/zybox_bg</item>
         <item name="colorPrimary">@color/material_pink_500</item>
         <item name="colorPrimaryDark">@color/material_pink_700</item>
         <item name="colorAccent">@color/material_pink_accent_200</item>
@@ -33,9 +41,11 @@
         <item name="windowNoTitle">true</item>
 
         <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice.SagerNet</item>
+        <item name="materialCardViewStyle">@style/Widget.MaterialComponents.CardView.ZyBox</item>
+        <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button.ZyBox</item>
 
         <item name="itemShapeAppearance">
-            @style/ShapeAppearance.MaterialComponents.MediumComponent
+            @style/ShapeAppearance.SagerNet.Medium
         </item>
 
         <item name="alertDialogTheme">
@@ -52,7 +62,7 @@
         <item name="actionBarStyle">@style/Widget.MaterialComponents.ActionBar.Solid</item>
         <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
         <item name="colorButtonNormal">?colorAccent</item>
-        <item name="android:navigationBarColor">?colorPrimaryDark</item>
+        <item name="android:navigationBarColor">@color/zybox_bg</item>
         <item name="colorPrimary">@color/material_pink_500</item>
         <item name="colorPrimaryDark">@color/material_pink_700</item>
         <item name="colorAccent">@color/material_pink_accent_200</item>
@@ -81,9 +91,11 @@
         <item name="windowNoTitle">true</item>
 
         <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice.SagerNet</item>
+        <item name="materialCardViewStyle">@style/Widget.MaterialComponents.CardView.ZyBox</item>
+        <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button.ZyBox</item>
 
         <item name="itemShapeAppearance">
-            @style/ShapeAppearance.MaterialComponents.MediumComponent
+            @style/ShapeAppearance.SagerNet.Medium
         </item>
 
         <item name="alertDialogTheme">
@@ -98,12 +110,28 @@
 
     </style>
 
+    <style name="ShapeAppearance.SagerNet.Medium" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <style name="Widget.MaterialComponents.CardView.ZyBox" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+    </style>
+
+    <style name="Widget.MaterialComponents.Button.ZyBox" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">16dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
     <style name="AppearanceFoundation.Title" parent="TextAppearance.AppCompat.Title">
         <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Dialog</item>
         <item name="buttonBarPositiveButtonStyle">
             @style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary
         </item>
@@ -113,6 +141,22 @@
         <item name="buttonBarNeutralButtonStyle">
             @style/Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary
         </item>
+    </style>
+
+    <!-- ZyBox UI 2.0：对话框大圆角 -->
+    <style name="ShapeAppearance.ZyBox.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/zybox_corner_large</item>
+    </style>
+
+    <!-- ZyBox UI 2.0：Snackbar 大圆角 -->
+    <style name="Widget.MaterialComponents.Snackbar.ZyBox" parent="Widget.MaterialComponents.Snackbar">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Snackbar</item>
+    </style>
+
+    <style name="ShapeAppearance.ZyBox.Snackbar" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/zybox_corner</item>
     </style>
 
     <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Primary">
@@ -130,6 +174,7 @@
         <item name="android:textColor">@color/chip_text_color</item>
         <item name="checkedIconTint">?primaryOrTextPrimary</item>
         <item name="rippleColor">@color/chip_ripple_color</item>
+        <item name="chipCornerRadius">@dimen/zybox_corner</item>
     </style>
 
     <style name="Theme.SagerNet.Pink_SSR">
@@ -213,11 +258,11 @@
     </style>
 
     <style name="Theme.SagerNet.Indigo">
-        <item name="colorPrimary">@color/material_indigo_500</item>
-        <item name="colorPrimaryDark">@color/material_indigo_700</item>
-        <item name="colorAccent">@color/material_indigo_accent_200</item>
-        <item name="colorMaterial100">@color/material_indigo_100</item>
-        <item name="colorMaterial300">@color/material_indigo_300</item>
+        <item name="colorPrimary">@color/zybox_primary</item>
+        <item name="colorPrimaryDark">@color/zybox_primary_dark</item>
+        <item name="colorAccent">@color/zybox_accent</item>
+        <item name="colorMaterial100">@color/zybox_primary_light</item>
+        <item name="colorMaterial300">@color/zybox_primary</item>
     </style>
 
     <style name="Theme.SagerNet.LightBlue">
@@ -480,6 +525,18 @@
         <item name="android:windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- ZyBox: 分组 Tab 文字（选中加粗） -->
+    <style name="ZyBoxTabText" parent="TextAppearance.MaterialComponents.Button">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- ZyBox: 工具栏标题小字号，避免被右侧按钮挤成省略号 -->
+    <style name="ZyBoxToolbarTitle" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
 </resources>

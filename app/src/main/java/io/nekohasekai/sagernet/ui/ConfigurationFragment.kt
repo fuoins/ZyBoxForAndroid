@@ -62,6 +62,7 @@ import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ktx.SubscriptionFoundException
 import io.nekohasekai.sagernet.ktx.alert
 import io.nekohasekai.sagernet.ktx.app
+import io.nekohasekai.sagernet.ktx.applyDefaultValues
 import io.nekohasekai.sagernet.ktx.dp2px
 import io.nekohasekai.sagernet.ktx.getColorAttr
 import io.nekohasekai.sagernet.ktx.getColour
@@ -102,6 +103,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import moe.matsuri.nb4a.Protocols
 import moe.matsuri.nb4a.Protocols.getProtocolColor
+import moe.matsuri.nb4a.Protocols.strictDedupKey
 import moe.matsuri.nb4a.proxy.anytls.AnyTLSSettingsActivity
 import moe.matsuri.nb4a.proxy.config.ConfigSettingActivity
 import moe.matsuri.nb4a.proxy.shadowtls.ShadowTLSSettingsActivity
@@ -176,8 +178,13 @@ class ConfigurationFragment @JvmOverloads constructor(
         super.onViewCreated(view, savedInstanceState)
 
         if (!select) {
+            // ZyBox: 首页左上角显示 ZyBox 标题（15sp 加粗，工具栏按钮保持 always 显示）
+            toolbar.setTitle(R.string.app_name)
             toolbar.inflateMenu(R.menu.add_profile_menu)
             toolbar.setOnMenuItemClickListener(this)
+            // ZyBox: 菜单开关项初始勾选状态
+            toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
+            toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
         } else {
             toolbar.setTitle(titleRes)
             toolbar.setNavigationIcon(R.drawable.ic_navigation_close)
@@ -329,9 +336,17 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     suspend fun import(proxies: List<AbstractBean>) {
         val targetId = DataStore.selectedGroupForImport()
+        var order = SagerDatabase.proxyDao.nextOrder(targetId) ?: 1L
+        val entities = ArrayList<ProxyEntity>(proxies.size)
         for (proxy in proxies) {
-            ProfileManager.createProfile(targetId, proxy)
+            proxy.applyDefaultValues()
+            entities.add(ProxyEntity(groupId = targetId).apply {
+                putBean(proxy)
+                userOrder = order++
+            })
         }
+        // 单事务批量插入，避免大文件导入时逐条事务导致的锁竞争/中途失败
+        SagerDatabase.proxyDao.insert(entities)
         onMainDispatcher {
             DataStore.editingGroup = targetId
             snackbar(
@@ -345,6 +360,21 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
+            // ZyBox: 回到顶部
+            R.id.action_scroll_top -> {
+                adapter.groupFragments[DataStore.selectedGroup]
+                    ?.configurationListView?.scrollToPosition(0)
+                snackbar(getString(R.string.action_scroll_top_done)).show()
+            }
+
+            // ZyBox: 刷新当前分组列表（重读数据库并按当前排序重新排序，测速后点一下立即生效）
+            R.id.action_refresh -> {
+                runOnDefaultDispatcher {
+                    GroupManager.postReload(DataStore.currentGroupId())
+                }
+                snackbar(getString(R.string.action_refresh_done)).show()
+            }
+
             R.id.action_scan_qr_code -> {
                 startActivity(Intent(context, ScannerActivity::class.java))
             }
@@ -445,14 +475,36 @@ class ConfigurationFragment @JvmOverloads constructor(
                 startActivity(Intent(requireActivity(), ChainSettingsActivity::class.java))
             }
 
+            // ZyBox: 连接自动测速 开关（默认开，点击切换）
+            R.id.action_toggle_auto_test -> {
+                DataStore.autoTestOnConnect = !DataStore.autoTestOnConnect
+                item.isChecked = DataStore.autoTestOnConnect
+                true
+            }
+
+            // ZyBox: 连接延迟同步节点 开关（默认开，点击切换）
+            R.id.action_toggle_sync_ping -> {
+                DataStore.syncPingOnTest = !DataStore.syncPingOnTest
+                item.isChecked = DataStore.syncPingOnTest
+                true
+            }
+
             R.id.action_update_subscription -> {
                 val group = DataStore.currentGroup()
-                if (group.type != GroupType.SUBSCRIPTION) {
-                    snackbar(R.string.group_not_subscription).show()
-                    Logs.e("onMenuItemClick: Group(${group.displayName()}) is not subscription")
-                } else {
-                    runOnLifecycleDispatcher {
-                        GroupUpdater.startUpdate(group, true)
+                runOnLifecycleDispatcher {
+                    val hasSubs = SagerDatabase.subscriptionDao.countByGroup(group.id) > 0
+                    if (group.type != GroupType.SUBSCRIPTION && !hasSubs) {
+                        onMainDispatcher {
+                            snackbar(R.string.group_not_subscription).show()
+                        }
+                        Logs.e("onMenuItemClick: Group(${group.displayName()}) is not subscription")
+                    } else {
+                        if (group.type == GroupType.SUBSCRIPTION && group.subscription != null) {
+                            GroupUpdater.startUpdate(group, true)
+                        }
+                        for (entity in SagerDatabase.subscriptionDao.getByGroup(group.id)) {
+                            GroupUpdater.startUpdate(entity, true)
+                        }
                     }
                 }
             }
@@ -539,6 +591,59 @@ class ConfigurationFragment @JvmOverloads constructor(
                     for (pf in profiles) {
                         val proxy = Protocols.Deduplication(pf.requireBean(), pf.displayType())
                         if (!uniqueProxies.add(proxy)) {
+                            toClear += pf
+                        }
+                    }
+                    if (toClear.isNotEmpty()) {
+                        onMainDispatcher {
+                            MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.confirm)
+                                .setMessage(
+                                    getString(R.string.delete_confirm_prompt) + "\n" +
+                                            toClear.mapIndexedNotNull { index, proxyEntity ->
+                                                if (index < 20) {
+                                                    proxyEntity.displayName()
+                                                } else if (index == 20) {
+                                                    "......"
+                                                } else {
+                                                    null
+                                                }
+                                            }.joinToString("\n")
+                                )
+                                .setPositiveButton(R.string.yes) { _, _ ->
+                                    for (profile in toClear) {
+                                        adapter.groupFragments[DataStore.selectedGroup]?.adapter?.apply {
+                                            val index = configurationIdList.indexOf(profile.id)
+                                            if (index >= 0) {
+                                                configurationIdList.removeAt(index)
+                                                configurationList.remove(profile.id)
+                                                notifyItemRemoved(index)
+                                            }
+                                        }
+                                    }
+                                    runOnDefaultDispatcher {
+                                        for (profile in toClear) {
+                                            ProfileManager.deleteProfile2(
+                                                profile.groupId, profile.id
+                                            )
+                                        }
+                                    }
+                                }
+                                .setNegativeButton(R.string.no, null)
+                                .show()
+                        }
+                    }
+                }
+            }
+
+            R.id.action_remove_duplicate_strict -> {
+                // 去重zy版：除名字外，其他配置完全相同的节点才视为重复
+                runOnDefaultDispatcher {
+                    val profiles = SagerDatabase.proxyDao.getByGroup(DataStore.currentGroupId())
+                    val toClear = mutableListOf<ProxyEntity>()
+                    val uniqueKeys = HashSet<String>()
+                    for (pf in profiles) {
+                        val key = pf.requireBean().strictDedupKey()
+                        if (!uniqueKeys.add(key)) {
                             toClear += pf
                         }
                     }
@@ -1479,7 +1584,6 @@ class ConfigurationFragment @JvmOverloads constructor(
             val profileStatus: TextView = view.findViewById(R.id.profile_status)
 
             val trafficText: TextView = view.findViewById(R.id.traffic_text)
-            val selectedView: LinearLayout = view.findViewById(R.id.selected_view)
             val editButton: ImageView = view.findViewById(R.id.edit)
             val shareLayout: LinearLayout = view.findViewById(R.id.share)
             val shareLayer: LinearLayout = view.findViewById(R.id.share_layer)
@@ -1505,7 +1609,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 lastSelected = DataStore.selectedProxy
                                 DataStore.selectedProxy = proxyEntity.id
                                 onMainDispatcher {
-                                    selectedView.visibility = View.VISIBLE
+                                    // ZyBox: 点击选中即描边（不依赖连接），刷新整列描边状态
+                                    (view.parent as? androidx.recyclerview.widget.RecyclerView)?.adapter?.notifyDataSetChanged()
                                 }
                             }
 
@@ -1559,8 +1664,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
 
                 profileAddress.text = address
-                (trafficText.parent as View).isGone =
-                    (!showTraffic || proxyEntity.status <= 0) && address.isBlank()
+                // ZyBox UI 3.0: 地址行与流量行分开控制（新布局下两者不在同一行）
+                profileAddress.isGone = address.isBlank()
+                trafficText.isGone = !showTraffic || proxyEntity.status <= 0
 
                 if (proxyEntity.status <= 0) {
                     if (showTraffic) {
@@ -1623,7 +1729,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                     onMainDispatcher {
                         editButton.isEnabled = !started
                         removeButton.isEnabled = !started
-                        selectedView.visibility = if (selected) View.VISIBLE else View.INVISIBLE
+                        // ZyBox UI 3.0: 选中整卡描边（点击选中或当前连接都描边）
+                        (view as com.google.android.material.card.MaterialCardView).apply {
+                            strokeWidth = if (selected) dp2px(2) else 0
+                            strokeColor = if (selected) {
+                                view.context.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
+                            } else {
+                                android.graphics.Color.TRANSPARENT
+                            }
+                        }
                     }
 
                     fun showShare(anchor: View) {

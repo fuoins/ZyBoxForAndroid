@@ -104,8 +104,17 @@ fun String.decodeBase64UrlSafe(): String {
 class SubscriptionFoundException(val link: String) : RuntimeException()
 
 suspend fun parseProxies(text: String): List<AbstractBean> {
-    val links = text.split('\n').flatMap { it.trim().split(' ') }
-    val linksByLine = text.split('\n').map { it.trim() }
+    // ZyBox: carry speed-test results exported with "|ping=123" suffix.
+    // Strip the marker before parsing, then write ping back onto beans
+    // in encounter order (ZyBox exports one link per line, so order matches).
+    val importedPings = mutableListOf<Int>()
+    val cleaned = text.replace(Regex("\\|ping=(-?\\d+)"), {
+        importedPings.add(it.groupValues[1].toInt())
+        ""
+    })
+
+    val links = cleaned.split('\n').flatMap { it.trim().split(' ') }
+    val linksByLine = cleaned.split('\n').map { it.trim() }
 
     val entities = ArrayList<AbstractBean>()
     val entitiesByLine = ArrayList<AbstractBean>()
@@ -236,7 +245,16 @@ suspend fun parseProxies(text: String): List<AbstractBean> {
             }
         }
     }
-    return if (entities.size > entitiesByLine.size) entities else entitiesByLine
+    return if (entities.size > entitiesByLine.size) entities else entitiesByLine.also { list ->
+        // ZyBox: apply imported ping values (best effort, in order)
+        if (importedPings.isNotEmpty()) {
+            list.forEachIndexed { index, bean ->
+                if (index < importedPings.size && importedPings[index] > 0) {
+                    bean.ping = importedPings[index]
+                }
+            }
+        }
+    }
 }
 
 fun <T : Serializable> T.applyDefaultValues(): T {

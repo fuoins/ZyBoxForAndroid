@@ -5,7 +5,7 @@ import io.nekohasekai.sagernet.aidl.TrafficData
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.SagerConnection
 import io.nekohasekai.sagernet.database.DataStore
-import io.nekohasekai.sagernet.database.ProfileManager
+import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.TAG_BYPASS
 import io.nekohasekai.sagernet.fmt.TAG_PROXY
 import io.nekohasekai.sagernet.ktx.Logs
@@ -31,7 +31,8 @@ class TrafficLooper
                 val item = idMap[ent.id] ?: return@forEach
                 ent.rx = item.rx
                 ent.tx = item.tx
-                ProfileManager.updateProfile(ent) // update DB
+                // ZyBox: 只更新流量列，避免覆盖 ping/status 等最新字段
+                SagerDatabase.proxyDao.updateTraffic(ent.id, ent.tx, ent.rx)
                 traffic[ent.id] = TrafficData(
                     id = ent.id,
                     rx = ent.rx,
@@ -67,7 +68,8 @@ class TrafficLooper
                     it.rx = rx
                     it.tx = tx
                     runOnDefaultDispatcher {
-                        ProfileManager.updateProfile(it) // update DB
+                        // ZyBox: 只更新流量列，避免覆盖 ping/status 等最新字段
+                        SagerDatabase.proxyDao.updateTraffic(it.id, it.tx, it.rx)
                     }
                 }
             }

@@ -2,4 +2,17 @@
 <resources>
     <color name="fab_color_progress">@color/material_light_white</color>
     <color name="preference_simple_menu_background">#303030</color>
+    <!-- ZyBox UI 3.0 深色 Token -->
+    <color name="zybox_primary">#7C93FF</color>
+    <color name="zybox_primary_dark">#4566E8</color>
+    <color name="zybox_primary_light">#1E2A5A</color>
+    <color name="zybox_accent">#7C93FF</color>
+    <color name="zybox_bg">#12141C</color>
+    <color name="zybox_card">#1E2230</color>
+    <color name="zybox_text_primary">#E8EAF2</color>
+    <color name="zybox_text_secondary">#9AA1B5</color>
+    <color name="zybox_ping_bg">#1A7C93FF</color>
+    <color name="zybox_ping_text">#9DB0FF</color>
+    <color name="zybox_divider">#2A2F42</color>
+
 </resources>

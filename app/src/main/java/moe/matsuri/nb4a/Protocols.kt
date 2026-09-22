@@ -4,9 +4,12 @@ import android.content.Context
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.ProxyEntity.Companion.TYPE_NEKO
 import io.nekohasekai.sagernet.fmt.AbstractBean
+import io.nekohasekai.sagernet.fmt.KryoConverters
+import io.nekohasekai.sagernet.fmt.Serializable
 import io.nekohasekai.sagernet.ktx.app
 import io.nekohasekai.sagernet.ktx.getColorAttr
 import moe.matsuri.nb4a.proxy.config.ConfigBean
+import java.util.Base64
 
 // Settings for all protocols, built-in or plugin
 object Protocols {
@@ -37,6 +40,33 @@ object Protocols {
             return hash() == other.hash()
         }
 
+    }
+
+    // Strict deduplication key: identical except name
+    // 除名字外其他配置完全相同的节点才视为重复（TLS/SNI/路径等任一不同都不去重）
+    fun AbstractBean.strictDedupKey(): String {
+        val bytes = KryoConverters.serialize(this)
+        val copy = runCatching {
+            KryoConverters.deserialize(
+                this.javaClass.getDeclaredConstructor().newInstance() as AbstractBean, bytes
+            )
+        }.getOrElse {
+            // fallback: temporarily clear name
+            val saved = this.name
+            this.name = ""
+            val hash = KryoConverters.serialize(this)
+            this.name = saved
+            return@getOrElse null
+        }
+        if (copy == null) {
+            val saved = this.name
+            this.name = ""
+            val hash = KryoConverters.serialize(this)
+            this.name = saved
+            return Base64.getEncoder().encodeToString(hash)
+        }
+        copy.name = ""
+        return Base64.getEncoder().encodeToString(KryoConverters.serialize(copy))
     }
 
     // Display

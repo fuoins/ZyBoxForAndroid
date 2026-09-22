@@ -15,5 +15,6 @@
         android:theme="?actionBarTheme"
         android:touchscreenBlocksFocus="false"
         app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
-        app:title="@string/app_name" />
+        app:title="@string/app_name"
+        app:titleTextAppearance="@style/ZyBoxToolbarTitle" />
 </com.google.android.material.appbar.AppBarLayout>

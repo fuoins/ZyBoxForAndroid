@@ -22,8 +22,23 @@
             <item
                 android:id="@+id/action_export_file"
                 android:title="@string/action_export_file" />
+            <item
+                android:id="@+id/action_export_ping_clipboard"
+                android:title="@string/action_export_ping_clipboard" />
+            <item
+                android:id="@+id/action_export_ping_file"
+                android:title="@string/action_export_ping_file" />
         </menu>
     </item>
+    <item
+        android:id="@+id/action_add_subscription"
+        android:title="@string/add_subscription_to_group" />
+    <item
+        android:id="@+id/action_manage_subscriptions"
+        android:title="@string/manage_subscriptions" />
+    <item
+        android:id="@+id/action_merge_to_group"
+        android:title="@string/merge_to_other_group" />
     <item
         android:id="@+id/action_clear"
         android:title="@string/clear_profiles" />

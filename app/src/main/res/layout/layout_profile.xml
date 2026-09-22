@@ -1,4 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?><!-- Based on: https://github.com/android/platform_frameworks_base/blob/505e3ab/core/res/res/layout/simple_list_item_2.xml -->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 3.0: 节点卡片全新布局
+     第一行: 节点名(大字) + 操作按钮
+     第二行: 类型徽章 + 流量 + 延迟胶囊 -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -8,7 +11,7 @@
     android:layout_margin="4dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardElevation="2dp">
+    app:cardElevation="1dp">
 
     <LinearLayout
         android:id="@+id/content_lin"
@@ -18,21 +21,12 @@
         android:orientation="horizontal">
 
         <LinearLayout
-            android:id="@+id/selected_view"
-            android:layout_width="4dp"
-            android:layout_height="match_parent"
-            android:background="?selectedColorPrimary"
-            android:orientation="horizontal"
-            android:visibility="invisible"
-            tools:visibility="visible" />
-
-        <LinearLayout
-
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:nextFocusRight="@+id/edit"
             android:orientation="vertical">
 
+            <!-- 第一行：节点名 + 操作按钮 -->
             <LinearLayout
                 android:id="@+id/container"
                 android:layout_width="match_parent"
@@ -45,9 +39,10 @@
                     android:layout_gravity="center_vertical"
                     android:layout_weight="1"
                     android:gravity="center_vertical"
-                    android:paddingLeft="12dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:orientation="vertical"
+                    android:paddingLeft="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="6dp">
 
                     <TextView
                         android:id="@+id/profile_name"
@@ -57,6 +52,17 @@
                         android:textColor="?android:attr/textColorPrimary"
                         android:textStyle="bold"
                         tools:text="@string/profile_name" />
+
+                    <TextView
+                        android:id="@+id/profile_address"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/server_address"
+                        android:textAppearance="?android:attr/textAppearanceSmall"
+                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
 
                 <androidx.appcompat.widget.AppCompatImageView
@@ -109,23 +115,27 @@
 
             </LinearLayout>
 
+            <!-- 第二行：类型徽章 + 流量 + 延迟胶囊 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="12dp"
-                android:paddingEnd="8dp"
-                android:paddingBottom="4dp"
-                android:visibility="gone"
-                tools:visibility="visible">
+                android:paddingStart="14dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="10dp">
 
                 <TextView
-                    android:id="@+id/profile_address"
+                    android:id="@+id/profile_type"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/server_address"
+                    android:background="@drawable/zybox_type_badge"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
                     android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="?android:attr/textColorSecondary" />
+                    android:textColor="@color/zybox_ping_text" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -136,39 +146,22 @@
                     android:id="@+id/traffic_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
                     android:text="@string/traffic"
                     android:textAppearance="?android:attr/textAppearanceSmall"
                     android:textColor="?android:attr/textColorSecondary" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingStart="12dp"
-                android:paddingEnd="8dp"
-                android:paddingBottom="12dp">
-
-                <TextView
-                    android:id="@+id/profile_type"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="?attr/accentOrTextSecondary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
 
                 <TextView
                     android:id="@+id/profile_status"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:background="@drawable/zybox_ping_capsule"
+                    android:paddingStart="10dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="3dp"
                     android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="?attr/accentOrTextSecondary" />
+                    android:textColor="@color/zybox_ping_text" />
 
             </LinearLayout>
 

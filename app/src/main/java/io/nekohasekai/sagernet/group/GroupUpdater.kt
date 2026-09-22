@@ -4,7 +4,9 @@ import io.nekohasekai.sagernet.*
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.GroupManager
 import io.nekohasekai.sagernet.database.ProxyGroup
+import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.database.SubscriptionBean
+import io.nekohasekai.sagernet.database.SubscriptionEntity
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.http.HttpBean
 import io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean
@@ -130,6 +132,45 @@ abstract class GroupUpdater {
             }
         }
 
+        fun startUpdate(entity: SubscriptionEntity, byUser: Boolean) {
+            runOnDefaultDispatcher {
+                executeUpdate(entity, byUser)
+            }
+        }
+
+        suspend fun executeUpdate(entity: SubscriptionEntity, byUser: Boolean): Boolean {
+            return coroutineScope {
+                val bean = entity.bean ?: return@coroutineScope false
+                val key = -entity.id
+                if (!updating.add(key)) cancel()
+                val targetGroup = SagerDatabase.groupDao.getById(entity.groupId)
+                val connected = DataStore.serviceState.connected
+                val userInterface = GroupManager.userInterface
+
+                GroupManager.postReload(entity.groupId)
+
+                if (byUser && (bean.link?.startsWith("http://") == true || bean.updateWhenConnectedOnly) && !connected) {
+                    if (userInterface == null || !userInterface.confirm(app.getString(R.string.update_subscription_warning))) {
+                        finishUpdate(key, entity.groupId)
+                        cancel()
+                        return@coroutineScope true
+                    }
+                }
+
+                try {
+                    RawUpdater.doUpdate(entity, userInterface, byUser)
+                    true
+                } catch (e: Throwable) {
+                    Logs.w(e)
+                    if (targetGroup != null) {
+                        userInterface?.onUpdateFailure(targetGroup, e.readableMessage)
+                    }
+                    finishUpdate(key, entity.groupId)
+                    false
+                }
+            }
+        }
+
         suspend fun executeUpdate(proxyGroup: ProxyGroup, byUser: Boolean): Boolean {
             return coroutineScope {
                 if (!updating.add(proxyGroup.id)) cancel()
@@ -161,9 +202,13 @@ abstract class GroupUpdater {
 
 
         suspend fun finishUpdate(proxyGroup: ProxyGroup) {
-            updating.remove(proxyGroup.id)
-            progress.remove(proxyGroup.id)
-            GroupManager.postUpdate(proxyGroup)
+            finishUpdate(proxyGroup.id, proxyGroup.id)
+        }
+
+        suspend fun finishUpdate(key: Long, groupId: Long) {
+            updating.remove(key)
+            progress.remove(groupId)
+            GroupManager.postUpdate(groupId)
         }
 
     }

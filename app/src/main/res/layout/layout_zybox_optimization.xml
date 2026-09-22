@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox优化内容页：所有功能块统一"标题+描述"模板，间隔一致 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?android:windowBackground">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/colorPrimary"
+            android:theme="?actionBarTheme"
+            app:title="@string/zybox_opt_title"
+            app:titleTextAppearance="@style/ZyBoxToolbarTitle" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_desc"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="?android:attr/listDivider" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_auto_update"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_auto_update_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_dedupe_strict"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_dedupe_strict_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_multi_sub"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_multi_sub_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_group_test"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_group_test_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_auto_test"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_auto_test_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_bulk_import"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_bulk_import_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_export_ping"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_export_ping_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_manage_sub"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_manage_sub_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_ping_persist"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_ping_persist_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_toolbar"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_toolbar_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_default_group"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_default_group_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_ui_redesign"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_ui_redesign_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_stroke_selected"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_stroke_selected_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_import_group_setting"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_import_group_setting_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_scroll_top"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_scroll_top_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/zybox_opt_theme_default"
+                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="20dp"
+                        android:text="@string/zybox_opt_theme_default_sum"
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:textColor="?android:textColorSecondary" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

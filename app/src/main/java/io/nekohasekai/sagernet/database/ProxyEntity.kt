@@ -46,6 +46,7 @@ import moe.matsuri.nb4a.proxy.shadowtls.ShadowTLSSettingsActivity
 data class ProxyEntity(
     @PrimaryKey(autoGenerate = true) var id: Long = 0L,
     var groupId: Long = 0L,
+    @ColumnInfo(defaultValue = "0") var subscriptionId: Long = 0L,
     var type: Int = 0,
     var userOrder: Long = 0L,
     var tx: Long = 0L,
@@ -119,10 +120,11 @@ data class ProxyEntity(
     }
 
     override fun serializeToBuffer(output: ByteBufferOutput) {
-        output.writeInt(0)
+        output.writeInt(1)
 
         output.writeLong(id)
         output.writeLong(groupId)
+        output.writeLong(subscriptionId)
         output.writeInt(type)
         output.writeLong(userOrder)
         output.writeLong(tx)
@@ -144,6 +146,7 @@ data class ProxyEntity(
 
         id = input.readLong()
         groupId = input.readLong()
+        if (version >= 1) subscriptionId = input.readLong()
         type = input.readInt()
         userOrder = input.readLong()
         tx = input.readLong()
@@ -449,6 +452,11 @@ data class ProxyEntity(
 
             else -> error("Undefined type $type")
         }
+        // ZyBox: carry imported speed-test result (transient, from "|ping=" marker)
+        if (bean.ping > 0) {
+            ping = bean.ping
+            status = 1
+        }
         return this
     }
 
@@ -491,6 +499,15 @@ data class ProxyEntity(
         @Query("SELECT * FROM proxy_entities WHERE groupId = :groupId ORDER BY userOrder")
         fun getByGroup(groupId: Long): List<ProxyEntity>
 
+        @Query("SELECT * FROM proxy_entities WHERE groupId = :groupId AND subscriptionId = :subscriptionId ORDER BY userOrder")
+        fun getByGroupAndSubscription(groupId: Long, subscriptionId: Long): List<ProxyEntity>
+
+        @Query("DELETE FROM proxy_entities WHERE subscriptionId = :subscriptionId")
+        fun deleteBySubscription(subscriptionId: Long)
+
+        @Query("DELETE FROM proxy_entities WHERE groupId = :groupId AND subscriptionId = :subscriptionId")
+        fun deleteByGroupAndSubscription(groupId: Long, subscriptionId: Long)
+
         @Query("SELECT * FROM proxy_entities WHERE id in (:proxyIds)")
         fun getEntities(proxyIds: List<Long>): List<ProxyEntity>
 
@@ -523,6 +540,10 @@ data class ProxyEntity(
 
         @Update
         fun updateProxy(proxies: List<ProxyEntity>): Int
+
+        // ZyBox: 只更新流量列，避免用服务进程中的旧实体覆盖 ping/status 等最新字段
+        @Query("UPDATE proxy_entities SET tx = :tx, rx = :rx WHERE id = :proxyId")
+        fun updateTraffic(proxyId: Long, tx: Long, rx: Long)
 
         @Insert
         fun addProxy(proxy: ProxyEntity): Long

@@ -2,6 +2,18 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_scroll_top"
+        android:icon="@drawable/baseline_keyboard_tab_24"
+        android:title="@string/action_scroll_top"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/action_refresh"
+        android:icon="@drawable/ic_baseline_refresh_24"
+        android:title="@string/action_refresh"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/action_search"
         android:title="@android:string/search_go"
         app:actionViewClass="androidx.appcompat.widget.SearchView"
@@ -11,7 +23,7 @@
         android:id="@+id/action_add"
         android:icon="@drawable/ic_action_note_add"
         android:title="@string/add_profile"
-        app:showAsAction="ifRoom">
+        app:showAsAction="always">
         <menu>
             <item
                 android:id="@+id/action_scan_qr_code"
@@ -86,6 +98,15 @@
         android:title=""
         app:showAsAction="always">
         <menu>
+            <!-- ZyBox: 可切换的开关项，默认开启 -->
+            <item
+                android:id="@+id/action_toggle_auto_test"
+                android:checkable="true"
+                android:title="@string/toggle_auto_test" />
+            <item
+                android:id="@+id/action_toggle_sync_ping"
+                android:checkable="true"
+                android:title="@string/toggle_sync_ping" />
             <item
                 android:id="@+id/action_update_subscription"
                 android:title="@string/update_current_subscription" />
@@ -95,6 +116,9 @@
             <item
                 android:id="@+id/action_remove_duplicate"
                 android:title="@string/remove_duplicate" />
+            <item
+                android:id="@+id/action_remove_duplicate_strict"
+                android:title="@string/remove_duplicate_strict" />
             <item
                 android:id="@+id/action_connection_tcp_ping"
                 android:title="@string/connection_test_tcp_ping" />

@@ -138,10 +138,13 @@ object Key {
     const val GROUP_LANDING_PROXY = "groupLandingProxy"
 
     const val GROUP_SUBSCRIPTION = "groupSubscription"
+    const val IMPORT_GROUP_HINT = "importGroupHint"
     const val SUBSCRIPTION_LINK = "subscriptionLink"
     const val SUBSCRIPTION_FORCE_RESOLVE = "subscriptionForceResolve"
     const val SUBSCRIPTION_DEDUPLICATION = "subscriptionDeduplication"
     const val SUBSCRIPTION_UPDATE = "subscriptionUpdate"
+    const val AUTO_TEST_ON_CONNECT = "autoTestOnConnect"
+    const val SYNC_PING_ON_TEST = "syncPingOnTest"
     const val SUBSCRIPTION_UPDATE_WHEN_CONNECTED_ONLY = "subscriptionUpdateWhenConnectedOnly"
     const val SUBSCRIPTION_USER_AGENT = "subscriptionUserAgent"
     const val SUBSCRIPTION_AUTO_UPDATE = "subscriptionAutoUpdate"

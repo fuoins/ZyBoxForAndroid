@@ -14,6 +14,8 @@ import com.google.android.material.bottomappbar.BottomAppBar
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.database.DataStore
+import io.nekohasekai.sagernet.database.ProfileManager
+import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.ui.MainActivity
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +77,9 @@ class StatsBar @JvmOverloads constructor(
         super.setOnClickListener(l)
     }
 
+    // 测速进行中时，不把状态文字覆盖为"已连接"
+    var suppressConnectedText = false
+
     private fun setStatus(text: CharSequence) {
         statusText.text = text
         TooltipCompat.setTooltipText(this, text)
@@ -89,7 +94,8 @@ class StatsBar @JvmOverloads constructor(
         if ((state == BaseService.State.Connected).also { hideOnScroll = it }) {
             postWhenStarted {
                 if (allowShow) performShow()
-                setStatus(app.getText(R.string.vpn_connected))
+                // 自动测速期间不显示"已连接"，直接显示"测速中…"
+                if (!suppressConnectedText) setStatus(app.getText(R.string.vpn_connected))
             }
         } else {
             postWhenStarted {
@@ -125,12 +131,27 @@ class StatsBar @JvmOverloads constructor(
     fun testConnection() {
         val activity = context as MainActivity
         isEnabled = false
+        suppressConnectedText = true
         setStatus(app.getText(R.string.connection_test_testing))
         runOnDefaultDispatcher {
             try {
                 val elapsed = activity.urlTest()
+                // ZyBox: 同步测速结果到节点列表的延迟显示（当前连接节点）
+                // 可在主页 ⋮ 菜单关闭"连接延迟同步节点"
+                if (DataStore.syncPingOnTest) {
+                    val proxyId = DataStore.selectedProxy
+                    if (proxyId > 0) {
+                        val profile = SagerDatabase.proxyDao.getById(proxyId)
+                        if (profile != null) {
+                            profile.ping = elapsed
+                            profile.status = 1
+                            ProfileManager.updateProfile(profile)
+                        }
+                    }
+                }
                 onMainDispatcher {
                     isEnabled = true
+                    suppressConnectedText = false
                     setStatus(
                         app.getString(
                             if (DataStore.connectionTestURL.startsWith("https://")) {
@@ -146,6 +167,7 @@ class StatsBar @JvmOverloads constructor(
                 Logs.w(e.toString())
                 onMainDispatcher {
                     isEnabled = true
+                    suppressConnectedText = false
                     setStatus(app.getText(R.string.connection_test_testing))
 
                     activity.snackbar(

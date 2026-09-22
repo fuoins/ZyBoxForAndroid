@@ -28,6 +28,10 @@ public abstract class AbstractBean extends Serializable {
     public transient String finalAddress;
     public transient int finalPort;
 
+    // ZyBox: transient ping used only to carry imported speed-test result
+    // from parser to ProxyEntity.putBean(); never serialized to database.
+    public transient int ping;
+
     public String displayName() {
         if (JavaUtil.isNotBlank(name)) {
             return name;

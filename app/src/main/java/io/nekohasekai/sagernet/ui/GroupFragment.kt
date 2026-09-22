@@ -2,11 +2,17 @@ package io.nekohasekai.sagernet.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.TextUtils
 import android.text.format.Formatter
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import com.google.android.material.switchmaterial.SwitchMaterial
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
@@ -122,6 +128,10 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                             .forEach {
                                 GroupUpdater.startUpdate(it, true)
                             }
+                        SagerDatabase.subscriptionDao.all()
+                            .forEach {
+                                GroupUpdater.startUpdate(it, true)
+                            }
                     }
                     .setNegativeButton(R.string.no, null)
                     .show()
@@ -154,6 +164,34 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                         }
                     }
 
+                }
+            }
+        }
+
+    // ZyBox: export nodes together with their speed-test results ("|ping=xxx")
+    private val exportProfilesWithPing =
+        registerForActivityResult(ActivityResultContracts.CreateDocument()) { data ->
+            if (data != null) {
+                runOnDefaultDispatcher {
+                    val profiles = SagerDatabase.proxyDao.getByGroup(selectedGroup.id)
+                    val links = profiles.joinToString("\n") {
+                        it.toStdLink(compact = true) + if (it.ping > 0) "|ping=${it.ping}" else ""
+                    }
+                    try {
+                        (requireActivity() as MainActivity).contentResolver.openOutputStream(
+                            data
+                        )!!.bufferedWriter().use {
+                            it.write(links)
+                        }
+                        onMainDispatcher {
+                            snackbar(getString(R.string.action_export_msg)).show()
+                        }
+                    } catch (e: Exception) {
+                        Logs.w(e)
+                        onMainDispatcher {
+                            snackbar(e.readableMessage).show()
+                        }
+                    }
                 }
             }
         }
@@ -300,6 +338,18 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
             }
         }
 
+        override suspend fun subscriptionAdd(entity: SubscriptionEntity) {
+            reload()
+        }
+
+        override suspend fun subscriptionUpdated(entity: SubscriptionEntity) {
+            reload()
+        }
+
+        override suspend fun subscriptionRemoved(entity: SubscriptionEntity) {
+            reload()
+        }
+
     }
 
     override fun onDestroy() {
@@ -361,6 +411,23 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     startFilesForResult(exportProfiles, "profiles_${proxyGroup.displayName()}.txt")
                 }
 
+                R.id.action_export_ping_clipboard -> {
+                    runOnDefaultDispatcher {
+                        val profiles = SagerDatabase.proxyDao.getByGroup(selectedGroup.id)
+                        val links = profiles.joinToString("\n") {
+                            it.toStdLink(compact = true) + if (it.ping > 0) "|ping=${it.ping}" else ""
+                        }
+                        onMainDispatcher {
+                            SagerNet.trySetPrimaryClip(links)
+                            snackbar(getString(R.string.copy_toast_msg)).show()
+                        }
+                    }
+                }
+
+                R.id.action_export_ping_file -> {
+                    startFilesForResult(exportProfilesWithPing, "profiles_${proxyGroup.displayName()}.txt")
+                }
+
                 R.id.action_clear -> {
                     MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.confirm)
                         .setMessage(R.string.clear_profiles_message)
@@ -371,6 +438,18 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                         }
                         .setNegativeButton(android.R.string.cancel, null)
                         .show()
+                }
+
+                R.id.action_add_subscription -> {
+                    showAddSubscriptionDialog(proxyGroup)
+                }
+
+                R.id.action_manage_subscriptions -> {
+                    showManageSubscriptionsDialog(proxyGroup)
+                }
+
+                R.id.action_merge_to_group -> {
+                    showMergeGroupDialog(proxyGroup)
                 }
             }
 
@@ -383,7 +462,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
             itemView.setOnClickListener { }
 
-            editButton.isGone = proxyGroup.ungrouped
+            // ZyBox: 导入分组也显示"修改"按钮（设置页内分组类型固定为"导入"）
             updateButton.isInvisible = proxyGroup.type != GroupType.SUBSCRIPTION
             groupName.text = proxyGroup.displayName()
 
@@ -394,7 +473,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
             }
 
             updateButton.setOnClickListener {
-                GroupUpdater.startUpdate(proxyGroup, true)
+                updateGroupSubscriptions(proxyGroup)
             }
 
             optionsButton.setOnClickListener {
@@ -406,8 +485,16 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                 if (proxyGroup.type != GroupType.SUBSCRIPTION) {
                     popup.menu.removeItem(R.id.action_share_subscription)
                 }
-                popup.setOnMenuItemClickListener(this)
-                popup.show()
+                runOnDefaultDispatcher {
+                    val hasSubs = SagerDatabase.subscriptionDao.countByGroup(proxyGroup.id) > 0
+                    onMainDispatcher {
+                        if (!hasSubs) {
+                            popup.menu.removeItem(R.id.action_manage_subscriptions)
+                        }
+                        popup.setOnMenuItemClickListener(this@GroupHolder)
+                        popup.show()
+                    }
+                }
             }
 
             if (proxyGroup.id in GroupUpdater.updating) {
@@ -436,7 +523,6 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
                 subscriptionUpdateProgress.isVisible = false
                 updateButton.isInvisible = proxyGroup.type != GroupType.SUBSCRIPTION
-                editButton.isGone = proxyGroup.ungrouped
             }
 
             val subscription = proxyGroup.subscription
@@ -513,9 +599,20 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
             runOnDefaultDispatcher {
                 val size = SagerDatabase.proxyDao.countByGroup(group.id)
+                val subCount = SagerDatabase.subscriptionDao.countByGroup(group.id)
                 onMainDispatcher {
-                    @Suppress("DEPRECATION") when (group.type) {
-                        GroupType.BASIC -> {
+                    if (proxyGroup.id !in GroupUpdater.updating) {
+                        updateButton.isInvisible =
+                            group.type != GroupType.SUBSCRIPTION && subCount == 0L
+                    }
+                    @Suppress("DEPRECATION") when {
+                        subCount > 0L -> {
+                            groupStatus.text = getString(
+                                R.string.group_status_proxies_subscriptions, size, subCount
+                            )
+                        }
+
+                        group.type == GroupType.BASIC -> {
                             if (size == 0L) {
                                 groupStatus.setText(R.string.group_status_empty)
                             } else {
@@ -523,7 +620,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                             }
                         }
 
-                        GroupType.SUBSCRIPTION -> {
+                        group.type == GroupType.SUBSCRIPTION -> {
                             groupStatus.text = if (size == 0L) {
                                 getString(R.string.group_status_empty_subscription)
                             } else {
@@ -541,6 +638,221 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
             }
 
+        }
+
+        // ===== 多订阅支持：一个分组绑定多个订阅 =====
+
+        private fun updateGroupSubscriptions(group: ProxyGroup) {
+            runOnDefaultDispatcher {
+                if (group.type == GroupType.SUBSCRIPTION && group.subscription != null) {
+                    GroupUpdater.startUpdate(group, true)
+                }
+                for (entity in SagerDatabase.subscriptionDao.getByGroup(group.id)) {
+                    GroupUpdater.startUpdate(entity, true)
+                }
+            }
+        }
+
+        private fun showAddSubscriptionDialog(group: ProxyGroup) {
+            val view = layoutInflater.inflate(R.layout.dialog_add_subscription, null)
+            val nameInput = view.findViewById<EditText>(R.id.subscription_name)
+            val linkInput = view.findViewById<EditText>(R.id.subscription_link)
+            val autoUpdateSwitch = view.findViewById<SwitchMaterial>(R.id.subscription_auto_update)
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.add_subscription_to_group)
+                .setView(view)
+                .setPositiveButton(R.string.yes) { _, _ ->
+                    val link = linkInput.text?.toString()?.trim().orEmpty()
+                    if (link.isBlank()) {
+                        snackbar(R.string.subscription_link_empty).show()
+                        return@setPositiveButton
+                    }
+                    val name = nameInput.text?.toString()?.trim().orEmpty()
+                    val bean = SubscriptionBean().applyDefaultValues().apply {
+                        this.link = link
+                        autoUpdate = autoUpdateSwitch.isChecked
+                    }
+                    val entity = SubscriptionEntity(
+                        name = name.ifBlank { null },
+                        groupId = group.id,
+                        bean = bean
+                    )
+                    runOnDefaultDispatcher {
+                        val created = GroupManager.createSubscription(entity)
+                        GroupUpdater.startUpdate(created, true)
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+
+        private fun showManageSubscriptionsDialog(group: ProxyGroup) {
+            runOnDefaultDispatcher {
+                val entities = SagerDatabase.subscriptionDao.getByGroup(group.id)
+                onMainDispatcher {
+                    if (entities.isEmpty()) {
+                        snackbar(R.string.no_subscriptions).show()
+                        return@onMainDispatcher
+                    }
+                    val scroll = ScrollView(requireContext())
+                    val container = LinearLayout(requireContext()).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(dp2px(20), dp2px(12), dp2px(20), 0)
+                    }
+                    scroll.addView(container)
+                    val dialog = MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.manage_subscriptions)
+                        .setView(scroll)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .create()
+                    for (entity in entities) {
+                        container.addView(buildSubscriptionRow(entity) { dialog.dismiss() })
+                    }
+                    dialog.show()
+                }
+            }
+        }
+
+        private fun buildSubscriptionRow(entity: SubscriptionEntity, dismiss: () -> Unit): View {
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp2px(8), 0, dp2px(8))
+            }
+            row.addView(TextView(requireContext()).apply {
+                text = entity.displayName()
+                textSize = 15f
+                setTextColor(0xFF222222.toInt())
+            })
+            row.addView(TextView(requireContext()).apply {
+                text = entity.bean?.link.orEmpty()
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.MIDDLE
+                textSize = 12f
+                setTextColor(0xFF888888.toInt())
+            })
+            val lastUpdated = entity.bean?.lastUpdated ?: 0
+            row.addView(TextView(requireContext()).apply {
+                text = if (lastUpdated > 0) {
+                    getString(R.string.subscription_updated_at, subscriptionTimeText(lastUpdated))
+                } else {
+                    getString(R.string.subscription_never_updated)
+                }
+                textSize = 12f
+                setTextColor(0xFF666666.toInt())
+            })
+            val buttons = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(Button(requireContext()).apply {
+                    text = getString(R.string.update_subscription)
+                    isAllCaps = false
+                    setOnClickListener {
+                        dismiss()
+                        runOnDefaultDispatcher {
+                            GroupUpdater.startUpdate(entity, true)
+                        }
+                    }
+                })
+                addView(Button(requireContext()).apply {
+                    text = getString(R.string.edit_subscription)
+                    isAllCaps = false
+                    setOnClickListener {
+                        dismiss()
+                        showEditSubscriptionDialog(entity)
+                    }
+                })
+                addView(Button(requireContext()).apply {
+                    text = getString(R.string.delete_subscription)
+                    isAllCaps = false
+                    setOnClickListener {
+                        dismiss()
+                        MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.delete_subscription)
+                            .setMessage(R.string.delete_subscription_confirm)
+                            .setPositiveButton(R.string.yes) { _, _ ->
+                                runOnDefaultDispatcher {
+                                    GroupManager.deleteSubscription(entity)
+                                }
+                            }
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show()
+                    }
+                })
+            }
+            row.addView(buttons)
+            return row
+        }
+
+        private fun showEditSubscriptionDialog(entity: SubscriptionEntity) {
+            val view = layoutInflater.inflate(R.layout.dialog_add_subscription, null)
+            val nameInput = view.findViewById<EditText>(R.id.subscription_name)
+            val linkInput = view.findViewById<EditText>(R.id.subscription_link)
+            val autoUpdateSwitch = view.findViewById<SwitchMaterial>(R.id.subscription_auto_update)
+            nameInput.setText(entity.name ?: "")
+            linkInput.setText(entity.bean?.link ?: "")
+            autoUpdateSwitch.isChecked = entity.bean?.autoUpdate == true
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.edit_subscription)
+                .setView(view)
+                .setPositiveButton(R.string.save) { _, _ ->
+                    val link = linkInput.text?.toString()?.trim().orEmpty()
+                    if (link.isBlank()) {
+                        snackbar(R.string.subscription_link_empty).show()
+                        return@setPositiveButton
+                    }
+                    val bean = entity.bean ?: SubscriptionBean().applyDefaultValues()
+                    bean.link = link
+                    bean.autoUpdate = autoUpdateSwitch.isChecked
+                    entity.name = nameInput.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                    entity.bean = bean
+                    runOnDefaultDispatcher {
+                        GroupManager.updateSubscription(entity)
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+
+        private fun showMergeGroupDialog(source: ProxyGroup) {
+            runOnDefaultDispatcher {
+                val groups = SagerDatabase.groupDao.allGroups()
+                    .filter { it.id != source.id && !it.ungrouped }
+                onMainDispatcher {
+                    if (groups.isEmpty()) {
+                        snackbar(R.string.no_groups_to_merge).show()
+                        return@onMainDispatcher
+                    }
+                    val names = groups.map { it.displayName() }.toTypedArray()
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.merge_to_other_group)
+                        .setItems(names) { _, which ->
+                            val target = groups[which]
+                            MaterialAlertDialogBuilder(requireContext())
+                                .setTitle(R.string.confirm)
+                                .setMessage(
+                                    getString(
+                                        R.string.merge_confirm_message,
+                                        source.displayName(),
+                                        target.displayName()
+                                    )
+                                )
+                                .setPositiveButton(R.string.yes) { _, _ ->
+                                    runOnDefaultDispatcher {
+                                        GroupManager.mergeGroup(source.id, target.id)
+                                    }
+                                }
+                                .setNegativeButton(R.string.no, null)
+                                .show()
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                }
+            }
+        }
+
+        private fun subscriptionTimeText(lastUpdated: Int): String {
+            val date = Date(lastUpdated * 1000L)
+            val minute = if (date.minutes < 10) "0${date.minutes}" else "${date.minutes}"
+            return "${date.year + 1900}-${date.month + 1}-${date.date} ${date.hours}:$minute"
         }
     }
 
