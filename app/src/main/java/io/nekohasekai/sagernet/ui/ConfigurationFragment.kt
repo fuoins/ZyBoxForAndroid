@@ -1619,6 +1619,13 @@ class ConfigurationFragment @JvmOverloads constructor(
                     if (::undoManager.isInitialized) {
                         undoManager.flush()
                     }
+                    // ZyBox: 用新实体覆盖时保留列表中已有流量数据，避免切换节点/重载服务时
+                    // 服务进程实体流量被清零导致上传下载速度消失且不恢复
+                    val old = configurationList[profile.id]
+                    if (old != null) {
+                        profile.rx = old.rx
+                        profile.tx = old.tx
+                    }
                     configurationList[profile.id] = profile
                     notifyItemChanged(index)
                     //
@@ -1804,7 +1811,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
 
                 val showTraffic = rx + tx != 0L
-                trafficText.isVisible = showTraffic
                 if (showTraffic) {
                     trafficText.text = view.context.getString(
                         R.string.traffic,
