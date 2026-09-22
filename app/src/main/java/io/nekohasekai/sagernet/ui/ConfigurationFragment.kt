@@ -1709,6 +1709,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             val trafficText: TextView = view.findViewById(R.id.traffic_text)
             val editButton: ImageView = view.findViewById(R.id.edit)
+            val doubleColumnMenuButton: ImageView = view.findViewById(R.id.double_column_menu)
             val shareLayout: LinearLayout = view.findViewById(R.id.share)
             val shareLayer: LinearLayout = view.findViewById(R.id.share_layer)
             val shareButton: ImageView = view.findViewById(R.id.shareIcon)
@@ -1828,6 +1829,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                         )
                     )
                 }
+                doubleColumnMenuButton.setOnClickListener {
+                    showDoubleColumnMenu(it, entity)
+                }
 
                 removeButton.setOnClickListener {
                     adapter?.let {
@@ -1853,6 +1857,20 @@ class ConfigurationFragment @JvmOverloads constructor(
                     onMainDispatcher {
                         editButton.isEnabled = !started
                         removeButton.isEnabled = !started
+                        // ZyBox: 双列布局下操作按钮收进 ⋮ 菜单
+                        val isDoubleColumn = layoutManager is FixedGridLayoutManager
+                        if (isDoubleColumn) {
+                            editButton.isGone = true
+                            shareLayout.isGone = true
+                            removeButton.isGone = true
+                            doubleColumnMenuButton.isVisible = true
+                        } else {
+                            val selectOrChain = select || proxyEntity.type == ProxyEntity.TYPE_CHAIN
+                            shareLayout.isGone = selectOrChain
+                            editButton.isGone = select
+                            removeButton.isGone = select
+                            doubleColumnMenuButton.isGone = true
+                        }
                         // ZyBox: 排序与外观 → 卡片样式（经典=背景染色无描边 / 描边=整卡描边）
                         val card = view as com.google.android.material.card.MaterialCardView
                         val ctx = view.context
@@ -1870,6 +1888,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             card.cardElevation = ctx.resources.getDimension(io.nekohasekai.sagernet.R.dimen.profile_card_elevation_classic)
                         }
                     }
+
 
                     fun showShare(anchor: View) {
                         val popup = PopupMenu(requireContext(), anchor)
@@ -1912,6 +1931,66 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
 
             }
+
+            fun showDoubleColumnMenu(anchor: View, proxyEntity: ProxyEntity) {
+                val popup = PopupMenu(requireContext(), anchor)
+                popup.menuInflater.inflate(R.menu.double_column_item_menu, popup.menu)
+                if (select) popup.menu.removeItem(R.id.action_delete)
+                popup.setOnMenuItemClickListener { menuItem ->
+                    when (menuItem.itemId) {
+                        R.id.action_edit -> {
+                            anchor.context.startActivity(
+                                proxyEntity.settingIntent(
+                                    anchor.context, proxyGroup.type == GroupType.SUBSCRIPTION
+                                )
+                            )
+                            true
+                        }
+
+                        R.id.action_share -> {
+                            showShareMenu(anchor, proxyEntity)
+                            true
+                        }
+
+                        R.id.action_delete -> {
+                            runOnDefaultDispatcher {
+                                val index = adapter?.configurationIdList?.indexOf(proxyEntity.id)
+                                if (index != null && index >= 0) {
+                                    adapter?.remove(index)
+                                }
+                            }
+                            true
+                        }
+
+                        else -> false
+                    }
+                }
+                popup.show()
+            }
+
+            private fun showShareMenu(anchor: View, proxyEntity: ProxyEntity) {
+                val popup = PopupMenu(requireContext(), anchor)
+                popup.menuInflater.inflate(R.menu.profile_share_menu, popup.menu)
+                when {
+                    !proxyEntity.haveStandardLink() -> {
+                        popup.menu.findItem(R.id.action_group_qr).subMenu?.removeItem(R.id.action_standard_qr)
+                        popup.menu.findItem(R.id.action_group_clipboard).subMenu?.removeItem(
+                            R.id.action_standard_clipboard
+                        )
+                    }
+
+                    !proxyEntity.haveLink() -> {
+                        popup.menu.removeItem(R.id.action_group_qr)
+                        popup.menu.removeItem(R.id.action_group_clipboard)
+                    }
+                }
+                if (proxyEntity.nekoBean != null) {
+                    popup.menu.removeItem(R.id.action_group_configuration)
+                }
+                popup.setOnMenuItemClickListener(this@ConfigurationHolder)
+                popup.show()
+            }
+
 
             var currentName = ""
             fun showCode(link: String) {

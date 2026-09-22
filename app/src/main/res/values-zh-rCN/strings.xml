@@ -54,6 +54,14 @@
     <string name="zybox_opt_scroll_top_sum">回到顶部无动画直接定位；节点名小字号自动换行不截断，主页左上角显示 ZyBox 标题。</string>
     <string name="zybox_opt_theme_default">默认粉色主题</string>
     <string name="zybox_opt_theme_default_sum">全新安装默认粉色主题，20 余种配色可在设置中随时切换。</string>
+    <string name="zybox_opt_sort_layout">排序与外观</string>
+    <string name="zybox_opt_sort_layout_sum">右上角 ⋮ 菜单：排序（原始/名称/延时，新分组默认延时）、布局（单列/双列，双列时操作按钮收进 ⋮）、卡片（经典/描边，默认描边）。</string>
+    <string name="zybox_opt_global_mode">全局模式</string>
+    <string name="zybox_opt_global_mode_sum">绕过所有路由规则，全部流量走当前节点（默认关闭，可保留内网直连）。</string>
+    <string name="zybox_opt_donate">捐赠支持</string>
+    <string name="zybox_opt_donate_sum">抽屉顶部捐赠按钮，支持开发（跳转浏览器）。</string>
+    <string name="zybox_opt_github">GitHub 开源地址</string>
+    <string name="zybox_opt_github_sum">https://github.com/fuoins/ZyBoxForAndroid</string>
     <string name="group_default">宇神神了</string>
     <string name="quick_toggle">切换</string>
     <string name="quick_enable">启用</string>

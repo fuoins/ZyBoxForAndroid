@@ -59,6 +59,11 @@ cd ZyBoxForAndroid
 
 版本号在 `nb4a.properties` 中修改（`VERSION_NAME` / `VERSION_CODE`）。
 
+## 致谢 / Credits
+
+- [NekoBoxForAndroid](https://github.com/MatsuriDayo/NekoBoxForAndroid)（[MatsuriDayo](https://github.com/MatsuriDayo)）—— 基础项目
+- [starifly/NekoBoxForAndroid](https://github.com/starifly/NekoBoxForAndroid) —— **排序与外观**（排序/单列双列/卡片经典描边）、**全局模式** 功能参考移植
+
 ## 许可 / License
 
 - 本定制版基于 [NekoBoxForAndroid](https://github.com/MatsuriDayo/NekoBoxForAndroid)（[MatsuriDayo](https://github.com/MatsuriDayo)），遵循 **GPL-3.0** 开源协议

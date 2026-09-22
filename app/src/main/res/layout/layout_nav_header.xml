@@ -49,4 +49,20 @@
             android:textSize="12sp" />
     </LinearLayout>
 
+    <!-- ZyBox: 捐赠支持（彩色圆角按钮，点击跳转浏览器） -->
+    <TextView
+        android:id="@+id/donate_button"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="16dp"
+        android:layout_weight="1"
+        android:background="@drawable/zybox_donate_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="捐赠支持"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
 </LinearLayout>

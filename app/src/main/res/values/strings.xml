@@ -57,6 +57,14 @@
     <string name="zybox_opt_scroll_top_sum">Scroll-to-top jumps instantly with no animation; node names wrap automatically in small text; ZyBox title shown top-left.</string>
     <string name="zybox_opt_theme_default">Default Pink Theme</string>
     <string name="zybox_opt_theme_default_sum">Fresh installs default to the pink theme; 20+ color schemes switchable in Settings.</string>
+    <string name="zybox_opt_sort_layout">Sort &amp; Appearance</string>
+    <string name="zybox_opt_sort_layout_sum">Top-right ⋮ menu: sort (original/name/delay, new groups default to delay), layout (single/double column; actions collapse into ⋮ in double column), card (classic/stroke, stroke by default).</string>
+    <string name="zybox_opt_global_mode">Global Mode</string>
+    <string name="zybox_opt_global_mode_sum">Bypass all routing rules and proxy all traffic through the current node (off by default, LAN bypass optional).</string>
+    <string name="zybox_opt_donate">Donate</string>
+    <string name="zybox_opt_donate_sum">Donation button at the top of the drawer.</string>
+    <string name="zybox_opt_github">GitHub Source</string>
+    <string name="zybox_opt_github_sum">https://github.com/fuoins/ZyBoxForAndroid</string>
     <string name="theme">Theme</string>
     <string name="document">Document</string>
     <string name="group_default">Ungrouped</string>

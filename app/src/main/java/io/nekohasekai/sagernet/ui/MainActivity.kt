@@ -78,6 +78,20 @@ class MainActivity : ThemedActivity(),
         }
         navigation.setNavigationItemSelectedListener(this)
 
+        // ZyBox: 捐赠按钮（抽屉头部），点击跳转浏览器
+        navigation.getHeaderView(0)?.findViewById<android.view.View>(R.id.donate_button)?.setOnClickListener {
+            try {
+                startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://zy520.de5.net/juanzeng/")
+                    )
+                )
+            } catch (e: Exception) {
+                io.nekohasekai.sagernet.ktx.Logs.w(e)
+            }
+        }
+
         if (savedInstanceState == null) {
             displayFragmentWithId(R.id.nav_configuration)
         }

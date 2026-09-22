@@ -4,7 +4,7 @@
         <!-- ZyBox UI 3.0：柔和浅色背景 -->
         <item name="android:windowBackground">@color/zybox_bg</item>
         <item name="android:colorBackground">@color/zybox_bg</item>
-        <item name="android:statusBarColor">@color/zybox_primary_dark</item>
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
         <!-- ZyBox UI 3.0: 沉浸细节 —— 隐藏滚动条 / 去分隔线 / 去边缘光晕 -->
         <item name="android:scrollbarSize">0.0dip</item>
         <item name="android:listDivider">@null</item>

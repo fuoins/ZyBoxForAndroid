@@ -16,5 +16,19 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
 
         ViewCompat.setOnApplyWindowInsetsListener(view, ListListener)
         toolbar.setTitle(R.string.zybox_opt_title)
+
+        // ZyBox: GitHub 开源地址 → 浏览器
+        binding.zyboxOptGithubItem.setOnClickListener {
+            try {
+                startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://github.com/fuoins/ZyBoxForAndroid")
+                    )
+                )
+            } catch (e: Exception) {
+                io.nekohasekai.sagernet.ktx.Logs.w(e)
+            }
+        }
     }
 }
