@@ -10,6 +10,15 @@
     <string name="menu_configuration">配置</string>
     <string name="menu_group">分组</string>
     <string name="menu_about">关于</string>
+<string name="layout">布局</string>
+    <string name="layout_single_column">单列</string>
+    <string name="layout_double_column">双列</string>
+    <string name="sort_and_layout">排序与外观</string>
+    <string name="card_style">卡片</string>
+    <string name="card_style_classic">经典</string>
+    <string name="card_style_stroke">描边</string>
+    <string name="global_mode">全局模式</string>
+    <string name="global_mode_summary">绕过所有路由规则，所有流量都通过当前节点</string>
     <string name="zybox_optimization">ZyBox优化内容</string>
     <string name="zybox_opt_title">ZyBox优化内容</string>
     <string name="zybox_opt_desc">本定制版在官方 NekoBox 基础上加入的全部优化功能。</string>

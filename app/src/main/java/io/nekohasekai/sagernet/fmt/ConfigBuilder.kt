@@ -479,6 +479,35 @@ fun buildConfig(
             tagMap[key] = buildChain(key, p)
         }
 
+        // ZyBox: 全局模式（绕过所有路由规则，全部流量走当前节点）
+        if (!forTest && DataStore.globalMode) {
+            val mainProxyTag = TAG_PROXY
+            if (DataStore.bypassLan) {
+                route.rules.add(Rule_DefaultOptions().apply {
+                    ip_cidr = listOf(
+                        "224.0.0.0/3",
+                        "172.16.0.0/12",
+                        "127.0.0.0/8",
+                        "10.0.0.0/8",
+                        "192.168.0.0/16",
+                        "169.254.0.0/16",
+                        "::1/128",
+                        "fc00::/7",
+                        "fe80::/10"
+                    )
+                    outbound = TAG_DIRECT
+                })
+            }
+            route.rules.add(Rule_DefaultOptions().apply {
+                inbound = listOf("tun-in")
+                outbound = mainProxyTag
+            })
+            route.rules.add(Rule_DefaultOptions().apply {
+                inbound = listOf(TAG_MIXED)
+                outbound = mainProxyTag
+            })
+            route.final_ = mainProxyTag
+        } else {
         // apply user rules
         for (rule in extraRules) {
             if (rule.packages.isNotEmpty()) {
@@ -601,6 +630,7 @@ fun buildConfig(
                     route.rule_set.addAll(ruleSets)
                 }
             }
+        }
         }
 
         // 对 rule_set tag 去重

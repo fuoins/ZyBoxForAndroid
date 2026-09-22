@@ -92,6 +92,10 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var syncPingOnTest by configurationStore.boolean(Key.SYNC_PING_ON_TEST) { true }
 
     var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
+    var groupLayoutMode by configurationStore.stringToInt(Key.GROUP_LAYOUT_MODE) { 0 }
+    var profileCardStyle by configurationStore.stringToInt(Key.PROFILE_CARD_STYLE) { 1 }
+    var globalMode by configurationStore.boolean(Key.GLOBAL_MODE)
+
     var networkChangeResetConnections by configurationStore.boolean(Key.NETWORK_CHANGE_RESET_CONNECTIONS) { true }
     var wakeResetConnections by configurationStore.boolean(Key.WAKE_RESET_CONNECTIONS)
 

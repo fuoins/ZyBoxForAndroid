@@ -14,5 +14,6 @@
     <color name="zybox_ping_bg">#1A7C93FF</color>
     <color name="zybox_ping_text">#9DB0FF</color>
     <color name="zybox_divider">#2A2F42</color>
+    <color name="card_stroke">#33FFFFFF</color>
 
 </resources>

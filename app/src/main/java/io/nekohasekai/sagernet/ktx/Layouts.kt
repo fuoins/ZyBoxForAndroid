@@ -1,6 +1,7 @@
 package io.nekohasekai.sagernet.ktx
 
 import android.graphics.Rect
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.nekohasekai.sagernet.database.DataStore
@@ -70,5 +71,25 @@ class FixedLinearLayoutManager(val recyclerView: RecyclerView) :
         }
         return scrollRange
     }
+
+}
+
+// ZyBox: 双列布局管理器（排序与外观 → 双列）
+class FixedGridLayoutManager(val recyclerView: RecyclerView, spanCount: Int) :
+    GridLayoutManager(recyclerView.context, spanCount) {
+
+    override fun onLayoutChildren(recycler: RecyclerView.Recycler?, state: RecyclerView.State?) {
+        try {
+            super.onLayoutChildren(recycler, state)
+        } catch (ignored: IndexOutOfBoundsException) {
+        }
+    }
+
+    override fun supportsPredictiveItemAnimations(): Boolean {
+        return false
+    }
+
+    fun rowIndexOf(position: Int): Int =
+        position / spanCount
 
 }

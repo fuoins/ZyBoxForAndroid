@@ -68,6 +68,9 @@ object Key {
     const val PROFILE_ID = "profileId"
     const val PROFILE_NAME = "profileName"
     const val PROFILE_GROUP = "profileGroup"
+    const val GROUP_LAYOUT_MODE = "groupLayoutMode"
+    const val PROFILE_CARD_STYLE = "profileCardStyle"
+    const val GLOBAL_MODE = "globalMode"
     const val PROFILE_CURRENT = "profileCurrent"
 
     const val SERVER_ADDRESS = "serverAddress"

@@ -13,6 +13,15 @@
     <string name="menu_configuration">Configuration</string>
     <string name="menu_group">Group</string>
     <string name="menu_about">About</string>
+<string name="layout">Layout</string>
+    <string name="layout_single_column">Single column</string>
+    <string name="layout_double_column">Double column</string>
+    <string name="sort_and_layout">Sort and Appearance</string>
+    <string name="card_style">Card</string>
+    <string name="card_style_classic">Classic</string>
+    <string name="card_style_stroke">Stroke</string>
+    <string name="global_mode">Global Mode</string>
+    <string name="global_mode_summary">Bypass all routing rules and proxy all traffic through current node</string>
     <string name="zybox_optimization">ZyBox Optimizations</string>
     <string name="zybox_opt_title">ZyBox Optimizations</string>
     <string name="zybox_opt_desc">All improvements built into this build, based on the official NekoBox.</string>
