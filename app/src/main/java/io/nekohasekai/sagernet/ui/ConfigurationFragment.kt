@@ -138,9 +138,18 @@ class ConfigurationFragment @JvmOverloads constructor(
     val multiSelectedIds = LinkedHashSet<Long>()
 
     fun refreshMultiSelectMenu() {
-        toolbar.menu.clear()
-        toolbar.inflateMenu(if (multiSelectMode) R.menu.multi_select_menu else R.menu.add_profile_menu)
-        if (!multiSelectMode) {
+        // ZyBox: 不重建菜单，仅切换多选/普通 items 可见性（重建会丢失排序与外观的 item 监听器）
+        val on = multiSelectMode
+        toolbar.menu.findItem(R.id.action_scroll_top)?.isVisible = !on
+        toolbar.menu.findItem(R.id.action_refresh)?.isVisible = !on
+        toolbar.menu.findItem(R.id.action_search)?.isVisible = !on
+        toolbar.menu.findItem(R.id.action_add)?.isVisible = !on
+        toolbar.menu.findItem(R.id.action_misc)?.isVisible = !on
+        toolbar.menu.findItem(R.id.action_multi_select_all)?.isVisible = on
+        toolbar.menu.findItem(R.id.action_multi_select_invert)?.isVisible = on
+        toolbar.menu.findItem(R.id.action_multi_select_exit)?.isVisible = on
+        toolbar.menu.findItem(R.id.action_multi_misc)?.isVisible = on
+        if (!on) {
             toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
             toolbar.menu.findItem(R.id.action_global_mode)?.isChecked = DataStore.globalMode
@@ -2008,6 +2017,10 @@ class ConfigurationFragment @JvmOverloads constructor(
             val shareButton: ImageView = view.findViewById(R.id.shareIcon)
             val removeButton: ImageView = view.findViewById(R.id.remove)
 
+            // ZyBox: 卡片默认背景（bind 时先恢复，避免多选/经典样式染色残留）
+            val defaultCardBg =
+                (view as com.google.android.material.card.MaterialCardView).cardBackgroundColor.defaultColor
+
             fun bind(proxyEntity: ProxyEntity, trafficData: TrafficData? = null) {
                 val pf = parentFragment as? ConfigurationFragment ?: return
 
@@ -2181,6 +2194,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                         val ctx = view.context
                         val selectedBar = view.findViewById<android.view.View>(R.id.profile_selected_bar)
                         val primary = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
+                        // 先恢复默认背景，避免多选/经典染色残留
+                        card.setCardBackgroundColor(defaultCardBg)
                         if (DataStore.profileCardStyle == 1) {
                             card.strokeWidth = if (selected) dp2px(2) else dp2px(1)
                             card.strokeColor = if (selected) {
@@ -2194,9 +2209,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                             card.strokeWidth = 0
                             card.cardElevation = ctx.resources.getDimension(io.nekohasekai.sagernet.R.dimen.profile_card_elevation_classic)
                             // ZyBox: 经典样式选中时左侧粗竖条（主题色），未选中透明
-                            card.setCardBackgroundColor(
-                                ctx.getColorAttr(android.R.attr.colorBackground)
-                            )
                             selectedBar.setBackgroundColor(
                                 if (selected && !pf.multiSelectMode) primary
                                 else android.graphics.Color.TRANSPARENT
@@ -2208,7 +2220,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             card.strokeWidth = 0
                             card.setCardBackgroundColor(
                                 if (multiSel) ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
-                                else ctx.getColorAttr(android.R.attr.colorBackground)
+                                else defaultCardBg
                             )
                             selectedBar.setBackgroundColor(
                                 if (multiSel) primary else android.graphics.Color.TRANSPARENT
