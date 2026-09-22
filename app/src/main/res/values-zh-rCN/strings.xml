@@ -589,12 +589,16 @@
     <string name="subscription_updated_at">更新于 %1$s</string>
     <string name="subscription_never_updated">尚未更新</string>
     <string name="zybox_init_title">ZyBox 初始化</string>
-    <string name="zybox_init_message">通知权限：%1$s
-VPN 权限：%2$s
-
-点击"自动初始化"将自动申请所需权限，并进入一次设置页完成速度显示初始化后返回主页。</string>
-    <string name="zybox_init_granted">已授予</string>
-    <string name="zybox_init_not_granted">未授予</string>
     <string name="zybox_init_auto">自动初始化</string>
-    <string name="zybox_init_later">暂不</string>
+    <string name="zybox_init_start">开始</string>
+    <string name="zybox_init_grant">授权</string>
+    <string name="zybox_init_enter">进入</string>
+    <string name="zybox_init_notif">授权通知权限</string>
+    <string name="zybox_init_vpn">授权 VPN 权限</string>
+    <string name="zybox_init_auto_sum">自动申请所需权限，并进入一次设置页完成速度显示初始化后返回主页。</string>
+    <string name="zybox_init_notif_sum">通知栏显示实时直连和代理的上传与下载速度。</string>
+    <string name="zybox_init_vpn_sum">必须授予，否则无法使用本软件。</string>
+    <string name="zybox_permission_hint">在这里可以随时查询权限状态与初始化进度，未完成的项目可直接点击右侧按钮完成。</string>
+    <string name="zybox_permission_query">权限与初始化查询</string>
+    <string name="zybox_init_incomplete">还有未完成项，可在 菜单 → 权限与初始化查询 中继续完成。</string>
 </resources>

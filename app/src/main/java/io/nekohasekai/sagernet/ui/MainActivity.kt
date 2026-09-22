@@ -138,49 +138,128 @@ class MainActivity : ThemedActivity(),
         }
     }
 
+    // ===== ZyBox: 首次初始化（弹窗 + 菜单查询页共用）=====
+
     // ZyBox: VPN 权限请求
     private val vpnPermission =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            initDialog?.let { d -> refreshInitDialog(d) }
+            refreshPermissionFragment()
+        }
 
-    private fun showFirstLaunchDialog() {
-        val notifGranted = if (Build.VERSION.SDK_INT >= 33) {
-            ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED
-        } else true
-        val vpnGranted = VpnService.prepare(this) == null
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.zybox_init_title)
-            .setMessage(
-                getString(
-                    R.string.zybox_init_message,
-                    getString(if (notifGranted) R.string.zybox_init_granted else R.string.zybox_init_not_granted),
-                    getString(if (vpnGranted) R.string.zybox_init_granted else R.string.zybox_init_not_granted)
-                )
-            )
-            .setPositiveButton(R.string.zybox_init_auto) { _, _ ->
-                DataStore.firstLaunchInitDone = true
-                autoInitialize(notifGranted, vpnGranted)
-            }
-            .setNegativeButton(R.string.zybox_init_later) { _, _ ->
-                DataStore.firstLaunchInitDone = true
-            }
-            .show()
+    // ZyBox: 自动初始化完成标记（供查询页显示）
+    @Volatile
+    var isAutoInitDone = false
+        private set
+
+    private var initDialog: androidx.appcompat.app.AlertDialog? = null
+
+    fun requestNotifPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 1001)
+        } else {
+            initDialog?.let { d -> refreshInitDialog(d) }
+            refreshPermissionFragment()
+        }
     }
 
-    private fun autoInitialize(notifGranted: Boolean, vpnGranted: Boolean) {
-        // 通知权限（SDK 33+）
-        if (!notifGranted && Build.VERSION.SDK_INT >= 33) {
-            ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 0)
+    fun requestVpnPermission() {
+        VpnService.prepare(this)?.let { vpnPermission.launch(it) }
+    }
+
+    fun runAutoInit() {
+        if (!isAutoInitDone) {
+            isAutoInitDone = true
+            // 自动申请所需权限
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 1001)
+            }
+            if (VpnService.prepare(this) != null) {
+                VpnService.prepare(this)?.let { vpnPermission.launch(it) }
+            }
+            // 自动进入设置页完成速度显示初始化，随后返回主页
+            displayFragmentWithId(R.id.nav_settings)
+            binding.root.postDelayed({
+                if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
+            }, 1200)
         }
-        // VPN 权限
-        if (!vpnGranted) {
-            VpnService.prepare(this)?.let { vpnPermission.launch(it) }
+        initDialog?.let { d -> refreshInitDialog(d) }
+        refreshPermissionFragment()
+    }
+
+    private fun showFirstLaunchDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_zybox_init, null)
+        val progress = view.findViewById<android.widget.TextView>(R.id.init_progress)
+        val statusAuto = view.findViewById<android.widget.TextView>(R.id.init_status_auto)
+        val statusNotif = view.findViewById<android.widget.TextView>(R.id.init_status_notif)
+        val statusVpn = view.findViewById<android.widget.TextView>(R.id.init_status_vpn)
+
+        view.findViewById<android.view.View>(R.id.init_btn_auto).setOnClickListener {
+            runAutoInit()
         }
-        // 自动进入设置页完成速度显示初始化，随后返回主页
-        displayFragmentWithId(R.id.nav_settings)
-        binding.root.postDelayed({
-            if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
-        }, 1200)
+        view.findViewById<android.view.View>(R.id.init_btn_notif).setOnClickListener {
+            requestNotifPermission()
+        }
+        view.findViewById<android.view.View>(R.id.init_btn_vpn).setOnClickListener {
+            requestVpnPermission()
+        }
+        view.findViewById<android.view.View>(R.id.init_btn_enter).setOnClickListener {
+            val done = (if (isAutoInitDone) 1 else 0) +
+                    if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                            this, POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
+                    ) 1 else 0 +
+                    if (VpnService.prepare(this) == null) 1 else 0
+            if (done < 3) {
+                snackbar(getString(R.string.zybox_init_incomplete)).show()
+            }
+            initDialog?.dismiss()
+            initDialog = null
+            DataStore.firstLaunchInitDone = true
+        }
+
+        initDialog = MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setCancelable(false)
+            .show()
+        refreshInitDialog(initDialog!!)
+    }
+
+    private fun refreshInitDialog(d: androidx.appcompat.app.AlertDialog) {
+        val view = d.findViewById<android.widget.TextView>(R.id.init_progress) ?: return
+        val done = (if (isAutoInitDone) 1 else 0) +
+                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                        this, POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
+                ) 1 else 0 +
+                if (VpnService.prepare(this) == null) 1 else 0
+        view.text = "$done/3"
+        d.findViewById<android.widget.TextView>(R.id.init_status_auto)?.text =
+            if (isAutoInitDone) "✅" else "❌"
+        d.findViewById<android.widget.TextView>(R.id.init_status_notif)?.text =
+            if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                    this, POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) "❌" else "✅"
+        d.findViewById<android.widget.TextView>(R.id.init_status_vpn)?.text =
+            if (VpnService.prepare(this) == null) "✅" else "❌"
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001 || requestCode == 0) {
+            initDialog?.let { d -> refreshInitDialog(d) }
+            refreshPermissionFragment()
+        }
+    }
+
+    private fun refreshPermissionFragment() {
+        val f = supportFragmentManager.findFragmentById(R.id.fragment_holder)
+        if (f is ZyBoxPermissionFragment) f.refreshStatus()
     }
 
     fun refreshNavMenu(clashApi: Boolean) {
@@ -404,6 +483,7 @@ class MainActivity : ThemedActivity(),
 
             R.id.nav_about -> displayFragment(AboutFragment())
             R.id.nav_zybox_about -> displayFragment(ZyBoxAboutFragment())
+            R.id.nav_zybox_permission -> displayFragment(ZyBoxPermissionFragment())
             R.id.nav_zybox_optimization -> displayFragment(ZyBoxOptimizationFragment())
             R.id.nav_tuiguang -> {
                 launchCustomTab("https://neko-box.pages.dev/喵")

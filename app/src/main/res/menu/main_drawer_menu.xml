@@ -51,6 +51,10 @@
             android:icon="@drawable/zybox_chest_icon"
             android:title="@string/zybox_about" />
         <item
+            android:id="@+id/nav_zybox_permission"
+            android:icon="@drawable/ic_baseline_security_24"
+            android:title="@string/zybox_permission_query" />
+        <item
             android:id="@+id/nav_zybox_optimization"
             android:icon="@drawable/baseline_widgets_24"
             android:title="@string/zybox_optimization" />

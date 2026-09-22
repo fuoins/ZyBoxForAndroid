@@ -669,12 +669,16 @@
     <string name="subscription_updated_at">Updated %1$s</string>
     <string name="subscription_never_updated">Never updated</string>
     <string name="zybox_init_title">ZyBox Initialization</string>
-    <string name="zybox_init_message">Notification permission: %1$s
-VPN permission: %2$s
-
-Tap "Auto initialize" to request required permissions, enter Settings once to finish speed-display initialization, then return to home.</string>
-    <string name="zybox_init_granted">Granted</string>
-    <string name="zybox_init_not_granted">Not granted</string>
     <string name="zybox_init_auto">Auto initialize</string>
-    <string name="zybox_init_later">Later</string>
+    <string name="zybox_init_start">Start</string>
+    <string name="zybox_init_grant">Grant</string>
+    <string name="zybox_init_enter">Enter</string>
+    <string name="zybox_init_notif">Notification permission</string>
+    <string name="zybox_init_vpn">VPN permission</string>
+    <string name="zybox_init_auto_sum">Auto request needed permissions, enter Settings once to finish speed-display initialization, then return home.</string>
+    <string name="zybox_init_notif_sum">Show real-time direct/proxy upload &amp; download speeds in notification.</string>
+    <string name="zybox_init_vpn_sum">Required. Without it the app cannot work.</string>
+    <string name="zybox_permission_hint">Query permission status and initialization progress here. Tap the button on the right to finish any pending item.</string>
+    <string name="zybox_permission_query">Permissions &amp; Init Query</string>
+    <string name="zybox_init_incomplete">Some items pending. Continue in Menu → Permissions &amp; Init Query.</string>
 </resources>
