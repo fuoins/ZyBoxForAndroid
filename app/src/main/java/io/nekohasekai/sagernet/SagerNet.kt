@@ -217,11 +217,11 @@ class SagerNet : Application(),
         }()
     }
 
-    // ZyBox: 首次启动自动把内置 geoip/geosite 数据库拷贝到 files 目录（开规则集开箱即用）
+    // ZyBox: 首次启动自动把内置 geoip/geosite 数据库拷贝到外部 files 目录（sing-box 规则集读取路径，开规则集开箱即用）
     private fun copyGeoAssetsIfNeeded() {
         val names = arrayOf("geoip.db", "geosite.db")
         for (name in names) {
-            val target = java.io.File(filesDir, name)
+            val target = java.io.File(externalAssets, name)
             if (!target.exists() || target.length() < 1000) {
                 try {
                     assets.open(name).use { input ->
