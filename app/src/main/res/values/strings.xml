@@ -711,4 +711,6 @@
     <string name="zybox_opt_about_update_sum">New menu page: fetches latest GitHub release, version check and one-tap update; includes donate button.</string>
     <string name="zybox_opt_classic_selected">Classic card selected style</string>
     <string name="zybox_opt_classic_selected_sum">Classic card style now highlights the selected node (light pink tint) just like the stroke style.</string>
+    <string name="no_duplicate">No duplicate servers</string>
+    <string name="no_duplicate_strict">No duplicate nodes (zy)</string>
 </resources>

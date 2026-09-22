@@ -172,9 +172,12 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     // ZyBox: 批量删除确认与执行（toDelete 为待删配置）
-    private suspend fun confirmMultiDelete(toDelete: List<ProxyEntity>, messagePrefix: String) {
+    private suspend fun confirmMultiDelete(
+        toDelete: List<ProxyEntity>, messagePrefix: String,
+        emptyHint: Int = R.string.action_export_err
+    ) {
         if (toDelete.isEmpty()) {
-            snackbar(getString(R.string.action_export_err)).show()
+            snackbar(getString(emptyHint)).show()
             return
         }
         onMainDispatcher {
@@ -243,7 +246,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                     if (!uniqueProxies.add(proxy)) toClear += pf
                 }
             }
-            confirmMultiDelete(toClear, getString(R.string.delete_confirm_prompt))
+            confirmMultiDelete(
+                toClear, getString(R.string.delete_confirm_prompt),
+                if (strict) R.string.no_duplicate_strict else R.string.no_duplicate
+            )
         }
     }
 
@@ -896,7 +902,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                             toClear += pf
                         }
                     }
-                    if (toClear.isNotEmpty()) {
+                    if (toClear.isEmpty()) {
+                        onMainDispatcher {
+                            snackbar(getString(R.string.no_duplicate)).show()
+                        }
+                    } else {
                         onMainDispatcher {
                             MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.confirm)
                                 .setMessage(
@@ -949,7 +959,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                             toClear += pf
                         }
                     }
-                    if (toClear.isNotEmpty()) {
+                    if (toClear.isEmpty()) {
+                        onMainDispatcher {
+                            snackbar(getString(R.string.no_duplicate_strict)).show()
+                        }
+                    } else {
                         onMainDispatcher {
                             MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.confirm)
                                 .setMessage(
@@ -2162,11 +2176,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                     onMainDispatcher {
                         editButton.isEnabled = !started
                         removeButton.isEnabled = !started
-                        // ZyBox: 排序与外观 → 卡片样式（经典=背景染色无描边 / 描边=整卡描边）
+                        // ZyBox: 排序与外观 → 卡片样式（经典=左侧主题色竖条 / 描边=整卡描边）
                         val card = view as com.google.android.material.card.MaterialCardView
                         val ctx = view.context
+                        val selectedBar = view.findViewById<android.view.View>(R.id.profile_selected_bar)
+                        val primary = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
                         if (DataStore.profileCardStyle == 1) {
-                            val primary = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
                             card.strokeWidth = if (selected) dp2px(2) else dp2px(1)
                             card.strokeColor = if (selected) {
                                 primary
@@ -2174,28 +2189,29 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 ctx.getColour(io.nekohasekai.sagernet.R.color.card_stroke)
                             }
                             card.cardElevation = 0f
+                            selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         } else {
                             card.strokeWidth = 0
                             card.cardElevation = ctx.resources.getDimension(io.nekohasekai.sagernet.R.dimen.profile_card_elevation_classic)
-                            // ZyBox: 经典样式选中时背景染色（半透明主色），未选中恢复默认
-                            if (selected) {
-                                card.setCardBackgroundColor(
-                                    ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
-                                )
-                            } else {
-                                card.setCardBackgroundColor(
-                                    ctx.getColorAttr(android.R.attr.colorBackground)
-                                )
-                            }
+                            // ZyBox: 经典样式选中时左侧粗竖条（主题色），未选中透明
+                            card.setCardBackgroundColor(
+                                ctx.getColorAttr(android.R.attr.colorBackground)
+                            )
+                            selectedBar.setBackgroundColor(
+                                if (selected && !pf.multiSelectMode) primary
+                                else android.graphics.Color.TRANSPARENT
+                            )
                         }
-                        // ZyBox: 多选模式选中态（粉色描边+浅粉底，覆盖在卡片样式之上）
+                        // ZyBox: 多选模式选中态（左侧主题色竖条+浅粉底，覆盖在卡片样式之上）
                         if (pf.multiSelectMode) {
                             val multiSel = pf.multiSelectedIds.contains(proxyEntity.id)
-                            card.strokeWidth = if (multiSel) dp2px(2) else dp2px(0)
-                            card.strokeColor = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
+                            card.strokeWidth = 0
                             card.setCardBackgroundColor(
                                 if (multiSel) ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
                                 else ctx.getColorAttr(android.R.attr.colorBackground)
+                            )
+                            selectedBar.setBackgroundColor(
+                                if (multiSel) primary else android.graphics.Color.TRANSPARENT
                             )
                         }
                     }

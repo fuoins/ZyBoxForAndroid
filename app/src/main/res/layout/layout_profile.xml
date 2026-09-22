@@ -20,6 +20,13 @@
         android:focusable="true"
         android:orientation="horizontal">
 
+        <!-- ZyBox: 经典样式选中竖条（主题色，选中时显示） -->
+        <View
+            android:id="@+id/profile_selected_bar"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"

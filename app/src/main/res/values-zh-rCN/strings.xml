@@ -631,4 +631,6 @@
     <string name="zybox_opt_about_update_sum">菜单新增 ZyBox 关于与更新页：自动获取 GitHub 最新发布版本，支持版本检测与一键更新；页内带捐赠支持按钮。</string>
     <string name="zybox_opt_classic_selected">经典卡片选中样式</string>
     <string name="zybox_opt_classic_selected_sum">经典卡片样式选中节点时同样有视觉反馈（浅粉底染色），与描边样式一致一目了然。</string>
+    <string name="no_duplicate">无重复服务器</string>
+    <string name="no_duplicate_strict">无重复节点zy版</string>
 </resources>
