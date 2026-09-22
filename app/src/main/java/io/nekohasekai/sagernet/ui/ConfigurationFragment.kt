@@ -1646,6 +1646,13 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             override suspend fun onUpdated(data: TrafficData) {
                 try {
+                    // ZyBox: 实时流量同步到列表实体，保证任何重 bind（切换/复用）都读到最新上传下载速度
+                    configurationListView.post {
+                        configurationList[data.id]?.let {
+                            it.rx = data.rx
+                            it.tx = data.tx
+                        }
+                    }
                     val index = configurationIdList.indexOf(data.id)
                     if (index != -1) {
                         val holder = layoutManager.findViewByPosition(index)
