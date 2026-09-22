@@ -5,12 +5,14 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.RemoteException
 import android.view.KeyEvent
 import android.view.MenuItem
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.IdRes
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -127,6 +129,58 @@ class MainActivity : ThemedActivity(),
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
         }
+
+        // ZyBox: 首次启动初始化弹窗（通知/VPN 权限检测 + 自动初始化）
+        if (!DataStore.firstLaunchInitDone) {
+            binding.root.post {
+                showFirstLaunchDialog()
+            }
+        }
+    }
+
+    // ZyBox: VPN 权限请求
+    private val vpnPermission =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+
+    private fun showFirstLaunchDialog() {
+        val notifGranted = if (Build.VERSION.SDK_INT >= 33) {
+            ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else true
+        val vpnGranted = VpnService.prepare(this) == null
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.zybox_init_title)
+            .setMessage(
+                getString(
+                    R.string.zybox_init_message,
+                    getString(if (notifGranted) R.string.zybox_init_granted else R.string.zybox_init_not_granted),
+                    getString(if (vpnGranted) R.string.zybox_init_granted else R.string.zybox_init_not_granted)
+                )
+            )
+            .setPositiveButton(R.string.zybox_init_auto) { _, _ ->
+                DataStore.firstLaunchInitDone = true
+                autoInitialize(notifGranted, vpnGranted)
+            }
+            .setNegativeButton(R.string.zybox_init_later) { _, _ ->
+                DataStore.firstLaunchInitDone = true
+            }
+            .show()
+    }
+
+    private fun autoInitialize(notifGranted: Boolean, vpnGranted: Boolean) {
+        // 通知权限（SDK 33+）
+        if (!notifGranted && Build.VERSION.SDK_INT >= 33) {
+            ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 0)
+        }
+        // VPN 权限
+        if (!vpnGranted) {
+            VpnService.prepare(this)?.let { vpnPermission.launch(it) }
+        }
+        // 自动进入设置页完成速度显示初始化，随后返回主页
+        displayFragmentWithId(R.id.nav_settings)
+        binding.root.postDelayed({
+            if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
+        }, 1200)
     }
 
     fun refreshNavMenu(clashApi: Boolean) {

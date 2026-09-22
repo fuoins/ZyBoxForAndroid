@@ -588,4 +588,13 @@
     <string name="group_status_proxies_subscriptions">%1$d 个节点 · %2$d 个订阅</string>
     <string name="subscription_updated_at">更新于 %1$s</string>
     <string name="subscription_never_updated">尚未更新</string>
+    <string name="zybox_init_title">ZyBox 初始化</string>
+    <string name="zybox_init_message">通知权限：%1$s
+VPN 权限：%2$s
+
+点击"自动初始化"将自动申请所需权限，并进入一次设置页完成速度显示初始化后返回主页。</string>
+    <string name="zybox_init_granted">已授予</string>
+    <string name="zybox_init_not_granted">未授予</string>
+    <string name="zybox_init_auto">自动初始化</string>
+    <string name="zybox_init_later">暂不</string>
 </resources>

@@ -668,4 +668,13 @@
     <string name="group_status_proxies_subscriptions">%1$d nodes · %2$d subscriptions</string>
     <string name="subscription_updated_at">Updated %1$s</string>
     <string name="subscription_never_updated">Never updated</string>
+    <string name="zybox_init_title">ZyBox Initialization</string>
+    <string name="zybox_init_message">Notification permission: %1$s
+VPN permission: %2$s
+
+Tap "Auto initialize" to request required permissions, enter Settings once to finish speed-display initialization, then return to home.</string>
+    <string name="zybox_init_granted">Granted</string>
+    <string name="zybox_init_not_granted">Not granted</string>
+    <string name="zybox_init_auto">Auto initialize</string>
+    <string name="zybox_init_later">Later</string>
 </resources>
