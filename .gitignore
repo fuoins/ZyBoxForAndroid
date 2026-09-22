@@ -20,3 +20,4 @@ jniLibs/
 /external
 
 .kotlin/
+.github/
