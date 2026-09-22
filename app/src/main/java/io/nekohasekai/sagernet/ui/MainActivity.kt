@@ -78,20 +78,6 @@ class MainActivity : ThemedActivity(),
         }
         navigation.setNavigationItemSelectedListener(this)
 
-        // ZyBox: 捐赠按钮（抽屉头部），点击跳转浏览器
-        navigation.getHeaderView(0)?.findViewById<android.view.View>(R.id.donate_button)?.setOnClickListener {
-            try {
-                startActivity(
-                    android.content.Intent(
-                        android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://zy520.de5.net/juanzeng/")
-                    )
-                )
-            } catch (e: Exception) {
-                io.nekohasekai.sagernet.ktx.Logs.w(e)
-            }
-        }
-
         if (savedInstanceState == null) {
             displayFragmentWithId(R.id.nav_configuration)
         }
@@ -363,6 +349,7 @@ class MainActivity : ThemedActivity(),
             }
 
             R.id.nav_about -> displayFragment(AboutFragment())
+            R.id.nav_zybox_about -> displayFragment(ZyBoxAboutFragment())
             R.id.nav_zybox_optimization -> displayFragment(ZyBoxOptimizationFragment())
             R.id.nav_tuiguang -> {
                 launchCustomTab("https://neko-box.pages.dev/喵")

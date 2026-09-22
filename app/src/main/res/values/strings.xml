@@ -61,6 +61,14 @@
     <string name="zybox_opt_sort_layout_sum">Top-right ⋮ menu: sort (original/name/delay, new groups default to delay), layout (single/double column; actions collapse into ⋮ in double column), card (classic/stroke, stroke by default).</string>
     <string name="zybox_opt_global_mode">Global Mode</string>
     <string name="zybox_opt_global_mode_sum">Bypass all routing rules and proxy all traffic through the current node (off by default, LAN bypass optional).</string>
+    <string name="zybox_about">ZyBox About &amp; Update</string>
+    <string name="source_app_about">About Original App</string>
+    <string name="standard_with_ping">Standard + ping</string>
+    <string name="zybox_about_version">Version %1$s</string>
+    <string name="zybox_check_update">Check for updates</string>
+    <string name="zybox_checking_update">Checking for updates…</string>
+    <string name="zybox_update_available">New version %1$s available</string>
+    <string name="zybox_no_update">Already the latest version</string>
     <string name="zybox_opt_donate">Donate</string>
     <string name="zybox_opt_donate_sum">Donation button at the top of the drawer.</string>
     <string name="zybox_opt_github">GitHub Source</string>

@@ -17,6 +17,20 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
         ViewCompat.setOnApplyWindowInsetsListener(view, ListListener)
         toolbar.setTitle(R.string.zybox_opt_title)
 
+        // ZyBox: 捐赠支持 → 浏览器
+        binding.zyboxOptDonateButton.setOnClickListener {
+            try {
+                startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://zy520.de5.net/juanzeng/")
+                    )
+                )
+            } catch (e: Exception) {
+                io.nekohasekai.sagernet.ktx.Logs.w(e)
+            }
+        }
+
         // ZyBox: GitHub 开源地址 → 浏览器
         binding.zyboxOptGithubItem.setOnClickListener {
             try {

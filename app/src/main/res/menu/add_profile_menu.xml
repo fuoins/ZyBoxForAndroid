@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_scroll_top"
-        android:icon="@drawable/baseline_keyboard_tab_24"
+        android:icon="@drawable/ic_baseline_arrow_upward_24"
         android:title="@string/action_scroll_top"
         app:showAsAction="always" />
 

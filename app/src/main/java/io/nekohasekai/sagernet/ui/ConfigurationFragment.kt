@@ -368,6 +368,8 @@ class ConfigurationFragment @JvmOverloads constructor(
         SagerDatabase.proxyDao.insert(entities)
         onMainDispatcher {
             DataStore.editingGroup = targetId
+            // ZyBox: 导入后立即刷新分组栏（新增分组马上出现），保持当前选中分组不变
+            if (::adapter.isInitialized) adapter.reload(true)
             snackbar(
                 requireContext().resources.getQuantityString(
                     R.plurals.added, proxies.size, proxies.size
@@ -1791,16 +1793,17 @@ class ConfigurationFragment @JvmOverloads constructor(
                 profileAddress.text = address
                 // ZyBox UI 3.0: 地址行与流量行分开控制（新布局下两者不在同一行）
                 profileAddress.isGone = address.isBlank()
-                trafficText.isGone = !showTraffic || proxyEntity.status <= 0
+                // ZyBox: 上传/下载速度独立显示在节点名下方，不占用延迟位
+                trafficText.isGone = !showTraffic
 
                 if (proxyEntity.status <= 0) {
-                    if (showTraffic) {
-                        profileStatus.text = trafficText.text
-                        profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
-                        trafficText.text = ""
+                    // ZyBox: 延迟位保持测速状态提示（速度已移到名字下方）
+                    profileStatus.text = if (proxyEntity.status == -1) {
+                        getString(R.string.connection_test_testing)
                     } else {
-                        profileStatus.text = ""
+                        ""
                     }
+                    profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
                 } else if (proxyEntity.status == 1) {
                     profileStatus.text = getString(R.string.available, proxyEntity.ping)
                     profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
@@ -1821,6 +1824,13 @@ class ConfigurationFragment @JvmOverloads constructor(
                 } else {
                     profileStatus.setOnClickListener(null)
                 }
+
+                // ZyBox: 状态为空时收起右侧弹性空白，避免卡片内大片空白
+                val hasStatusText = !profileStatus.text.isNullOrEmpty()
+                profileStatus.isVisible = hasStatusText
+                val spacer = view.findViewById<android.view.View>(R.id.profile_spacer)
+                (spacer.layoutParams as android.widget.LinearLayout.LayoutParams).weight =
+                    if (hasStatusText) 1f else 0f
 
                 editButton.setOnClickListener {
                     it.context.startActivity(
@@ -1897,8 +1907,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                         when {
                             !proxyEntity.haveStandardLink() -> {
                                 popup.menu.findItem(R.id.action_group_qr).subMenu?.removeItem(R.id.action_standard_qr)
+                                popup.menu.findItem(R.id.action_group_qr).subMenu?.removeItem(R.id.action_standard_ping_qr)
                                 popup.menu.findItem(R.id.action_group_clipboard).subMenu?.removeItem(
                                     R.id.action_standard_clipboard
+                                )
+                                popup.menu.findItem(R.id.action_group_clipboard).subMenu?.removeItem(
+                                    R.id.action_standard_ping_clipboard
                                 )
                             }
 
@@ -1974,8 +1988,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                 when {
                     !proxyEntity.haveStandardLink() -> {
                         popup.menu.findItem(R.id.action_group_qr).subMenu?.removeItem(R.id.action_standard_qr)
+                        popup.menu.findItem(R.id.action_group_qr).subMenu?.removeItem(R.id.action_standard_ping_qr)
                         popup.menu.findItem(R.id.action_group_clipboard).subMenu?.removeItem(
                             R.id.action_standard_clipboard
+                        )
+                        popup.menu.findItem(R.id.action_group_clipboard).subMenu?.removeItem(
+                            R.id.action_standard_ping_clipboard
                         )
                     }
 
@@ -2008,7 +2026,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                     currentName = entity.displayName()!!
                     when (item.itemId) {
                         R.id.action_standard_qr -> showCode(entity.toStdLink())
+                        R.id.action_standard_ping_qr -> showCode(
+                            entity.toStdLink(compact = true) +
+                                    if (entity.ping > 0) "|ping=${entity.ping}" else ""
+                        )
                         R.id.action_standard_clipboard -> export(entity.toStdLink())
+                        R.id.action_standard_ping_clipboard -> export(
+                            entity.toStdLink(compact = true) +
+                                    if (entity.ping > 0) "|ping=${entity.ping}" else ""
+                        )
                         R.id.action_universal_qr -> showCode(entity.requireBean().toUniversalLink())
                         R.id.action_universal_clipboard -> export(
                             entity.requireBean().toUniversalLink()

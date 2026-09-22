@@ -67,6 +67,16 @@
                         android:text="@string/server_address"
                         android:textAppearance="?android:attr/textAppearanceSmall"
                         android:textColor="?android:attr/textColorSecondary" />
+
+                    <TextView
+                        android:id="@+id/traffic_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/traffic"
+                        android:textAppearance="?android:attr/textAppearanceSmall"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:visibility="gone" />
                 </LinearLayout>
 
                 <androidx.appcompat.widget.AppCompatImageView
@@ -138,7 +148,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="14dp"
+                android:paddingStart="4dp"
                 android:paddingEnd="10dp"
                 android:paddingBottom="10dp">
 
@@ -155,18 +165,10 @@
                     android:textColor="@color/zybox_ping_text" />
 
                 <LinearLayout
+                    android:id="@+id/profile_spacer"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1" />
-
-                <TextView
-                    android:id="@+id/traffic_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="6dp"
-                    android:text="@string/traffic"
-                    android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="?android:attr/textColorSecondary" />
 
                 <TextView
                     android:id="@+id/profile_status"

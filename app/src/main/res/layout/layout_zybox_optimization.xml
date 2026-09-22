@@ -9,9 +9,10 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
         android:background="?attr/colorPrimary"
-        android:elevation="4dp">
+        android:elevation="4dp"
+        android:fitsSystemWindows="true">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -34,6 +35,20 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="12dp">
+
+            <TextView
+                android:id="@+id/zybox_opt_donate_button"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/zybox_donate_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/zybox_opt_donate"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"

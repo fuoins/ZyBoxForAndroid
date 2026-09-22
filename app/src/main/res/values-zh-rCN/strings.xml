@@ -58,6 +58,14 @@
     <string name="zybox_opt_sort_layout_sum">右上角 ⋮ 菜单：排序（原始/名称/延时，新分组默认延时）、布局（单列/双列，双列时操作按钮收进 ⋮）、卡片（经典/描边，默认描边）。</string>
     <string name="zybox_opt_global_mode">全局模式</string>
     <string name="zybox_opt_global_mode_sum">绕过所有路由规则，全部流量走当前节点（默认关闭，可保留内网直连）。</string>
+    <string name="zybox_about">ZyBox关于与更新</string>
+    <string name="source_app_about">源应用关于</string>
+    <string name="standard_with_ping">标准+ping值</string>
+    <string name="zybox_about_version">版本 %1$s</string>
+    <string name="zybox_check_update">检查更新</string>
+    <string name="zybox_checking_update">正在检查更新…</string>
+    <string name="zybox_update_available">发现新版本 %1$s</string>
+    <string name="zybox_no_update">已是最新版本</string>
     <string name="zybox_opt_donate">捐赠支持</string>
     <string name="zybox_opt_donate_sum">抽屉顶部捐赠按钮，支持开发（跳转浏览器）。</string>
     <string name="zybox_opt_github">GitHub 开源地址</string>

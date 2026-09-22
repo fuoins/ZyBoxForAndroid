@@ -44,7 +44,17 @@ class AboutFragment : ToolbarFragment(R.layout.layout_about) {
         val binding = LayoutAboutBinding.bind(view)
 
         ViewCompat.setOnApplyWindowInsetsListener(view, ListListener)
-        toolbar.setTitle(R.string.menu_about)
+        // ZyBox: 原"关于"恢复为"源应用关于"，展示原版信息
+        toolbar.setTitle(R.string.source_app_about)
+
+        // ZyBox: 源应用关于页展示原版应用名
+        for (i in 0 until (binding.titleCard as android.view.ViewGroup).childCount) {
+            val child = (binding.titleCard as android.view.ViewGroup).getChildAt(i)
+            if (child is android.widget.TextView && child.text.toString().contains("ZyBox")) {
+                child.text = "NekoBox for Android"
+                break
+            }
+        }
 
         parentFragmentManager.beginTransaction()
             .replace(R.id.about_fragment_holder, AboutContent())
@@ -80,7 +90,8 @@ class AboutFragment : ToolbarFragment(R.layout.layout_about) {
                             MaterialAboutActionItem.Builder()
                                 .icon(R.drawable.ic_baseline_update_24)
                                 .text(R.string.app_version)
-                                .subText(SagerNet.appVersionNameForDisplay)
+                                // ZyBox: 源应用版本显示原版 1.4.2
+                                .subText("1.4.2")
                                 .setOnClickAction {
                                     requireContext().launchCustomTab(
                                         "https://github.com/MatsuriDayo/NekoBoxForAndroid/releases"
