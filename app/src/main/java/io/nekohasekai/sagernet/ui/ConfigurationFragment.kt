@@ -172,12 +172,26 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
     }
 
+    // ZyBox: 编辑页返回后恢复搜索状态（SearchView 失焦会被收起并清空，需在 onResume 重放）
+    var savedSearchQuery = ""
+
     override fun onQueryTextChange(query: String): Boolean {
+        savedSearchQuery = query
         getCurrentGroupFragment()?.adapter?.filter(query)
         return false
     }
 
     override fun onQueryTextSubmit(query: String): Boolean = false
+
+    override fun onResume() {
+        super.onResume()
+        // ZyBox: 从编辑页等返回时重放搜索关键字（SearchView 失焦收起会把搜索清空）
+        if (savedSearchQuery.isNotEmpty()) {
+            toolbar.findViewById<SearchView>(R.id.action_search)?.let { sv ->
+                sv.setQuery(savedSearchQuery, false)
+            }
+        }
+    }
 
     @SuppressLint("DetachAndAttachSameFragment")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -219,7 +233,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             searchView.setOnQueryTextFocusChangeListener { _, hasFocus ->
                 if (!hasFocus) {
-                    cancelSearch(searchView)
+                    // ZyBox: 失焦只清焦点，保留搜索框展开与过滤状态
+                    searchView.clearFocus()
                 }
             }
         }
@@ -1566,7 +1581,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                 val profiles = actions.map { it.second }
                 runOnDefaultDispatcher {
                     for (entity in profiles) {
-                        ProfileManager.deleteProfile(entity.groupId, entity.id)
+                        // ZyBox: 防御删除链路异常导致闪退
+                        try {
+                            ProfileManager.deleteProfile(entity.groupId, entity.id)
+                        } catch (e: Exception) {
+                            Logs.w("deleteProfile failed: ${e.message}")
+                        }
                     }
                 }
             }
@@ -1656,7 +1676,13 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             fun reloadProfiles() {
-                var newProfiles = SagerDatabase.proxyDao.getByGroup(proxyGroup.id)
+                // ZyBox: 防御旧库缺列/坏数据导致 getByGroup 游标崩溃（保留日志便于定位）
+                var newProfiles = try {
+                    SagerDatabase.proxyDao.getByGroup(proxyGroup.id)
+                } catch (e: Exception) {
+                    Logs.w("reloadProfiles getByGroup failed: ${e.message}")
+                    emptyList()
+                }
                 when (proxyGroup.order) {
                     GroupOrder.BY_NAME -> {
                         newProfiles = newProfiles.sortedBy { it.displayName() }
@@ -1851,13 +1877,23 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                val selectOrChain = select || proxyEntity.type == ProxyEntity.TYPE_CHAIN
-                shareLayout.isGone = selectOrChain
-                editButton.isGone = select
-                removeButton.isGone = select
-
                 proxyEntity.nekoBean?.apply {
                     shareLayout.isGone = true
+                }
+
+                // ZyBox: 按钮可见性同步设置（不包 async），避免双列下按钮闪现/空白
+                val isDoubleColumn = layoutManager is FixedGridLayoutManager
+                if (isDoubleColumn) {
+                    editButton.isGone = true
+                    shareLayout.isGone = true
+                    removeButton.isGone = true
+                    doubleColumnMenuButton.isVisible = true
+                } else {
+                    val selectOrChain = select || proxyEntity.type == ProxyEntity.TYPE_CHAIN
+                    shareLayout.isGone = selectOrChain
+                    editButton.isGone = select
+                    removeButton.isGone = select
+                    doubleColumnMenuButton.isGone = true
                 }
 
                 runOnDefaultDispatcher {
@@ -1867,20 +1903,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                     onMainDispatcher {
                         editButton.isEnabled = !started
                         removeButton.isEnabled = !started
-                        // ZyBox: 双列布局下操作按钮收进 ⋮ 菜单
-                        val isDoubleColumn = layoutManager is FixedGridLayoutManager
-                        if (isDoubleColumn) {
-                            editButton.isGone = true
-                            shareLayout.isGone = true
-                            removeButton.isGone = true
-                            doubleColumnMenuButton.isVisible = true
-                        } else {
-                            val selectOrChain = select || proxyEntity.type == ProxyEntity.TYPE_CHAIN
-                            shareLayout.isGone = selectOrChain
-                            editButton.isGone = select
-                            removeButton.isGone = select
-                            doubleColumnMenuButton.isGone = true
-                        }
                         // ZyBox: 排序与外观 → 卡片样式（经典=背景染色无描边 / 描边=整卡描边）
                         val card = view as com.google.android.material.card.MaterialCardView
                         val ctx = view.context
