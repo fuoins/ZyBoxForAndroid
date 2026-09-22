@@ -75,6 +75,7 @@ class SagerNet : Application(),
             runOnDefaultDispatcher {
                 PackageCache.register()
                 cleanWebview()
+                copyGeoAssetsIfNeeded()
             }
         }
 
@@ -214,6 +215,23 @@ class SagerNet : Application(),
             }
             n
         }()
+    }
+
+    // ZyBox: 首次启动自动把内置 geoip/geosite 数据库拷贝到 files 目录（开规则集开箱即用）
+    private fun copyGeoAssetsIfNeeded() {
+        val names = arrayOf("geoip.db", "geosite.db")
+        for (name in names) {
+            val target = java.io.File(filesDir, name)
+            if (!target.exists() || target.length() < 1000) {
+                try {
+                    assets.open(name).use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    }
+                } catch (e: Exception) {
+                    // 内置资产缺失时跳过，不影响启动
+                }
+            }
+        }
     }
 
 }
