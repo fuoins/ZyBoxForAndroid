@@ -2234,10 +2234,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             } else {
                                 card.strokeWidth = 0
-                                card.setCardBackgroundColor(
-                                    if (multiSel) ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
-                                    else defaultCardBg
-                                )
+                                card.setCardBackgroundColor(defaultCardBg)
                                 selectedBar.setBackgroundColor(
                                     if (multiSel) primary else android.graphics.Color.TRANSPARENT
                                 )

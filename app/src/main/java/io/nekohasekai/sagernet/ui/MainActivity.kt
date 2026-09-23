@@ -130,11 +130,9 @@ class MainActivity : ThemedActivity(),
                 .show()
         }
 
-        // ZyBox: 首次启动初始化弹窗（通知/VPN 权限检测 + 自动初始化）
-        if (!DataStore.firstLaunchInitDone) {
-            binding.root.post {
-                showFirstLaunchDialog()
-            }
+        // ZyBox: 每次启动都弹初始化向导（自动初始化/通知/VPN 权限检测，已完成的显示 ✅）
+        binding.root.post {
+            showFirstLaunchDialog()
         }
     }
 

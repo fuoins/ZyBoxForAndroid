@@ -680,8 +680,9 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     runOnDefaultDispatcher {
                         val created = GroupManager.createSubscription(entity)
                         GroupUpdater.startUpdate(created, true)
-                        // ZyBox: 提示显示本组订阅总数（含原有订阅）
-                        val count = SagerDatabase.subscriptionDao.getByGroup(group.id).size
+                        // ZyBox: 提示显示本组订阅总数（含分组自带主订阅 + 原有订阅）
+                        val mainSub = if (group.type == GroupType.SUBSCRIPTION && group.subscription != null) 1 else 0
+                        val count = mainSub + SagerDatabase.subscriptionDao.getByGroup(group.id).size
                         onMainDispatcher {
                             snackbar(getString(R.string.subscription_added_count, count)).show()
                         }
@@ -695,7 +696,10 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
             runOnDefaultDispatcher {
                 val entities = SagerDatabase.subscriptionDao.getByGroup(group.id)
                 onMainDispatcher {
-                    if (entities.isEmpty()) {
+                    val mainSub = group.subscription?.takeIf {
+                        group.type == GroupType.SUBSCRIPTION
+                    }
+                    if (entities.isEmpty() && mainSub == null) {
                         snackbar(R.string.no_subscriptions).show()
                         return@onMainDispatcher
                     }
@@ -710,12 +714,61 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                         .setView(scroll)
                         .setPositiveButton(android.R.string.ok, null)
                         .create()
+                    // ZyBox: 分组自带主订阅（第一行，仅可更新，不提供删除/编辑）
+                    if (mainSub != null) {
+                        container.addView(
+                            buildMainSubscriptionRow(group, mainSub) { dialog.dismiss() }
+                        )
+                    }
                     for (entity in entities) {
                         container.addView(buildSubscriptionRow(entity) { dialog.dismiss() })
                     }
                     dialog.show()
                 }
             }
+        }
+
+        // ZyBox: 分组自带主订阅行（更新走分组更新入口，不写 SubscriptionEntity 表）
+        private fun buildMainSubscriptionRow(
+            group: ProxyGroup, bean: SubscriptionBean, dismiss: () -> Unit
+        ): View {
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp2px(8), 0, dp2px(8))
+            }
+            row.addView(TextView(requireContext()).apply {
+                text = group.displayName()
+                textSize = 15f
+                setTextColor(0xFF222222.toInt())
+            })
+            row.addView(TextView(requireContext()).apply {
+                text = bean.link.orEmpty()
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.MIDDLE
+                textSize = 12f
+                setTextColor(0xFF888888.toInt())
+            })
+            val lastUpdated = bean.lastUpdated ?: 0
+            row.addView(TextView(requireContext()).apply {
+                text = if (lastUpdated > 0) {
+                    getString(R.string.subscription_updated_at, subscriptionTimeText(lastUpdated))
+                } else {
+                    getString(R.string.subscription_never_updated)
+                }
+                textSize = 12f
+                setTextColor(0xFF666666.toInt())
+            })
+            row.addView(Button(requireContext()).apply {
+                text = getString(R.string.update_subscription)
+                isAllCaps = false
+                setOnClickListener {
+                    dismiss()
+                    runOnDefaultDispatcher {
+                        GroupUpdater.startUpdate(group, true)
+                    }
+                }
+            })
+            return row
         }
 
         private fun buildSubscriptionRow(entity: SubscriptionEntity, dismiss: () -> Unit): View {
