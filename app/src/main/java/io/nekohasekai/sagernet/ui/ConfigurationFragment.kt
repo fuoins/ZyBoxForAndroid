@@ -587,6 +587,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                 adapter.reload(true)
                 // 目标分组的页面已存在时同步刷新节点列表，无需重进软件/切分组
                 adapter.groupFragments[targetId]?.adapter?.reloadProfiles()
+                // ZyBox: 双保险——reload 的 UI 更新偶尔滞后，post 一次兜底确保未分组立即消失
+                view?.post {
+                    if (::adapter.isInitialized) adapter.reload(true)
+                }
             }
             snackbar(
                 requireContext().resources.getQuantityString(
@@ -1383,6 +1387,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                 var set = false
                 if (selectedGroup > 0L) {
                     selectedGroupIndex = newGroupList.indexOfFirst { it.id == selectedGroup }
+                    if (selectedGroupIndex < 0) {
+                        // 原选中分组已被迁移/删除（如未分组并入宇神神了），回退到第一个分组
+                        selectedGroupIndex = 0
+                        selectedGroup = if (newGroupList.isNotEmpty()) newGroupList[0].id else -1L
+                    }
                     set = true
                 } else if (groupList.size == 1) {
                     selectedGroup = groupList[0].id
