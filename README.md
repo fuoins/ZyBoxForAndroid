@@ -10,7 +10,7 @@
 
 最新版本见右侧 Releases（或直接访问 [Releases 页面](https://github.com/fuoins/ZyBoxForAndroid/releases)）。
 
-> 当前最新：**v1.8.1**
+> 当前最新：**v1.8.2.3**
 >
 > 内置 geoip/geosite 数据库，开箱即用；仅构建 `arm64-v8a`（64 位 ARM 设备）。
 
