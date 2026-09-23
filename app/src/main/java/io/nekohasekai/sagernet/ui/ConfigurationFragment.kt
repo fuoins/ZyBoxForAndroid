@@ -1359,9 +1359,23 @@ class ConfigurationFragment @JvmOverloads constructor(
                     SagerDatabase.groupDao.createGroup(ProxyGroup(ungrouped = true))
                     newGroupList = ArrayList(SagerDatabase.groupDao.allGroups())
                 }
-                newGroupList.find { it.ungrouped }?.let {
-                    if (SagerDatabase.proxyDao.countByGroup(it.id) == 0L) {
-                        newGroupList.remove(it)
+                // ZyBox: 未分组自动迁移到默认导入分组"宇神神了"并删除（空或残留旧节点均处理，主页只显示导入分组）
+                newGroupList.find { it.ungrouped }?.let { ungrouped ->
+                    val zyGroup = newGroupList.find { it.name == "宇神神了" && !it.ungrouped }
+                    if (zyGroup != null && ungrouped.id != zyGroup.id) {
+                        val entities = SagerDatabase.proxyDao.getByGroup(ungrouped.id)
+                        if (entities.isNotEmpty()) {
+                            var order = SagerDatabase.proxyDao.nextOrder(zyGroup.id) ?: 1L
+                            entities.forEach {
+                                it.groupId = zyGroup.id
+                                it.userOrder = order++
+                            }
+                            SagerDatabase.proxyDao.updateProxy(entities)
+                        }
+                        SagerDatabase.groupDao.deleteGroup(ungrouped)
+                        newGroupList.remove(ungrouped)
+                    } else if (SagerDatabase.proxyDao.countByGroup(ungrouped.id) == 0L) {
+                        newGroupList.remove(ungrouped)
                     }
                 }
 
