@@ -580,6 +580,24 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
         // 单事务批量插入，避免大文件导入时逐条事务导致的锁竞争/中途失败
         SagerDatabase.proxyDao.insert(entities)
+        // ZyBox: 导入后同步迁移"未分组"节点到默认导入分组"宇神神了"并删除未分组。
+        // 在数据层完成而非依赖刷新时处理，确保导入完成瞬间任何刷新都不会再出现未分组。
+        SagerDatabase.groupDao.allGroups().let { groups ->
+            val ungrouped = groups.find { it.ungrouped }
+            val zyGroup = groups.find { it.name == "宇神神了" && !it.ungrouped }
+            if (ungrouped != null && zyGroup != null && ungrouped.id != zyGroup.id) {
+                val old = SagerDatabase.proxyDao.getByGroup(ungrouped.id)
+                if (old.isNotEmpty()) {
+                    var order = SagerDatabase.proxyDao.nextOrder(zyGroup.id) ?: 1L
+                    old.forEach {
+                        it.groupId = zyGroup.id
+                        it.userOrder = order++
+                    }
+                    SagerDatabase.proxyDao.updateProxy(old)
+                }
+                SagerDatabase.groupDao.deleteGroup(ungrouped)
+            }
+        }
         onMainDispatcher {
             DataStore.editingGroup = targetId
             // ZyBox: 导入后立即刷新分组栏（新增分组马上出现），保持当前选中分组不变
