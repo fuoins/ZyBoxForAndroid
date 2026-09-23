@@ -40,6 +40,7 @@ object Key {
     const val ALLOW_ACCESS = "allowAccess"
     const val SPEED_INTERVAL = "speedInterval"
     const val FIRST_LAUNCH_INIT_DONE = "firstLaunchInitDone"
+    const val AUTO_INIT_DONE = "autoInitDone"
     const val SHOW_DIRECT_SPEED = "showDirectSpeed"
 
     const val APPEND_HTTP_PROXY = "appendHttpProxy"

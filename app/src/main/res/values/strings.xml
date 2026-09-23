@@ -69,7 +69,7 @@
     <string name="zybox_checking_update">Checking for updates…</string>
     <string name="zybox_update_available">New version %1$s available</string>
     <string name="zybox_no_update">Already the latest version</string>
-    <string name="zybox_opt_donate">Donate</string>
+    <string name="zybox_opt_donate">Tap here to donate</string>
     <string name="zybox_opt_donate_sum">Donation button at the top of the drawer.</string>
     <string name="zybox_opt_github">GitHub Source</string>
     <string name="zybox_opt_github_sum">https://github.com/fuoins/ZyBoxForAndroid</string>
@@ -665,7 +665,7 @@
     <string name="delete_subscription_confirm">Delete this subscription and all its proxies?</string>
     <string name="no_groups_to_merge">No other groups to merge into</string>
     <string name="merge_confirm_message">Merge \"%1$s\" into \"%2$s\"?\nIts subscriptions and proxies will be moved into the target group, and this group will be deleted.</string>
-    <string name="group_status_proxies_subscriptions">%1$d nodes · %2$d subscriptions</string>
+    <string name="group_status_proxies_subscriptions">%1$d nodes · %2$d extra subscriptions</string>
     <string name="subscription_updated_at">Updated %1$s</string>
     <string name="subscription_never_updated">Never updated</string>
     <string name="zybox_init_title">ZyBox Initialization</string>

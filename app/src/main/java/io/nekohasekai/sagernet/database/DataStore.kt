@@ -160,6 +160,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var showDirectSpeed by configurationStore.boolean(Key.SHOW_DIRECT_SPEED) { true }
     // ZyBox: 首次启动初始化弹窗只显示一次（通知/VPN 权限检测 + 自动初始化）
     var firstLaunchInitDone by configurationStore.boolean(Key.FIRST_LAUNCH_INIT_DONE) { false }
+    var autoInitDone by configurationStore.boolean(Key.AUTO_INIT_DONE) { false }
 
     val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT) { false }
 

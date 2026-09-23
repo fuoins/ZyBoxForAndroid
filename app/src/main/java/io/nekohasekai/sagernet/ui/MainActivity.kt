@@ -130,7 +130,8 @@ class MainActivity : ThemedActivity(),
                 .show()
         }
 
-        // ZyBox: 仅首次启动初始化向导（通知/VPN 权限检测 + 自动初始化）
+        // ZyBox: 恢复自动初始化完成状态（持久化），仅首次弹初始化向导
+        isAutoInitDone = DataStore.autoInitDone
         if (!DataStore.firstLaunchInitDone) {
             binding.root.post {
                 showFirstLaunchDialog()
@@ -170,6 +171,7 @@ class MainActivity : ThemedActivity(),
     fun runAutoInit() {
         if (!isAutoInitDone) {
             isAutoInitDone = true
+            DataStore.autoInitDone = true
             // 自动申请所需权限
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
