@@ -70,7 +70,7 @@
     <string name="zybox_opt_donate_sum">抽屉顶部捐赠按钮，支持开发（跳转浏览器）。</string>
     <string name="zybox_opt_github">GitHub 开源地址</string>
     <string name="zybox_opt_github_sum">https://github.com/fuoins/ZyBoxForAndroid</string>
-    <string name="group_default">宇神神了</string>
+    <string name="group_default">未分组</string>
     <string name="quick_toggle">切换</string>
     <string name="quick_enable">启用</string>
     <string name="quick_disable">禁用</string>
