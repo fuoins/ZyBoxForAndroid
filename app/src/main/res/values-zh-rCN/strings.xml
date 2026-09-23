@@ -593,6 +593,7 @@
     <string name="zybox_init_start">开始</string>
     <string name="zybox_init_grant">授权</string>
     <string name="zybox_init_enter">进入</string>
+    <string name="zybox_init_enter_doing">初始化中 请勿退出</string>
     <string name="zybox_init_notif">授权通知权限</string>
     <string name="zybox_init_vpn">授权 VPN 权限</string>
     <string name="zybox_init_auto_sum">自动申请所需权限，并进入一次设置页完成速度显示初始化后返回主页。</string>

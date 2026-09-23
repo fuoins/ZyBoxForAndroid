@@ -152,6 +152,9 @@ class MainActivity : ThemedActivity(),
     @Volatile
     var isAutoInitDone = false
         private set
+    @Volatile
+    var autoInitRunning = false
+        private set
 
     private var initDialog: androidx.appcompat.app.AlertDialog? = null
 
@@ -169,7 +172,15 @@ class MainActivity : ThemedActivity(),
     }
 
     fun runAutoInit() {
+        if (autoInitRunning) return
         if (!isAutoInitDone) {
+            autoInitRunning = true
+            // ZyBox: 初始化期间禁用"进入"按钮，防止未跑完就退出
+            initDialog?.let { d ->
+                d.findViewById<android.view.View>(R.id.init_btn_enter)?.isEnabled = false
+                d.findViewById<android.widget.TextView>(R.id.init_btn_enter)?.text =
+                    getString(R.string.zybox_init_enter_doing)
+            }
             isAutoInitDone = true
             DataStore.autoInitDone = true
             // 自动申请所需权限
@@ -184,6 +195,14 @@ class MainActivity : ThemedActivity(),
             // 自动进入设置页完成速度显示初始化，随后返回主页
             displayFragmentWithId(R.id.nav_settings)
             binding.root.postDelayed({
+                autoInitRunning = false
+                // 初始化跑完，解开"进入"按钮
+                initDialog?.let { d ->
+                    d.findViewById<android.view.View>(R.id.init_btn_enter)?.isEnabled = true
+                    d.findViewById<android.widget.TextView>(R.id.init_btn_enter)?.setText(
+                        R.string.zybox_init_enter
+                    )
+                }
                 if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
             }, 1200)
         }

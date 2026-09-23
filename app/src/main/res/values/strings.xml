@@ -673,6 +673,7 @@
     <string name="zybox_init_start">Start</string>
     <string name="zybox_init_grant">Grant</string>
     <string name="zybox_init_enter">Enter</string>
+    <string name="zybox_init_enter_doing">Initializing… please wait</string>
     <string name="zybox_init_notif">Notification permission</string>
     <string name="zybox_init_vpn">VPN permission</string>
     <string name="zybox_init_auto_sum">Auto request needed permissions, enter Settings once to finish speed-display initialization, then return home.</string>
