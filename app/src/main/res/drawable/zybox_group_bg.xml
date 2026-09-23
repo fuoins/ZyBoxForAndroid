@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox: 优化页大类标题渐变胶囊 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:endColor="#FF6B9D"
+                android:startColor="#FF8FB1" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</ripple>
