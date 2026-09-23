@@ -680,6 +680,11 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     runOnDefaultDispatcher {
                         val created = GroupManager.createSubscription(entity)
                         GroupUpdater.startUpdate(created, true)
+                        // ZyBox: 提示显示本组订阅总数（含原有订阅）
+                        val count = SagerDatabase.subscriptionDao.getByGroup(group.id).size
+                        onMainDispatcher {
+                            snackbar(getString(R.string.subscription_added_count, count)).show()
+                        }
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)

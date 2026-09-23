@@ -120,6 +120,9 @@
                 android:id="@+id/action_multi_clear_traffic"
                 android:title="@string/multi_clear_traffic" />
             <item
+                android:id="@+id/action_multi_delete"
+                android:title="@string/multi_delete" />
+            <item
                 android:id="@+id/action_multi_remove_duplicate"
                 android:title="@string/multi_remove_duplicate" />
             <item

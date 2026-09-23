@@ -633,4 +633,6 @@
     <string name="zybox_opt_classic_selected_sum">经典卡片样式选中节点时同样有视觉反馈（浅粉底染色），与描边样式一致一目了然。</string>
     <string name="no_duplicate">无重复服务器</string>
     <string name="no_duplicate_strict">无重复节点zy版</string>
+    <string name="multi_delete">删除多选节点</string>
+    <string name="subscription_added_count">已添加订阅，本组共 %d 个订阅</string>
 </resources>

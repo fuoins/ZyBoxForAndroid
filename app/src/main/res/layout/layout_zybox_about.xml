@@ -108,32 +108,36 @@
 
                     <TextView
                         android:id="@+id/zybox_about_check_update"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_margin="4dp"
+                        android:background="@drawable/zybox_donate_bg"
                         android:clickable="true"
                         android:focusable="true"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
+                        android:gravity="center"
                         android:text="@string/zybox_check_update"
-                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+                        android:textColor="@color/white"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <View
                         android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="?android:attr/listDivider" />
+                        android:layout_height="8dp"
+                        android:background="@android:color/transparent" />
 
                     <TextView
                         android:id="@+id/zybox_about_github"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_margin="4dp"
+                        android:background="@drawable/zybox_github_bg"
                         android:clickable="true"
                         android:focusable="true"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
+                        android:gravity="center"
                         android:text="@string/zybox_opt_github"
-                        android:textAppearance="?attr/textAppearanceSubtitle2" />
+                        android:textColor="@color/zybox_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
 
                     <View
                         android:layout_width="match_parent"

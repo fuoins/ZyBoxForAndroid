@@ -713,4 +713,6 @@
     <string name="zybox_opt_classic_selected_sum">Classic card style now highlights the selected node (light pink tint) just like the stroke style.</string>
     <string name="no_duplicate">No duplicate servers</string>
     <string name="no_duplicate_strict">No duplicate nodes (zy)</string>
+    <string name="multi_delete">Delete selected</string>
+    <string name="subscription_added_count">Subscription added, %d total in this group</string>
 </resources>

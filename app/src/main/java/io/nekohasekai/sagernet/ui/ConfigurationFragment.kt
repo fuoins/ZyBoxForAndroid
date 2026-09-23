@@ -621,6 +621,12 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_multi_clear_traffic -> {
                 multiClearTraffic()
             }
+            R.id.action_multi_delete -> {
+                runOnDefaultDispatcher {
+                    val toDelete = selectedProfiles()
+                    confirmMultiDelete(toDelete, getString(R.string.delete_confirm_prompt))
+                }
+            }
             R.id.action_multi_remove_duplicate -> {
                 multiRemoveDuplicate(strict = false)
             }
@@ -2214,17 +2220,28 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 else android.graphics.Color.TRANSPARENT
                             )
                         }
-                        // ZyBox: 多选模式选中态（左侧主题色竖条+浅粉底，覆盖在卡片样式之上）
+                        // ZyBox: 多选模式选中态（跟随当前卡片样式：描边=粉色整卡描边 / 经典=左侧竖条+浅粉底）
                         if (pf.multiSelectMode) {
                             val multiSel = pf.multiSelectedIds.contains(proxyEntity.id)
-                            card.strokeWidth = 0
-                            card.setCardBackgroundColor(
-                                if (multiSel) ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
-                                else defaultCardBg
-                            )
-                            selectedBar.setBackgroundColor(
-                                if (multiSel) primary else android.graphics.Color.TRANSPARENT
-                            )
+                            if (DataStore.profileCardStyle == 1) {
+                                card.strokeWidth = if (multiSel) dp2px(2) else dp2px(1)
+                                card.strokeColor = if (multiSel) {
+                                    primary
+                                } else {
+                                    ctx.getColour(io.nekohasekai.sagernet.R.color.card_stroke)
+                                }
+                                card.setCardBackgroundColor(defaultCardBg)
+                                selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            } else {
+                                card.strokeWidth = 0
+                                card.setCardBackgroundColor(
+                                    if (multiSel) ctx.getColour(io.nekohasekai.sagernet.R.color.card_selected_bg)
+                                    else defaultCardBg
+                                )
+                                selectedBar.setBackgroundColor(
+                                    if (multiSel) primary else android.graphics.Color.TRANSPARENT
+                                )
+                            }
                         }
                     }
 
