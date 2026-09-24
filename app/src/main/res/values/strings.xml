@@ -710,6 +710,7 @@
     <string name="multi_clipboard_standard_ping">Clipboard standard+ping</string>
     <string name="multi_clipboard_sn">Clipboard SN Link</string>
     <string name="multi_select_hint">Multi-select mode: tap nodes to select</string>
+    <string name="multi_range_hint">Long-press two nodes to select range (inclusive)</string>
     <string name="zybox_opt_multi_select">Multi-select mode</string>
     <string name="zybox_opt_multi_select_sum">Top-right ⋮ → Multi-select: tap nodes to select; select-all/invert/exit on top bar; batch clear traffic, remove duplicates / strict dedup, TCPing, URL Test, clear results, delete unavailable, batch QR &amp; clipboard export (standard / standard+ping / SN Link).</string>
     <string name="zybox_opt_init_dialog">First-run init wizard</string>

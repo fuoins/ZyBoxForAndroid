@@ -630,6 +630,7 @@
     <string name="multi_clipboard_standard_ping">多选到剪切板标准+ping</string>
     <string name="multi_clipboard_sn">多选到剪切板SN Link</string>
     <string name="multi_select_hint">已进入多选模式：点击节点进行选择</string>
+    <string name="multi_range_hint">长按两节点选择区间（含两端）</string>
     <string name="zybox_opt_multi_select">多选模式</string>
     <string name="zybox_opt_multi_select_sum">右上角 ⋮ → 多选：点击节点即可选择，顶部一键全选/反选/退出；批量清空流量、删除重复/去重zy版、TCPing、URL Test、清理测试结果、清理不可用配置、批量二维码与剪切板导出（标准/标准+ping/SN Link）。</string>
     <string name="zybox_opt_init_dialog">首次初始化向导</string>

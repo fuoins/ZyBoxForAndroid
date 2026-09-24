@@ -136,6 +136,8 @@ class ConfigurationFragment @JvmOverloads constructor(
     var multiSelectMode = false
         private set
     val multiSelectedIds = LinkedHashSet<Long>()
+    // ZyBox: 多选长按区间锚点——长按一个节点设为锚点并选中，再长按另一节点则选中两者之间的全部节点（含两端）
+    var multiRangeAnchor: Long? = null
 
     fun refreshMultiSelectMenu() {
         // ZyBox: 不重建菜单，仅切换多选/普通 items 可见性（重建会丢失排序与外观的 item 监听器）
@@ -145,6 +147,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         toolbar.menu.findItem(R.id.action_search)?.isVisible = !on
         toolbar.menu.findItem(R.id.action_add)?.isVisible = !on
         toolbar.menu.findItem(R.id.action_misc)?.isVisible = !on
+        toolbar.menu.findItem(R.id.action_multi_select)?.isVisible = !on
         toolbar.menu.findItem(R.id.action_multi_select_all)?.isVisible = on
         toolbar.menu.findItem(R.id.action_multi_select_invert)?.isVisible = on
         toolbar.menu.findItem(R.id.action_multi_select_exit)?.isVisible = on
@@ -160,7 +163,10 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun enterMultiSelect() {
         multiSelectMode = true
         multiSelectedIds.clear()
+        multiRangeAnchor = null
         refreshMultiSelectMenu()
+        // ZyBox: 全选按钮旁（标题位）显示区间选择提示
+        toolbar.setTitle(getString(R.string.multi_range_hint))
         adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
         snackbar(getString(R.string.multi_select_hint)).show()
     }
@@ -168,7 +174,10 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun exitMultiSelect() {
         multiSelectMode = false
         multiSelectedIds.clear()
+        multiRangeAnchor = null
         refreshMultiSelectMenu()
+        // ZyBox: 退出多选恢复无标题
+        toolbar.setTitle("")
         adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
     }
 
@@ -409,8 +418,8 @@ class ConfigurationFragment @JvmOverloads constructor(
         super.onViewCreated(view, savedInstanceState)
 
         if (!select) {
-            // ZyBox: 首页左上角显示 ZyBox 标题（15sp 加粗，工具栏按钮保持 always 显示）
-            toolbar.setTitle(R.string.app_name)
+            // ZyBox: 首页左上角不显示标题（删除 ZyBox 标题）
+            toolbar.setTitle("")
             toolbar.inflateMenu(R.menu.add_profile_menu)
             toolbar.setOnMenuItemClickListener(this)
             // ZyBox: 菜单开关项初始勾选状态
@@ -2207,6 +2216,30 @@ class ConfigurationFragment @JvmOverloads constructor(
                         val id = proxyEntity.id
                         if (!pf.multiSelectedIds.add(id)) pf.multiSelectedIds.remove(id)
                         (view.parent as? androidx.recyclerview.widget.RecyclerView)?.adapter?.notifyDataSetChanged()
+                    }
+                    // ZyBox: 长按区间选择——第一次长按设锚点并选中该节点，第二次长按选中两节点之间的全部节点（含两端）
+                    view.setOnLongClickListener {
+                        val id = proxyEntity.id
+                        val anchor = pf.multiRangeAnchor
+                        if (anchor == null) {
+                            pf.multiRangeAnchor = id
+                            pf.multiSelectedIds.add(id)
+                        } else {
+                            val list = (view.parent as? androidx.recyclerview.widget.RecyclerView)
+                                ?.adapter as? ConfigurationAdapter
+                            val order = list?.configurationIdList
+                            if (order != null) {
+                                val a = order.indexOf(anchor)
+                                val b = order.indexOf(id)
+                                if (a != -1 && b != -1) {
+                                    val (start, end) = if (a <= b) a to b else b to a
+                                    for (i in start..end) pf.multiSelectedIds.add(order[i])
+                                }
+                            }
+                            pf.multiRangeAnchor = null
+                        }
+                        (view.parent as? androidx.recyclerview.widget.RecyclerView)?.adapter?.notifyDataSetChanged()
+                        true
                     }
                 } else {
                     view.setOnClickListener {
