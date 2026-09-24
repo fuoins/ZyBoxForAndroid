@@ -555,6 +555,11 @@
     <string name="update_current_subscription">更新当前组订阅</string>
     <string name="toggle_auto_test">连接自动测速</string>
     <string name="toggle_sync_ping">测速延迟持久化同步</string>
+    <string name="toggle_sync_ping_fail">同↑+红色保留</string>
+    <string name="action_import_clipboard_ping">从剪切板导入+ping</string>
+    <string name="action_import_file_ping">从文件导入+ping</string>
+    <string name="multi_file_standard">多选到文件标准</string>
+    <string name="multi_file_ping">多选到文件+ping</string>
     <string name="group_not_subscription">组类型不是订阅</string>
     <string name="allow_insecure_on_request_sum">更新订阅的时候允许不安全的连接</string>
     <string name="global_allow_insecure">总是跳过 TLS 证书验证</string>

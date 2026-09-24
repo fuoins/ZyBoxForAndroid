@@ -164,6 +164,19 @@ class StatsBar @JvmOverloads constructor(
                 }
 
             } catch (e: Exception) {
+                // ZyBox: 同↑+红色保留——失败结果(超时/不可用/连接重置)也持久化到当前节点
+                if (DataStore.syncPingFailed) {
+                    val proxyId = DataStore.selectedProxy
+                    if (proxyId > 0) {
+                        val profile = SagerDatabase.proxyDao.getById(proxyId)
+                        if (profile != null) {
+                            profile.ping = 0
+                            profile.status = 3
+                            profile.error = e.readableMessage
+                            ProfileManager.updateProfile(profile)
+                        }
+                    }
+                }
                 Logs.w(e.toString())
                 onMainDispatcher {
                     isEnabled = true

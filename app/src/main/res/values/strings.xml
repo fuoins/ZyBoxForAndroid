@@ -632,6 +632,11 @@
     <string name="update_current_subscription">Update current Group\'s subscription</string>
     <string name="toggle_auto_test">Auto speed test on connect</string>
     <string name="toggle_sync_ping">Persist sync speed-test latency</string>
+    <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
+    <string name="action_import_clipboard_ping">Import from clipboard +ping</string>
+    <string name="action_import_file_ping">Import from file +ping</string>
+    <string name="multi_file_standard">Export selected to file (standard)</string>
+    <string name="multi_file_ping">Export selected to file +ping</string>
     <string name="group_not_subscription">Group type is not subscription</string>
     <string name="allow_insecure_on_request_sum">Disable certificate checking when updating
         subscriptions</string>

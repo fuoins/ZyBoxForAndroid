@@ -195,7 +195,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                 runOnDefaultDispatcher {
                     val profiles = sortedExportProfiles(selectedGroup)
                     val links = profiles.joinToString("\n") {
-                        it.toStdLink(compact = true) + if (it.ping > 0) "|ping=${it.ping}" else ""
+                        it.toStdLink(compact = true) + it.pingExportSuffix()
                     }
                     try {
                         (requireActivity() as MainActivity).contentResolver.openOutputStream(
@@ -456,7 +456,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     runOnDefaultDispatcher {
                         val profiles = sortedExportProfiles(selectedGroup)
                         val links = profiles.joinToString("\n") {
-                            it.toStdLink(compact = true) + if (it.ping > 0) "|ping=${it.ping}" else ""
+                            it.toStdLink(compact = true) + it.pingExportSuffix()
                         }
                         onMainDispatcher {
                             SagerNet.trySetPrimaryClip(links)

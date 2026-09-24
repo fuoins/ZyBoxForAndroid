@@ -249,8 +249,9 @@ suspend fun parseProxies(text: String): List<AbstractBean> {
         // ZyBox: apply imported ping values (best effort, in order)
         if (importedPings.isNotEmpty()) {
             list.forEachIndexed { index, bean ->
-                if (index < importedPings.size && importedPings[index] > 0) {
+                if (index < importedPings.size) {
                     bean.ping = importedPings[index]
+                    bean.importedPing = true
                 }
             }
         }

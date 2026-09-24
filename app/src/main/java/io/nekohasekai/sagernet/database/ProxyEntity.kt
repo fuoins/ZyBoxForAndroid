@@ -456,9 +456,17 @@ data class ProxyEntity(
         if (bean.ping > 0) {
             ping = bean.ping
             status = 1
+        } else if (bean.importedPing) {
+            // ZyBox: 显式 |ping=0 标记 = 超时/不可用/连接重置，恢复为失败状态（红色保留）
+            ping = 0
+            status = 3
         }
         return this
     }
+
+    // ZyBox: 导出带 ping 后缀——成功节点带实际延迟；失败节点(超时/不可用/连接重置)带 |ping=0
+    fun pingExportSuffix(): String =
+        if (ping > 0 || status == 2 || status == 3) "|ping=$ping" else ""
 
     fun settingIntent(ctx: Context, isSubscription: Boolean): Intent {
         return Intent(

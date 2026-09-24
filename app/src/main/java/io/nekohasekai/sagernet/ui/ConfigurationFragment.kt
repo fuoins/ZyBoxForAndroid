@@ -152,6 +152,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         if (!on) {
             toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
+            toolbar.menu.findItem(R.id.action_toggle_sync_ping_fail)?.isChecked = DataStore.syncPingFailed
             toolbar.menu.findItem(R.id.action_global_mode)?.isChecked = DataStore.globalMode
         }
     }
@@ -174,8 +175,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun multiLink(profile: ProxyEntity, withPing: Boolean, sn: Boolean): String {
         return when {
             sn -> profile.requireBean().toUniversalLink()
-            withPing -> profile.toStdLink(compact = true) +
-                    if (profile.ping > 0) "|ping=${profile.ping}" else ""
+            withPing -> profile.toStdLink(compact = true) + profile.pingExportSuffix()
             else -> profile.toStdLink()
         }
     }
@@ -416,6 +416,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             // ZyBox: 菜单开关项初始勾选状态
             toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
+            toolbar.menu.findItem(R.id.action_toggle_sync_ping_fail)?.isChecked = DataStore.syncPingFailed
             toolbar.menu.findItem(R.id.action_global_mode)?.isChecked = DataStore.globalMode
         } else {
             toolbar.setTitle(titleRes)
@@ -519,6 +520,51 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
         return super.onKeyDown(ketCode, event)
     }
+
+    // ZyBox: 多选导出到文件（标准 / +ping）
+    private val multiExportFileStandard =
+        registerForActivityResult(ActivityResultContracts.CreateDocument()) { uri ->
+            if (uri != null) {
+                val text = selectedProfiles().joinToString("\n") { multiLink(it, withPing = false, sn = false) }
+                runOnDefaultDispatcher {
+                    try {
+                        requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                            out.write(text.toByteArray())
+                        }
+                        onMainDispatcher {
+                            (activity as MainActivity).snackbar(R.string.action_export_msg).show()
+                        }
+                    } catch (e: Exception) {
+                        Logs.w(e)
+                        onMainDispatcher {
+                            (activity as MainActivity).snackbar(R.string.action_export_err).show()
+                        }
+                    }
+                }
+            }
+        }
+
+    private val multiExportFilePing =
+        registerForActivityResult(ActivityResultContracts.CreateDocument()) { uri ->
+            if (uri != null) {
+                val text = selectedProfiles().joinToString("\n") { multiLink(it, withPing = true, sn = false) }
+                runOnDefaultDispatcher {
+                    try {
+                        requireContext().contentResolver.openOutputStream(uri)?.use { out ->
+                            out.write(text.toByteArray())
+                        }
+                        onMainDispatcher {
+                            (activity as MainActivity).snackbar(R.string.action_export_msg).show()
+                        }
+                    } catch (e: Exception) {
+                        Logs.w(e)
+                        onMainDispatcher {
+                            (activity as MainActivity).snackbar(R.string.action_export_err).show()
+                        }
+                    }
+                }
+            }
+        }
 
     private val importFile =
         registerForActivityResult(ActivityResultContracts.GetContent()) { file ->
@@ -673,6 +719,19 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_multi_clipboard_standard -> multiClipboard(withPing = false, sn = false)
             R.id.action_multi_clipboard_standard_ping -> multiClipboard(withPing = true, sn = false)
             R.id.action_multi_clipboard_sn -> multiClipboard(withPing = false, sn = true)
+            // ZyBox: 多选导出到文件
+            R.id.action_multi_file_standard -> {
+                val n = multiSelectedIds.size
+                if (n == 0) {
+                    snackbar(getString(R.string.action_export_err)).show()
+                } else multiExportFileStandard.launch("zybox_multi_standard.txt")
+            }
+            R.id.action_multi_file_ping -> {
+                val n = multiSelectedIds.size
+                if (n == 0) {
+                    snackbar(getString(R.string.action_export_err)).show()
+                } else multiExportFilePing.launch("zybox_multi_ping.txt")
+            }
             // ZyBox: 回到顶部
             R.id.action_scroll_top -> {
                 adapter.groupFragments[DataStore.selectedGroup]
@@ -715,6 +774,33 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             R.id.action_import_file -> {
+                startFilesForResult(importFile, "*/*")
+            }
+
+            // ZyBox: 从剪切板导入+ping（恢复 |ping= 标记，含超时/不可用/连接重置的失败状态）
+            R.id.action_import_clipboard_ping -> {
+                val text = SagerNet.getClipboardText()
+                if (text.isBlank()) {
+                    snackbar(getString(R.string.clipboard_empty)).show()
+                } else runOnDefaultDispatcher {
+                    try {
+                        val proxies = RawUpdater.parseRaw(text)
+                        if (proxies.isNullOrEmpty()) onMainDispatcher {
+                            snackbar(getString(R.string.no_proxies_found_in_clipboard)).show()
+                        } else import(proxies)
+                    } catch (e: SubscriptionFoundException) {
+                        (requireActivity() as MainActivity).importSubscription(e.link.toUri())
+                    } catch (e: Exception) {
+                        Logs.w(e)
+                        onMainDispatcher {
+                            snackbar(e.readableMessage).show()
+                        }
+                    }
+                }
+            }
+
+            // ZyBox: 从文件导入+ping（恢复 |ping= 标记，含失败状态）
+            R.id.action_import_file_ping -> {
                 startFilesForResult(importFile, "*/*")
             }
 
@@ -795,10 +881,23 @@ class ConfigurationFragment @JvmOverloads constructor(
                 true
             }
 
-            // ZyBox: 连接延迟同步节点 开关（默认开，点击切换）
+            // ZyBox: 测速延迟持久化同步 开关（与"同↑+红色保留"单选互斥；取消则两者都关）
             R.id.action_toggle_sync_ping -> {
                 DataStore.syncPingOnTest = !DataStore.syncPingOnTest
+                if (!DataStore.syncPingOnTest) DataStore.syncPingFailed = false
                 item.isChecked = DataStore.syncPingOnTest
+                toolbar.menu.findItem(R.id.action_toggle_sync_ping_fail)?.isChecked =
+                    DataStore.syncPingFailed
+                true
+            }
+
+            // ZyBox: 同↑+红色保留——与"测速延迟持久化同步"单选互斥（勾选时自动带上基础同步）
+            R.id.action_toggle_sync_ping_fail -> {
+                DataStore.syncPingFailed = !DataStore.syncPingFailed
+                if (DataStore.syncPingFailed) DataStore.syncPingOnTest = true
+                item.isChecked = DataStore.syncPingFailed
+                toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked =
+                    DataStore.syncPingOnTest
                 true
             }
 
@@ -2415,13 +2514,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                     when (item.itemId) {
                         R.id.action_standard_qr -> showCode(entity.toStdLink())
                         R.id.action_standard_ping_qr -> showCode(
-                            entity.toStdLink(compact = true) +
-                                    if (entity.ping > 0) "|ping=${entity.ping}" else ""
+                            entity.toStdLink(compact = true) + entity.pingExportSuffix()
                         )
                         R.id.action_standard_clipboard -> export(entity.toStdLink())
                         R.id.action_standard_ping_clipboard -> export(
-                            entity.toStdLink(compact = true) +
-                                    if (entity.ping > 0) "|ping=${entity.ping}" else ""
+                            entity.toStdLink(compact = true) + entity.pingExportSuffix()
                         )
                         R.id.action_universal_qr -> showCode(entity.requireBean().toUniversalLink())
                         R.id.action_universal_clipboard -> export(

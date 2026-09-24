@@ -97,6 +97,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     // ZyBox: 连接后自动测速 / 测速同步节点列表（默认开启，可在主页 ⋮ 菜单切换）
     var autoTestOnConnect by configurationStore.boolean(Key.AUTO_TEST_ON_CONNECT) { true }
     var syncPingOnTest by configurationStore.boolean(Key.SYNC_PING_ON_TEST) { true }
+    // ZyBox: 同↑+红色保留——同步成功延迟的同时，把超时/不可用/连接重置的失败结果也持久化（节点延迟显示红色）
+    var syncPingFailed by configurationStore.boolean(Key.SYNC_PING_FAILED) { false }
 
     var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
     var groupLayoutMode by configurationStore.stringToInt(Key.GROUP_LAYOUT_MODE) { 0 }

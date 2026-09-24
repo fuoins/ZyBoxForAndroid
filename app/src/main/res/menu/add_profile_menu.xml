@@ -34,6 +34,12 @@
             <item
                 android:id="@+id/action_import_file"
                 android:title="@string/action_import_file" />
+            <item
+                android:id="@+id/action_import_clipboard_ping"
+                android:title="@string/action_import_clipboard_ping" />
+            <item
+                android:id="@+id/action_import_file_ping"
+                android:title="@string/action_import_file_ping" />
             <item android:title="@string/add_profile_methods_manual_settings">
                 <menu>
                     <item
@@ -164,6 +170,12 @@
                     <item
                         android:id="@+id/action_multi_clipboard_sn"
                         android:title="@string/multi_clipboard_sn" />
+                    <item
+                        android:id="@+id/action_multi_file_standard"
+                        android:title="@string/multi_file_standard" />
+                    <item
+                        android:id="@+id/action_multi_file_ping"
+                        android:title="@string/multi_file_ping" />
                 </menu>
             </item>
         </menu>
@@ -188,6 +200,10 @@
                 android:id="@+id/action_toggle_sync_ping"
                 android:checkable="true"
                 android:title="@string/toggle_sync_ping" />
+            <item
+                android:id="@+id/action_toggle_sync_ping_fail"
+                android:checkable="true"
+                android:title="@string/toggle_sync_ping_fail" />
             <item
                 android:id="@+id/action_update_subscription"
                 android:title="@string/update_current_subscription" />
