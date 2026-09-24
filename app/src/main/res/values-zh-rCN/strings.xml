@@ -205,8 +205,8 @@
     <string name="delete">删除</string>
     <string name="delete_confirm_prompt">您确定要删除这个服务器配置吗\?</string>
     <string name="share_qr_nfc">二维码</string>
-    <string name="add_profile_methods_scan_qr_code">扫描二维码</string>
-    <string name="add_profile_methods_manual_settings">手动输入</string>
+    <string name="add_profile_methods_scan_qr_code">扫描二维码到当前分组</string>
+    <string name="add_profile_methods_manual_settings">手动输入到当前分组</string>
     <plurals name="removed">
         <item quantity="other">已删除 %d 个配置</item>
     </plurals>
@@ -558,6 +558,12 @@
     <string name="toggle_sync_ping_fail">同↑+红色保留</string>
     <string name="action_import_clipboard_ping">从剪切板导入+ping到当前分组</string>
     <string name="action_import_file_ping">从文件导入+ping到当前分组</string>
+    <string name="action_import_clipboard_new_group">从剪切板导入到新建分组</string>
+    <string name="action_import_file_new_group">从文件导入到新建分组</string>
+    <string name="action_import_clipboard_ping_new_group">从剪切板导入+ping到新建分组</string>
+    <string name="action_import_file_ping_new_group">从文件导入+ping到新建分组</string>
+    <string name="action_scan_qr_new_group">扫描二维码到新建分组</string>
+    <string name="manual_new_group">手动输入到新建分组</string>
     <string name="multi_file_group">多选到文件</string>
     <string name="connection_tcp_ping_untested">TCPing未测试节点</string>
     <string name="connection_url_test_untested">URL Test未测试节点</string>
@@ -631,6 +637,9 @@
     <string name="multi_clipboard_sn">多选到剪切板SN Link</string>
     <string name="multi_select_hint">已进入多选模式：点击节点进行选择</string>
     <string name="multi_range_hint">长按两节点选择区间（含两端）</string>
+    <string name="multi_range_btn">区间</string>
+    <string name="multi_range_cancel">取消</string>
+    <string name="multi_range_tip">点击两节点会选择区间节点及本身</string>
     <string name="zybox_opt_multi_select">多选模式</string>
     <string name="zybox_opt_multi_select_sum">右上角 ⋮ → 多选：点击节点即可选择，顶部一键全选/反选/退出；批量清空流量、删除重复/去重zy版、TCPing、URL Test、清理测试结果、清理不可用配置、批量二维码与剪切板导出（标准/标准+ping/SN Link）。</string>
     <string name="zybox_opt_init_dialog">首次初始化向导</string>

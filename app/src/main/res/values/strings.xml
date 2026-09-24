@@ -320,8 +320,8 @@
     <string name="delete">Remove</string>
     <string name="delete_confirm_prompt">Are you sure you want to remove this profile?</string>
     <string name="share_qr_nfc">QR code</string>
-    <string name="add_profile_methods_scan_qr_code">Scan QR code</string>
-    <string name="add_profile_methods_manual_settings">Manual Settings</string>
+    <string name="add_profile_methods_scan_qr_code">Scan QR code to current group</string>
+    <string name="add_profile_methods_manual_settings">Manual input to current group</string>
     <plurals name="removed">
         <item quantity="one">Removed</item>
         <item quantity="other">%d items removed</item>
@@ -635,6 +635,12 @@
     <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
     <string name="action_import_clipboard_ping">Import from clipboard +ping to current group</string>
     <string name="action_import_file_ping">Import from file +ping to current group</string>
+    <string name="action_import_clipboard_new_group">Import from clipboard to new group</string>
+    <string name="action_import_file_new_group">Import from file to new group</string>
+    <string name="action_import_clipboard_ping_new_group">Import from clipboard +ping to new group</string>
+    <string name="action_import_file_ping_new_group">Import from file +ping to new group</string>
+    <string name="action_scan_qr_new_group">Scan QR to new group</string>
+    <string name="manual_new_group">Manual input to new group</string>
     <string name="multi_file_group">Export selected to file</string>
     <string name="connection_tcp_ping_untested">TCPing untested nodes</string>
     <string name="connection_url_test_untested">URL test untested nodes</string>
@@ -711,6 +717,9 @@
     <string name="multi_clipboard_sn">Clipboard SN Link</string>
     <string name="multi_select_hint">Multi-select mode: tap nodes to select</string>
     <string name="multi_range_hint">Long-press two nodes to select range (inclusive)</string>
+    <string name="multi_range_btn">Range</string>
+    <string name="multi_range_cancel">Cancel</string>
+    <string name="multi_range_tip">Tap two nodes to select the range and the two nodes</string>
     <string name="zybox_opt_multi_select">Multi-select mode</string>
     <string name="zybox_opt_multi_select_sum">Top-right ⋮ → Multi-select: tap nodes to select; select-all/invert/exit on top bar; batch clear traffic, remove duplicates / strict dedup, TCPing, URL Test, clear results, delete unavailable, batch QR &amp; clipboard export (standard / standard+ping / SN Link).</string>
     <string name="zybox_opt_init_dialog">First-run init wizard</string>

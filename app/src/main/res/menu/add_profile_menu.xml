@@ -40,6 +40,21 @@
             <item
                 android:id="@+id/action_import_file_ping"
                 android:title="@string/action_import_file_ping" />
+            <item
+                android:id="@+id/action_import_clipboard_new_group"
+                android:title="@string/action_import_clipboard_new_group" />
+            <item
+                android:id="@+id/action_import_file_new_group"
+                android:title="@string/action_import_file_new_group" />
+            <item
+                android:id="@+id/action_import_clipboard_ping_new_group"
+                android:title="@string/action_import_clipboard_ping_new_group" />
+            <item
+                android:id="@+id/action_import_file_ping_new_group"
+                android:title="@string/action_import_file_ping_new_group" />
+            <item
+                android:id="@+id/action_scan_qr_new_group"
+                android:title="@string/action_scan_qr_new_group" />
             <item android:title="@string/add_profile_methods_manual_settings">
                 <menu>
                     <item
@@ -95,6 +110,61 @@
                         android:title="@string/proxy_chain" />
                 </menu>
             </item>
+            <item android:title="@string/manual_new_group">
+                <menu>
+                    <item
+                        android:id="@+id/action_new_socks_new_group"
+                        android:title="@string/action_socks" />
+                    <item
+                        android:id="@+id/action_new_http_new_group"
+                        android:title="@string/action_http" />
+                    <item
+                        android:id="@+id/action_new_ss_new_group"
+                        android:title="@string/action_shadowsocks" />
+                    <item
+                        android:id="@+id/action_new_vmess_new_group"
+                        android:title="@string/action_vmess" />
+                    <item
+                        android:id="@+id/action_new_vless_new_group"
+                        android:title="VLESS" />
+                    <item
+                        android:id="@+id/action_new_trojan_new_group"
+                        android:title="@string/action_trojan" />
+                    <item
+                        android:id="@+id/action_new_trojan_go_new_group"
+                        android:title="@string/action_trojan_go" />
+                    <item
+                        android:id="@+id/action_new_mieru_new_group"
+                        android:title="@string/action_mieru" />
+                    <item
+                        android:id="@+id/action_new_naive_new_group"
+                        android:title="@string/action_naive" />
+                    <item
+                        android:id="@+id/action_new_hysteria_new_group"
+                        android:title="@string/action_hysteria" />
+                    <item
+                        android:id="@+id/action_new_tuic_new_group"
+                        android:title="@string/action_tuic" />
+                    <item
+                        android:id="@+id/action_new_shadowtls_new_group"
+                        android:title="@string/action_shadowtls" />
+                    <item
+                        android:id="@+id/action_new_anytls_new_group"
+                        android:title="@string/action_anytls" />
+                    <item
+                        android:id="@+id/action_new_ssh_new_group"
+                        android:title="@string/action_ssh" />
+                    <item
+                        android:id="@+id/action_new_wg_new_group"
+                        android:title="@string/action_wireguard" />
+                    <item
+                        android:id="@+id/action_new_config_new_group"
+                        android:title="@string/custom_config" />
+                    <item
+                        android:id="@+id/action_new_chain_new_group"
+                        android:title="@string/proxy_chain" />
+                </menu>
+            </item>
         </menu>
     </item>
 
@@ -106,6 +176,11 @@
         app:showAsAction="always" />
 
     <!-- ZyBox: 多选模式工具栏（默认隐藏，进入多选时显示） -->
+    <item
+        android:id="@+id/action_multi_range"
+        android:title="@string/multi_range_btn"
+        android:visible="false"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_multi_select_all"
         android:title="@string/multi_select_all"

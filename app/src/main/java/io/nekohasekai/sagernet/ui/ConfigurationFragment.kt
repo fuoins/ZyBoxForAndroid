@@ -136,7 +136,8 @@ class ConfigurationFragment @JvmOverloads constructor(
     var multiSelectMode = false
         private set
     val multiSelectedIds = LinkedHashSet<Long>()
-    // ZyBox: 多选长按区间锚点——长按一个节点设为锚点并选中，再长按另一节点则选中两者之间的全部节点（含两端）
+    // ZyBox: 区间选择模式——点击"区间"按钮进入，点击两个节点选中区间（含两端），选中后自动退出
+    var multiRangeMode = false
     var multiRangeAnchor: Long? = null
 
     fun refreshMultiSelectMenu() {
@@ -152,6 +153,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         toolbar.menu.findItem(R.id.action_multi_select_invert)?.isVisible = on
         toolbar.menu.findItem(R.id.action_multi_select_exit)?.isVisible = on
         toolbar.menu.findItem(R.id.action_multi_misc)?.isVisible = on
+        toolbar.menu.findItem(R.id.action_multi_range)?.isVisible = on
         if (!on) {
             toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
@@ -163,10 +165,9 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun enterMultiSelect() {
         multiSelectMode = true
         multiSelectedIds.clear()
+        multiRangeMode = false
         multiRangeAnchor = null
         refreshMultiSelectMenu()
-        // ZyBox: 全选按钮旁（标题位）显示区间选择提示
-        toolbar.setTitle(getString(R.string.multi_range_hint))
         adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
         snackbar(getString(R.string.multi_select_hint)).show()
     }
@@ -174,10 +175,9 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun exitMultiSelect() {
         multiSelectMode = false
         multiSelectedIds.clear()
+        multiRangeMode = false
         multiRangeAnchor = null
         refreshMultiSelectMenu()
-        // ZyBox: 退出多选恢复无标题
-        toolbar.setTitle("")
         adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
     }
 
@@ -577,6 +577,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     // ZyBox: 本次文件导入是否恢复 |ping= 标记（仅"从文件导入+ping"为 true）
     private var importRestorePing = false
+    // ZyBox: 本次文件导入是否导入到新建分组（"从文件导入到新建分组/从文件导入+ping到新建分组"）
+    private var importNewGroup = false
 
     private val importFile =
         registerForActivityResult(ActivityResultContracts.GetContent()) { file ->
@@ -614,6 +616,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                     if (proxies.isEmpty()) onMainDispatcher {
                         snackbar(getString(R.string.no_proxies_found_in_file)).show()
                     } else {
+                        // ZyBox: 到新建分组：先创建新分组并切换到它
+                        if (importNewGroup) {
+                            importNewGroup = false
+                            createNewGroupForImport()
+                        }
                         // ZyBox: 普通"从文件导入"不带 ping，只有"从文件导入+ping"恢复延迟标记
                         if (!importRestorePing) proxies.forEach { it.ping = 0; it.importedPing = false }
                         import(proxies)
@@ -628,6 +635,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
             }
         }
+
+    // ZyBox: 创建"到新建分组"用的默认基础分组"宇神神了"并切换到它（GroupManager.createGroup 会自动刷新分组栏）
+    suspend fun createNewGroupForImport(): Long {
+        val g = ProxyGroup(type = GroupType.BASIC).apply { name = "宇神神了" }
+        val created = GroupManager.createGroup(g)
+        DataStore.selectedGroup = created.id
+        GroupManager.postReload(created.id)
+        return created.id
+    }
 
     suspend fun import(proxies: List<AbstractBean>) {
         val targetId = DataStore.selectedGroupForImport()
@@ -687,6 +703,21 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_multi_select -> {
                 enterMultiSelect()
             }
+            // ZyBox: 区间选择按钮——进入区间模式(变"取消")/退出区间模式(恢复普通多选点击)
+            R.id.action_multi_range -> {
+                multiRangeMode = !multiRangeMode
+                multiRangeAnchor = null
+                val item2 = toolbar.menu.findItem(R.id.action_multi_range)
+                if (multiRangeMode) {
+                    item2?.setTitle(R.string.multi_range_cancel)
+                    snackbar(getString(R.string.multi_range_tip)).show()
+                } else {
+                    item2?.setTitle(R.string.multi_range_btn)
+                }
+                adapter.groupFragments[DataStore.selectedGroup]?.adapter?.notifyDataSetChanged()
+                true
+            }
+
             R.id.action_multi_select_all -> {
                 multiSelectedIds.clear()
                 multiSelectedIds.addAll(currentGroupProfiles().map { it.id })
@@ -826,6 +857,81 @@ class ConfigurationFragment @JvmOverloads constructor(
                 startFilesForResult(importFile, "*/*")
             }
 
+            // ZyBox: 从剪切板导入到新建分组
+            R.id.action_import_clipboard_new_group -> {
+                val text = SagerNet.getClipboardText()
+                if (text.isBlank()) {
+                    snackbar(getString(R.string.clipboard_empty)).show()
+                } else runOnDefaultDispatcher {
+                    try {
+                        val proxies = RawUpdater.parseRaw(text)
+                        if (proxies.isNullOrEmpty()) onMainDispatcher {
+                            snackbar(getString(R.string.no_proxies_found_in_clipboard)).show()
+                        } else {
+                            createNewGroupForImport()
+                            proxies.forEach { it.ping = 0; it.importedPing = false }
+                            import(proxies)
+                        }
+                    } catch (e: SubscriptionFoundException) {
+                        (requireActivity() as MainActivity).importSubscription(e.link.toUri())
+                    } catch (e: Exception) {
+                        Logs.w(e)
+                        onMainDispatcher {
+                            snackbar(e.readableMessage).show()
+                        }
+                    }
+                }
+            }
+
+            // ZyBox: 从文件导入到新建分组
+            R.id.action_import_file_new_group -> {
+                importNewGroup = true
+                importRestorePing = false
+                startFilesForResult(importFile, "*/*")
+            }
+
+            // ZyBox: 从剪切板导入+ping到新建分组
+            R.id.action_import_clipboard_ping_new_group -> {
+                val text = SagerNet.getClipboardText()
+                if (text.isBlank()) {
+                    snackbar(getString(R.string.clipboard_empty)).show()
+                } else runOnDefaultDispatcher {
+                    try {
+                        val proxies = RawUpdater.parseRaw(text)
+                        if (proxies.isNullOrEmpty()) onMainDispatcher {
+                            snackbar(getString(R.string.no_proxies_found_in_clipboard)).show()
+                        } else {
+                            createNewGroupForImport()
+                            import(proxies)
+                        }
+                    } catch (e: SubscriptionFoundException) {
+                        (requireActivity() as MainActivity).importSubscription(e.link.toUri())
+                    } catch (e: Exception) {
+                        Logs.w(e)
+                        onMainDispatcher {
+                            snackbar(e.readableMessage).show()
+                        }
+                    }
+                }
+            }
+
+            // ZyBox: 从文件导入+ping到新建分组
+            R.id.action_import_file_ping_new_group -> {
+                importNewGroup = true
+                importRestorePing = true
+                startFilesForResult(importFile, "*/*")
+            }
+
+            // ZyBox: 扫描二维码到新建分组
+            R.id.action_scan_qr_new_group -> {
+                runOnDefaultDispatcher {
+                    createNewGroupForImport()
+                    onMainDispatcher {
+                        startActivity(Intent(context, ScannerActivity::class.java))
+                    }
+                }
+            }
+
             R.id.action_new_socks -> {
                 startActivity(Intent(requireActivity(), SocksSettingsActivity::class.java))
             }
@@ -894,6 +1000,59 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             R.id.action_new_chain -> {
                 startActivity(Intent(requireActivity(), ChainSettingsActivity::class.java))
+            }
+
+            // ZyBox: 手动输入到新建分组（先创建新分组再打开设置页，保存时自动落到新分组）
+            R.id.action_new_socks_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), SocksSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_http_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), HttpSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_ss_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), ShadowsocksSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_vmess_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), VMessSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_vless_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), VMessSettingsActivity::class.java).apply { putExtra("vless", true) }) } }
+            }
+            R.id.action_new_trojan_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), TrojanSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_trojan_go_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), TrojanGoSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_mieru_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), MieruSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_naive_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), NaiveSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_hysteria_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), HysteriaSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_tuic_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), TuicSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_ssh_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), SSHSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_wg_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), WireGuardSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_shadowtls_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), ShadowTLSSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_anytls_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), AnyTLSSettingsActivity::class.java)) } }
+            }
+            R.id.action_new_config_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), ConfigSettingActivity::class.java)) } }
+            }
+            R.id.action_new_chain_new_group -> {
+                runOnDefaultDispatcher { createNewGroupForImport(); onMainDispatcher { startActivity(Intent(requireActivity(), ChainSettingsActivity::class.java)) } }
             }
 
             // ZyBox: 连接自动测速 开关（默认开，点击切换）
@@ -2211,35 +2370,35 @@ class ConfigurationFragment @JvmOverloads constructor(
                         (requireActivity() as SelectCallback).returnProfile(proxyEntity.id)
                     }
                 } else if (pf.multiSelectMode) {
-                    // ZyBox: 多选模式点击只切换选中
+                    // ZyBox: 多选模式点击：普通模式切换选中；区间模式点击两个节点选中区间（含两端），选完自动退出区间模式
                     view.setOnClickListener {
                         val id = proxyEntity.id
-                        if (!pf.multiSelectedIds.add(id)) pf.multiSelectedIds.remove(id)
-                        (view.parent as? androidx.recyclerview.widget.RecyclerView)?.adapter?.notifyDataSetChanged()
-                    }
-                    // ZyBox: 长按区间选择——第一次长按设锚点并选中该节点，第二次长按选中两节点之间的全部节点（含两端）
-                    view.setOnLongClickListener {
-                        val id = proxyEntity.id
-                        val anchor = pf.multiRangeAnchor
-                        if (anchor == null) {
-                            pf.multiRangeAnchor = id
-                            pf.multiSelectedIds.add(id)
-                        } else {
-                            val list = (view.parent as? androidx.recyclerview.widget.RecyclerView)
-                                ?.adapter as? ConfigurationAdapter
-                            val order = list?.configurationIdList
-                            if (order != null) {
-                                val a = order.indexOf(anchor)
-                                val b = order.indexOf(id)
-                                if (a != -1 && b != -1) {
-                                    val (start, end) = if (a <= b) a to b else b to a
-                                    for (i in start..end) pf.multiSelectedIds.add(order[i])
+                        if (pf.multiRangeMode) {
+                            val anchor = pf.multiRangeAnchor
+                            if (anchor == null) {
+                                pf.multiRangeAnchor = id
+                                pf.multiSelectedIds.add(id)
+                            } else {
+                                val list = (view.parent as? androidx.recyclerview.widget.RecyclerView)
+                                    ?.adapter as? ConfigurationAdapter
+                                val order = list?.configurationIdList
+                                if (order != null) {
+                                    val a = order.indexOf(anchor)
+                                    val b = order.indexOf(id)
+                                    if (a != -1 && b != -1) {
+                                        val (start, end) = if (a <= b) a to b else b to a
+                                        for (i in start..end) pf.multiSelectedIds.add(order[i])
+                                    }
                                 }
+                                // 选中区间完成：退出区间模式，样式恢复经典/描边
+                                pf.multiRangeMode = false
+                                pf.multiRangeAnchor = null
+                                pf.toolbar.menu.findItem(R.id.action_multi_range)?.setTitle(R.string.multi_range_btn)
                             }
-                            pf.multiRangeAnchor = null
+                        } else {
+                            if (!pf.multiSelectedIds.add(id)) pf.multiSelectedIds.remove(id)
                         }
                         (view.parent as? androidx.recyclerview.widget.RecyclerView)?.adapter?.notifyDataSetChanged()
-                        true
                     }
                 } else {
                     view.setOnClickListener {
@@ -2418,8 +2577,17 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 else android.graphics.Color.TRANSPARENT
                             )
                         }
-                        // ZyBox: 多选模式选中态（跟随当前卡片样式：描边=粉色整卡描边 / 经典=左侧竖条+浅粉底）
-                        if (pf.multiSelectMode) {
+                        // ZyBox: 区间选择模式选中态：独立新样式（主题色浅底+主题色描边），区别于经典/描边
+                        if (pf.multiSelectMode && pf.multiRangeMode) {
+                            val rangeSel = pf.multiSelectedIds.contains(proxyEntity.id)
+                            card.strokeWidth = if (rangeSel) dp2px(2) else 0
+                            card.strokeColor = if (rangeSel) primary else android.graphics.Color.TRANSPARENT
+                            card.cardElevation = 0f
+                            card.setCardBackgroundColor(
+                                if (rangeSel) (primary and 0x00FFFFFF) or (0x14 shl 24) else defaultCardBg
+                            )
+                            selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        } else if (pf.multiSelectMode) {
                             val multiSel = pf.multiSelectedIds.contains(proxyEntity.id)
                             if (DataStore.profileCardStyle == 1) {
                                 card.strokeWidth = if (multiSel) dp2px(2) else dp2px(1)
