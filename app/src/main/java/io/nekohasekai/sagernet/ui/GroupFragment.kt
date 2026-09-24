@@ -204,7 +204,26 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
         suspend fun reload() {
             val groups = SagerDatabase.groupDao.allGroups().toMutableList()
-            if (groups.size > 1 && SagerDatabase.proxyDao.countByGroup(groups.find { it.ungrouped }!!.id) == 0L) groups.removeAll { it.ungrouped }
+            // ZyBox: 未分组自动迁移到"宇神神了"并删除；空未分组一律移除（不再依赖 size>1）
+            val ungrouped = groups.find { it.ungrouped }
+            if (ungrouped != null) {
+                val zyGroup = groups.find { it.name == "宇神神了" && !it.ungrouped }
+                if (zyGroup != null && ungrouped.id != zyGroup.id) {
+                    val entities = SagerDatabase.proxyDao.getByGroup(ungrouped.id)
+                    if (entities.isNotEmpty()) {
+                        var order = SagerDatabase.proxyDao.nextOrder(zyGroup.id) ?: 1L
+                        entities.forEach {
+                            it.groupId = zyGroup.id
+                            it.userOrder = order++
+                        }
+                        SagerDatabase.proxyDao.updateProxy(entities)
+                    }
+                    SagerDatabase.groupDao.deleteGroup(ungrouped)
+                    groups.remove(ungrouped)
+                } else if (SagerDatabase.proxyDao.countByGroup(ungrouped.id) == 0L) {
+                    groups.removeAll { it.ungrouped }
+                }
+            }
             groupList.clear()
             groupList.addAll(groups)
             groupListView.post {
@@ -284,6 +303,8 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
         }
 
         override suspend fun groupAdd(group: ProxyGroup) {
+            // ZyBox: 防御——添加新分组前清除残留的空未分组
+            groupList.removeAll { it.ungrouped }
             groupList.add(group)
             delay(300L)
 

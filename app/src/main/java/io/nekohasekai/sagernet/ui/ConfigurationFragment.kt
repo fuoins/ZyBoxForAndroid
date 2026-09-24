@@ -1463,6 +1463,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         override suspend fun groupAdd(group: ProxyGroup) {
             tabLayout.post {
+                // ZyBox: 防御——添加新分组前清除残留的空未分组
+                groupList.removeAll { it.ungrouped }
                 groupList.add(group)
 
                 if (groupList.any { !it.ungrouped }) tabLayout.post {
