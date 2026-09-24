@@ -142,11 +142,23 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
     private lateinit var selectedGroup: ProxyGroup
 
+    // ZyBox: 导出按订阅顺序排列——主订阅(0)节点在前，额外订阅按订阅 userOrder，订阅内按节点 userOrder
+    private suspend fun sortedExportProfiles(groupId: Long): List<ProxyEntity> {
+        val profiles = SagerDatabase.proxyDao.getByGroup(groupId)
+        val subOrder = SagerDatabase.subscriptionDao.getByGroup(groupId)
+            .mapIndexed { index, sub -> sub.id to index }
+            .toMap()
+        return profiles.sortedWith(compareBy(
+            { if (it.subscriptionId <= 0L) -1L else subOrder[it.subscriptionId]?.toLong() ?: Long.MAX_VALUE },
+            { it.userOrder }
+        ))
+    }
+
     private val exportProfiles =
         registerForActivityResult(ActivityResultContracts.CreateDocument()) { data ->
             if (data != null) {
                 runOnDefaultDispatcher {
-                    val profiles = SagerDatabase.proxyDao.getByGroup(selectedGroup.id)
+                    val profiles = sortedExportProfiles(selectedGroup.id)
                     val links = profiles.joinToString("\n") { it.toStdLink(compact = true) }
                     try {
                         (requireActivity() as MainActivity).contentResolver.openOutputStream(
@@ -173,7 +185,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
         registerForActivityResult(ActivityResultContracts.CreateDocument()) { data ->
             if (data != null) {
                 runOnDefaultDispatcher {
-                    val profiles = SagerDatabase.proxyDao.getByGroup(selectedGroup.id)
+                    val profiles = sortedExportProfiles(selectedGroup.id)
                     val links = profiles.joinToString("\n") {
                         it.toStdLink(compact = true) + if (it.ping > 0) "|ping=${it.ping}" else ""
                     }
@@ -419,7 +431,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
                 R.id.action_export_clipboard -> {
                     runOnDefaultDispatcher {
-                        val profiles = SagerDatabase.proxyDao.getByGroup(selectedGroup.id)
+                        val profiles = sortedExportProfiles(selectedGroup.id)
                         val links = profiles.joinToString("\n") { it.toStdLink(compact = true) }
                         onMainDispatcher {
                             SagerNet.trySetPrimaryClip(links)
@@ -434,7 +446,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
                 R.id.action_export_ping_clipboard -> {
                     runOnDefaultDispatcher {
-                        val profiles = SagerDatabase.proxyDao.getByGroup(selectedGroup.id)
+                        val profiles = sortedExportProfiles(selectedGroup.id)
                         val links = profiles.joinToString("\n") {
                             it.toStdLink(compact = true) + if (it.ping > 0) "|ping=${it.ping}" else ""
                         }
