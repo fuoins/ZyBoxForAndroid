@@ -193,8 +193,8 @@
     <string name="action_scroll_top">回到顶部</string>
     <string name="action_scroll_top_done">已回到顶部</string>
     <string name="action_refresh_done">已刷新（针对延迟排序和连接自动测速同步延迟进行刷新排序结果）</string>
-    <string name="action_import">从剪切板导入</string>
-    <string name="action_import_file">从文件中导入</string>
+    <string name="action_import">从剪切板导入到当前分组</string>
+    <string name="action_import_file">从文件导入到当前分组</string>
     <string name="action_export_msg">导出成功!</string>
     <string name="action_export_err">导出失败.</string>
     <string name="action_import_msg">导入成功!</string>
@@ -556,8 +556,11 @@
     <string name="toggle_auto_test">连接自动测速</string>
     <string name="toggle_sync_ping">测速延迟持久化同步</string>
     <string name="toggle_sync_ping_fail">同↑+红色保留</string>
-    <string name="action_import_clipboard_ping">从剪切板导入+ping</string>
-    <string name="action_import_file_ping">从文件导入+ping</string>
+    <string name="action_import_clipboard_ping">从剪切板导入+ping到当前分组</string>
+    <string name="action_import_file_ping">从文件导入+ping到当前分组</string>
+    <string name="multi_file_group">多选到文件</string>
+    <string name="connection_tcp_ping_untested">TCPing未测试节点</string>
+    <string name="connection_url_test_untested">URL Test未测试节点</string>
     <string name="multi_file_standard">多选到文件标准</string>
     <string name="multi_file_ping">多选到文件+ping</string>
     <string name="group_not_subscription">组类型不是订阅</string>

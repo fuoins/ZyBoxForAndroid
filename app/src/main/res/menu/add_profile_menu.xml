@@ -170,6 +170,10 @@
                     <item
                         android:id="@+id/action_multi_clipboard_sn"
                         android:title="@string/multi_clipboard_sn" />
+                </menu>
+            </item>
+            <item android:title="@string/multi_file_group">
+                <menu>
                     <item
                         android:id="@+id/action_multi_file_standard"
                         android:title="@string/multi_file_standard" />
@@ -222,6 +226,12 @@
             <item
                 android:id="@+id/action_connection_url_test"
                 android:title="@string/connection_test_url_test" />
+            <item
+                android:id="@+id/action_connection_tcp_ping_untested"
+                android:title="@string/connection_tcp_ping_untested" />
+            <item
+                android:id="@+id/action_connection_url_test_untested"
+                android:title="@string/connection_url_test_untested" />
             <item
                 android:id="@+id/action_connection_test_clear_results"
                 android:title="@string/connection_test_clear_results" />

@@ -63,7 +63,7 @@ class GroupSettingsActivity(
     }
 
     fun ProxyGroup.serialize() {
-        name = DataStore.groupName.takeIf { it.isNotBlank() } ?: "我爱宇神"
+        name = DataStore.groupName.takeIf { it.isNotBlank() } ?: "宇神神了"
         type = DataStore.groupType
         order = DataStore.groupOrder
         isSelector = DataStore.groupIsSelector

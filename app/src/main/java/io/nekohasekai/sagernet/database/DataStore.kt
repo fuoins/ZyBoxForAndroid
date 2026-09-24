@@ -79,12 +79,12 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     fun selectedGroupForImport(): Long {
         val current = currentGroup()
-        // ZyBox: 优先导入到当前选中的命名基础分组（不含"未分组"兜底组）
-        if (current.type == GroupType.BASIC && !current.ungrouped) return current.id
+        // ZyBox: 导入到当前首页所处的分组（与普通分组无区别）；仅当当前是"未分组"（首次使用没有分组）才兜底
+        if (!current.ungrouped) return current.id
         val groups = SagerDatabase.groupDao.allGroups()
         val basic = groups.find { it.type == GroupType.BASIC && !it.ungrouped }
         if (basic != null) return basic.id
-        // ZyBox: 没有任何命名基础分组时，创建默认导入分组"宇神神了"
+        // ZyBox: 完全没有任何命名分组时，才创建默认导入分组"宇神神了"
         val created = ProxyGroup(type = GroupType.BASIC).apply {
             name = "宇神神了"
         }

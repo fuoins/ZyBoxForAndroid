@@ -566,6 +566,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
         }
 
+    // ZyBox: 本次文件导入是否恢复 |ping= 标记（仅"从文件导入+ping"为 true）
+    private var importRestorePing = false
+
     private val importFile =
         registerForActivityResult(ActivityResultContracts.GetContent()) { file ->
             if (file != null) runOnDefaultDispatcher {
@@ -601,7 +604,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                     if (proxies.isEmpty()) onMainDispatcher {
                         snackbar(getString(R.string.no_proxies_found_in_file)).show()
-                    } else import(proxies)
+                    } else {
+                        // ZyBox: 普通"从文件导入"不带 ping，只有"从文件导入+ping"恢复延迟标记
+                        if (!importRestorePing) proxies.forEach { it.ping = 0; it.importedPing = false }
+                        import(proxies)
+                    }
                 } catch (e: SubscriptionFoundException) {
                     (requireActivity() as MainActivity).importSubscription(e.link.toUri())
                 } catch (e: Exception) {
@@ -760,7 +767,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                         val proxies = RawUpdater.parseRaw(text)
                         if (proxies.isNullOrEmpty()) onMainDispatcher {
                             snackbar(getString(R.string.no_proxies_found_in_clipboard)).show()
-                        } else import(proxies)
+                        } else {
+                            // ZyBox: 普通导入不带 ping
+                            proxies.forEach { it.ping = 0; it.importedPing = false }
+                            import(proxies)
+                        }
                     } catch (e: SubscriptionFoundException) {
                         (requireActivity() as MainActivity).importSubscription(e.link.toUri())
                     } catch (e: Exception) {
@@ -774,6 +785,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             R.id.action_import_file -> {
+                importRestorePing = false
                 startFilesForResult(importFile, "*/*")
             }
 
@@ -801,6 +813,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             // ZyBox: 从文件导入+ping（恢复 |ping= 标记，含失败状态）
             R.id.action_import_file_ping -> {
+                importRestorePing = true
                 startFilesForResult(importFile, "*/*")
             }
 
@@ -1147,6 +1160,15 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_connection_url_test -> {
                 urlTest()
             }
+
+            // ZyBox: 只测未测试节点
+            R.id.action_connection_tcp_ping_untested -> {
+                pingTest(false, onlyUntested = true)
+            }
+
+            R.id.action_connection_url_test_untested -> {
+                urlTest(onlyUntested = true)
+            }
         }
         return true
     }
@@ -1248,7 +1270,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     @OptIn(DelicateCoroutinesApi::class)
     @Suppress("EXPERIMENTAL_API_USAGE")
-    fun pingTest(icmpPing: Boolean, ids: Set<Long>? = null) {
+    fun pingTest(icmpPing: Boolean, ids: Set<Long>? = null, onlyUntested: Boolean = false) {
         if (DataStore.runningTest) return else DataStore.runningTest = true
         val test = TestDialog()
         val dialog = test.builder.show()
@@ -1258,6 +1280,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         val mainJob = runOnDefaultDispatcher {
             val profilesList = SagerDatabase.proxyDao.getByGroup(group.id).filter {
                 if (ids != null && it.id !in ids) return@filter false
+                if (onlyUntested && it.status > 0) return@filter false
                 if (icmpPing) {
                     if (it.requireBean().canICMPing()) {
                         return@filter true
@@ -1390,7 +1413,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun urlTest(ids: Set<Long>? = null) {
+    fun urlTest(ids: Set<Long>? = null, onlyUntested: Boolean = false) {
         if (DataStore.runningTest) return else DataStore.runningTest = true
         val test = TestDialog()
         val dialog = test.builder.show()
@@ -1399,7 +1422,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         val mainJob = runOnDefaultDispatcher {
             val profilesList = SagerDatabase.proxyDao.getByGroup(group.id).filter {
-                ids == null || it.id in ids
+                (ids == null || it.id in ids) && (!onlyUntested || it.status <= 0)
             }
             test.proxyN = profilesList.size
             val profiles = ConcurrentLinkedQueue(profilesList)
