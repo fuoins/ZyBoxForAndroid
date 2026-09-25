@@ -635,6 +635,8 @@
     <string name="auto_test_delay_title">Auto-test wait time</string>
     <string name="auto_test_delay_format">Wait time: %1$dms</string>
     <string name="auto_test_retry">Retry once on first failure</string>
+    <string name="auto_test_retry_first_fail">First test timed out, testing again</string>
+    <string name="auto_test_retry_success">Second test succeeded</string>
     <string name="toggle_sync_ping">Persist sync speed-test latency</string>
     <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
     <string name="action_import_clipboard_ping">Import from clipboard +ping to current group</string>

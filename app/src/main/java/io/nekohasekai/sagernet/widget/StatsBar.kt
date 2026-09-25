@@ -205,7 +205,9 @@ class StatsBar @JvmOverloads constructor(
 
     // ZyBox: 单次测速（挂起，返回是否成功）。手动点击/连接自动测速/首次失败重试都走这里。
     // 后台隧道测速（service.urlTest，走真实连接线路，结果更真实）
-    suspend fun testConnectionOnce(): Boolean {
+    // retryMode: 0=普通测速(失败弹错误提示)；1=首次失败重试流程的第一次(失败不弹错误，
+    // 提示"首次测速超时，再次测速一次")；2=重试那次(成功提示"二次测试成功"，失败弹错误)
+    suspend fun testConnectionOnce(retryMode: Int = 0): Boolean {
         val activity = context as MainActivity
         isEnabled = false
         suppressConnectedText = true
@@ -238,6 +240,9 @@ class StatsBar @JvmOverloads constructor(
                             }, elapsed
                         )
                     )
+                    if (retryMode == 2) {
+                        activity.snackbar(app.getString(R.string.auto_test_retry_success)).show()
+                    }
                 }
                 true
             } catch (e: Exception) {
@@ -258,13 +263,18 @@ class StatsBar @JvmOverloads constructor(
                 onMainDispatcher {
                     isEnabled = true
                     suppressConnectedText = false
-                    setStatus(app.getText(R.string.connection_test_testing))
-
-                    activity.snackbar(
-                        app.getString(
-                            R.string.connection_test_error, e.readableMessage
-                        )
-                    ).show()
+                    if (retryMode == 1) {
+                        // ZyBox: 首次失败重试——不弹超时错误，提示"再次测速一次"
+                        setStatus(app.getText(R.string.connection_test_testing))
+                        activity.snackbar(app.getString(R.string.auto_test_retry_first_fail)).show()
+                    } else {
+                        setStatus(app.getText(R.string.connection_test_testing))
+                        activity.snackbar(
+                            app.getString(
+                                R.string.connection_test_error, e.readableMessage
+                            )
+                        ).show()
+                    }
                 }
                 false
             }

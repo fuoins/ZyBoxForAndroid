@@ -558,9 +558,11 @@ class MainActivity : ThemedActivity(),
                 delay(DataStore.autoTestDelay.toLong())
                 // ZyBox: 首次失败重试（默认开）——首次超时再测一次，第二次还超时不再测；
                 // 断开重连后仍按首次处理（不永久记住失败）
-                val firstOk = binding.stats.testConnectionOnce()
+                // 首次失败不弹超时错误，提示"再次测速一次"；重试成功提示"二次测试成功"，重试失败才弹错误
+                val firstOk = binding.stats.testConnectionOnce(if (DataStore.autoTestRetry) 1 else 0)
                 if (!firstOk && DataStore.autoTestRetry) {
-                    binding.stats.testConnectionOnce()
+                    delay(500)
+                    binding.stats.testConnectionOnce(2)
                 }
             }
         }
