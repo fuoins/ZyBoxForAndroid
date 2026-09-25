@@ -631,7 +631,7 @@
     <string name="http_upgrade_path">HTTPUpgrade Path</string>
     <string name="update_current_subscription">Update current Group\'s subscription</string>
     <string name="toggle_auto_test">Auto speed test on connect</string>
-    <string name="auto_test_delay_tip">Less wait time makes it easier for the tunnel to be unstable and time out; the node may actually be usable. Increase the wait time, or tap the bottom-left latency again after auto test</string>
+    <string name="auto_test_delay_tip">Less wait time makes it easier\nto time out due to an unstable tunnel\nthe node may actually be usable\nincrease the wait time\nor after auto test\ntap the bottom-left latency again</string>
     <string name="auto_test_delay_title">Auto-test wait time</string>
     <string name="auto_test_delay_format">Wait time: %1$dms</string>
     <string name="toggle_sync_ping">Persist sync speed-test latency</string>
