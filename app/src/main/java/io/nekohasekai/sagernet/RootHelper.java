@@ -22,6 +22,7 @@ public class RootHelper {
     static Context ctx;
 
     public static void main(String[] args) throws Exception {
+        System.out.println("RH_START pid=" + android.os.Process.myPid() + " args=" + java.util.Arrays.toString(args));
         if (args.length < 1) { System.out.println("NO_ARGS"); System.exit(2); return; }
         ctx = systemContext();
         switch (args[0]) {

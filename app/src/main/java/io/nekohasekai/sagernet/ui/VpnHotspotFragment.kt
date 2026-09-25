@@ -480,6 +480,20 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 null
             }
             if (on) {
+                // 对齐源码 TetheringScreen toggle：startTethering 官方要求 WRITE_SETTINGS，
+                // 先检查 Settings.System.canWrite，没有则跳转系统设置授权（同 VPNHotspot 行为）
+                if (!android.provider.Settings.System.canWrite(requireContext())) {
+                    appendLog("缺少 WRITE_SETTINGS 权限（TetheringManager.startTethering 必需）→ 跳转系统设置授权")
+                    try {
+                        requireContext().startActivity(
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                android.net.Uri.parse("package:${requireContext().packageName}")
+                            )
+                        )
+                    } catch (_: Exception) { }
+                    return false to "需要 WRITE_SETTINGS 权限（已跳转系统设置，授权后重新打开）"
+                }
                 // 对齐源码 startTethering(type, showProvisioningUi)：
                 // 1) 普通进程 exempt=true + showUi=true（VPNHotspot TetheringScreen 传 true）
                 val (ok1, msg1) = tryStartTethering(true)
@@ -530,6 +544,19 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             return false to (o ?: "roothelper 执行失败")
         }
         return false to "未收到系统回调"
+    }
+
+    // 权限状态刷新（附近的设备 + WRITE_SETTINGS——通知/VPN 权限在"权限与初始化"环节获取）
+    private fun refreshPerms() {
+        val view = view ?: return
+        val nearby = if (Build.VERSION.SDK_INT >= 33) {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                requireContext(), "android.permission.NEARBY_WIFI_DEVICES"
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else true
+        view.findViewById<TextView>(R.id.hotspot_perm_nearby_status).text = if (nearby) "✅" else "❌"
+        view.findViewById<TextView>(R.id.hotspot_perm_write_status).text =
+            if (android.provider.Settings.System.canWrite(requireContext())) "✅" else "❌"
     }
 
     // TetheringManager.TETHER_ERROR_NO_CHANGE_TETHERING_PERMISSION（运行时反射，避免硬编码）
@@ -664,6 +691,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // 从系统授权页/权限弹窗返回后刷新
+        refreshPerms()
+        try {
+            val icon = view?.findViewById<TextView>(R.id.hotspot_root_status)
+            val hint = view?.findViewById<TextView>(R.id.hotspot_root_hint)
+            if (icon != null && hint != null) {
+                icon.text = "❌"
+                hint.text = getString(R.string.vpn_hotspot_root_checking)
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val ok = rootAvailable()
+                    withContext(Dispatchers.Main) {
+                        icon.text = if (ok) "✓" else "❌"
+                        hint.text = if (ok) "Root" else "No Root"
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -727,11 +775,32 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
 
         refreshRoot()
+        refreshPerms()
         refreshToggleState()
         refreshSystemState()
         registerSoftApMonitor()
         registerTetheringMonitor()
         updateHotspotInfo()
+
+        view.findViewById<View>(R.id.hotspot_perm_nearby_btn).setOnClickListener {
+            if (Build.VERSION.SDK_INT >= 33) {
+                try {
+                    requireActivity().requestPermissions(
+                        arrayOf("android.permission.NEARBY_WIFI_DEVICES"), 0x5A17
+                    )
+                } catch (_: Exception) { }
+            }
+        }
+        view.findViewById<View>(R.id.hotspot_perm_write_btn).setOnClickListener {
+            try {
+                requireContext().startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                        android.net.Uri.parse("package:${requireContext().packageName}")
+                    )
+                )
+            } catch (_: Exception) { }
+        }
 
         view.findViewById<View>(R.id.hotspot_root_refresh).setOnClickListener {
             refreshRoot()

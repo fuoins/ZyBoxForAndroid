@@ -567,6 +567,16 @@
     <string name="vpn_hotspot_toggle_desc">开启后，已共享的热点 / USB / 蓝牙将带上当前 VPN 的流量；关闭则恢复直连</string>
     <string name="vpn_hotspot_on">已开启 VPN 热点</string>
     <string name="vpn_hotspot_off">已关闭 VPN 热点</string>
+    <string name="vpn_hotspot_perm_title">权限状态</string>
+    <string name="vpn_hotspot_perm_notif">通知权限</string>
+    <string name="vpn_hotspot_perm_notif_desc">通知栏显示实时直连和代理速度</string>
+    <string name="vpn_hotspot_perm_vpn">VPN 权限</string>
+    <string name="vpn_hotspot_perm_vpn_desc">必须授权，否则无法使用本软件</string>
+    <string name="vpn_hotspot_perm_nearby">附近的设备</string>
+    <string name="vpn_hotspot_perm_nearby_desc">Android 13+ 热点回调必需（NEARBY_WIFI_DEVICES）</string>
+    <string name="vpn_hotspot_perm_write">修改系统设置</string>
+    <string name="vpn_hotspot_perm_write_desc">VPN 热点开关必需（WRITE_SETTINGS）</string>
+    <string name="vpn_hotspot_perm_grant">授权</string>
     <string name="vpn_hotspot_wifi">热点</string>
     <string name="vpn_hotspot_usb">USB 网络共享</string>
     <string name="vpn_hotspot_bt">蓝牙网络共享</string>

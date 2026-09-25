@@ -644,6 +644,16 @@
     <string name="vpn_hotspot_toggle_desc">When enabled, tethered hotspot / USB / Bluetooth traffic will go through the current VPN; disable to restore direct</string>
     <string name="vpn_hotspot_on">VPN hotspot enabled</string>
     <string name="vpn_hotspot_off">VPN hotspot disabled</string>
+    <string name="vpn_hotspot_perm_title">权限状态</string>
+    <string name="vpn_hotspot_perm_notif">通知权限</string>
+    <string name="vpn_hotspot_perm_notif_desc">通知栏显示实时直连和代理速度</string>
+    <string name="vpn_hotspot_perm_vpn">VPN 权限</string>
+    <string name="vpn_hotspot_perm_vpn_desc">必须授权，否则无法使用本软件</string>
+    <string name="vpn_hotspot_perm_nearby">附近的设备</string>
+    <string name="vpn_hotspot_perm_nearby_desc">Android 13+ 热点回调必需（NEARBY_WIFI_DEVICES）</string>
+    <string name="vpn_hotspot_perm_write">修改系统设置</string>
+    <string name="vpn_hotspot_perm_write_desc">VPN 热点开关必需（WRITE_SETTINGS）</string>
+    <string name="vpn_hotspot_perm_grant">授权</string>
     <string name="vpn_hotspot_wifi">Hotspot</string>
     <string name="vpn_hotspot_usb">USB tethering</string>
     <string name="vpn_hotspot_bt">Bluetooth tethering</string>
