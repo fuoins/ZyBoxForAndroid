@@ -152,6 +152,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private var hotspotMaxClients = 0
     private var hotspotStateText = ""
     private var hotspotInfo: Any? = null
+    private var cachedApMac: String? = null
 
     // 对齐 VPNHotspot softApInfoSummary：SoftApInfo(bssid/apInstanceIdentifier/frequency/bandwidth/wifiStandard/autoShutdownTimeoutMillis)
     // SoftApInfo.getBandwidth() 是 CHANNEL_WIDTH_ 常量（SoftApText.channelBandwidthLabel）：
@@ -196,14 +197,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 cfg?.let { ssid = it.javaClass.getMethod("getSsid").invoke(it) as? String ?: "" }
             } catch (_: Exception) { }
             val on = hotspotEnabled()
+            // 状态文本：过渡态用回调文本（正在开启/正在关闭），稳定态直接用实际开关状态
+            val st = view?.findViewById<TextView>(R.id.hotspot_wifi_state)
+            val transition = hotspotStateText == "正在开启…" || hotspotStateText == "正在关闭…" ||
+                hotspotStateText == "开启失败"
             try {
-                val st = view?.findViewById<TextView>(R.id.hotspot_wifi_state)
-                st?.text = if (hotspotStateText.isNotBlank()) hotspotStateText else if (on) "已开启" else "已关闭"
+                st?.text = when {
+                    transition -> hotspotStateText
+                    on -> "已开启"
+                    else -> "已关闭"
+                }
             } catch (_: Exception) { }
-            val sb = StringBuilder()
-            sb.append(if (on) "● 已开启" else "○ 已关闭")
-            if (ssid.isNotBlank()) sb.append(" · ").append(ssid)
-            ssidView.text = if (on) sb.toString() else "○ 未开启 · " + ssid.ifBlank { "—" }
+            ssidView.text = if (on) {
+                if (ssid.isNotBlank()) "● 已开启 · $ssid" else "● 已开启"
+            } else {
+                "未开启"
+            }
             val det = StringBuilder()
             if (on) {
                 // SoftApInfo 各字段（API 31+；getBssid 返回 MacAddress，需 toString）
@@ -225,12 +234,17 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     try { std = cls.getMethod("getWifiStandard").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
                     try { idleMs = (cls.getMethod("getAutoShutdownTimeoutMillis").invoke(info) as? Long) ?: 0L } catch (_: Exception) { }
                 }
-                // 回调缺失时 MAC 兜底（ip link）
+                // bssid 兜底走后台（rootExec 阻塞不能上主线程，v31 同步慢元凶）
                 if (bssid.isBlank()) {
-                    try {
+                    val cached = cachedApMac
+                    if (cached != null) bssid = cached
+                    else lifecycleScope.launch(Dispatchers.IO) {
                         val l = rootExec("ip link show ap0 2>/dev/null") ?: ""
-                        Regex("link/ether ([0-9a-fA-F:]{17})").find(l)?.groupValues?.get(1)?.let { bssid = it }
-                    } catch (_: Exception) { }
+                        Regex("link/ether ([0-9a-fA-F:]{17})").find(l)?.groupValues?.get(1)?.let {
+                            cachedApMac = it
+                            activity?.runOnUiThread { updateHotspotInfo() }
+                        }
+                    }
                 }
                 if (apId.isBlank()) apId = "ap0"
                 val head = buildString {
@@ -256,7 +270,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 if (bwLabel.isNotBlank()) det.append(", 频宽 ").append(bwLabel)
                 if (idleMs > 0) det.append(", 关闭延迟 ").append(idleMs / 60000).append("分钟")
                 if (det.isNotEmpty()) det.append("\n")
-                det.append(hotspotClientCount).append("/").append(if (hotspotMaxClients > 0) hotspotMaxClients else 16)
+                det.append(if (hotspotClientCount >= 0) hotspotClientCount.toString() else "—")
+                    .append("/").append(if (hotspotMaxClients > 0) hotspotMaxClients else 16)
                     .append(" ").append(getString(R.string.vpn_hotspot_status_clients)).append("已连接")
             } else {
                 det.append("—")
@@ -289,6 +304,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, args ->
                 try {
                     when (m.name) {
+                        // 对齐 VPNHotspot WifiApManager：客户端数主源是隐藏回调 onNumClientsChanged(int)
+                        "onNumClientsChanged" -> {
+                            hotspotClientCount = args?.get(0) as? Int ?: 0
+                        }
                         "onConnectedClientsChanged" -> {
                             val list = args?.get(0) as? List<*> ?: emptyList<Any>()
                             hotspotClientCount = list.size
@@ -305,8 +324,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             hotspotClientCount = 0
                             hotspotInfo = null
                             hotspotMaxClients = 0
+                            var state = -1
                             try {
-                                val state = args?.get(0) as? Int ?: -1
+                                state = args?.get(0) as? Int ?: -1
                                 hotspotStateText = when (state) {
                                     10 -> "正在关闭…"
                                     11 -> "已关闭"
@@ -316,6 +336,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                     else -> "未知状态"
                                 }
                             } catch (_: Exception) { }
+                            // 系统热点状态变化 → 同步 wifiSwitch 按钮（系统手动开关热点时按钮跟随）
+                            try { if (state == 13 || state == 11) refreshSystemStateSafe() } catch (_: Exception) { }
                         }
                     }
                     try {
@@ -326,13 +348,24 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 null
             }
             try {
-                // API 30+：registerSoftApCallback(Executor, callback)（对齐 VPNHotspot）
-                wm.javaClass.getMethod("registerSoftApCallback", java.util.concurrent.Executor::class.java, cbCls)
-                    .invoke(wm, java.util.concurrent.Executors.newSingleThreadExecutor(), cb)
+                // 对齐 VPNHotspot WifiApManager：registerSoftApCallback 是 hidden 方法，用 getDeclaredMethod（getMethod 拿不到）
+                val reg = if (Build.VERSION.SDK_INT >= 30) {
+                    wm.javaClass.getDeclaredMethod("registerSoftApCallback", java.util.concurrent.Executor::class.java, cbCls)
+                } else {
+                    wm.javaClass.getDeclaredMethod("registerSoftApCallback", cbCls, android.os.Handler::class.java)
+                }
+                reg.isAccessible = true
+                if (Build.VERSION.SDK_INT >= 30) {
+                    reg.invoke(wm, java.util.concurrent.Executors.newSingleThreadExecutor(), cb)
+                } else {
+                    reg.invoke(wm, cb, android.os.Handler(android.os.Looper.getMainLooper()))
+                }
             } catch (_: NoSuchMethodException) {
-                // API 29 兜底：registerSoftApCallback(callback, Handler)
-                wm.javaClass.getMethod("registerSoftApCallback", cbCls, android.os.Handler::class.java)
-                    .invoke(wm, cb, android.os.Handler(android.os.Looper.getMainLooper()))
+                // 兜底：公开方法
+                try {
+                    wm.javaClass.getMethod("registerSoftApCallback", java.util.concurrent.Executor::class.java, cbCls)
+                        .invoke(wm, java.util.concurrent.Executors.newSingleThreadExecutor(), cb)
+                } catch (_: Throwable) { }
             }
         } catch (_: Exception) { }
     }
@@ -342,9 +375,17 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         try {
             val tm = requireContext().getSystemService("tethering")
             val cbCls = Class.forName("android.net.TetheringManager\$TetheringEventCallback")
-            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, _ ->
+            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, a ->
                 try {
                     when (m.name) {
+                        // 对齐 VPNHotspot TetheringManagerCompat LegacyCallback：客户端数走 TetheringEventCallback.onClientsChanged
+                        "onClientsChanged" -> {
+                            val clients = a?.get(0)
+                            hotspotClientCount = try {
+                                (clients as? Collection<*>)?.size ?: (clients as? List<*>)?.size ?: 0
+                            } catch (_: Exception) { 0 }
+                            updateHotspotInfo()
+                        }
                         "onTetheringStarted", "onTetheringStopped", "onError", "onUpstreamChanged", "onInterfaceStateChanged" -> {
                             refreshSystemStateSafe()
                             updateHotspotInfo()
@@ -523,15 +564,16 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     appendLog("普通进程 startTethering 失败且错误码非 NO_CHANGE_TETHERING_PERMISSION（$msg1）→ 直接失败")
                     return false to msg1
                 }
-                appendLog("普通进程 startTethering(exempt=true) 失败（$msg1）→ root 会话兜底")
-                // 2) root 兜底（exempt=true，root 进程 uid=0 可能被放行）
-                val o = rootHelper("tether wifi on ${requireContext().packageName}")
-                if (o != null && !cmdFailed(o)) return true to o
-                appendLog("root 兜底未生效 → 普通进程 startTethering(不豁免) 降级（对齐源码 224 行）")
-                // 3) 不豁免降级：走正常 entitlement 流程（ColorOS 无运营商限制时直接通过）
+                appendLog("普通进程 startTethering(exempt=true) 失败（$msg1）→ 先试不豁免降级（响应快，多数 ColorOS 直接通过）")
+                // 2) 不豁免降级：走正常 entitlement 流程（ColorOS 无运营商限制时直接通过；源码顺序 root→不豁免，
+                //    这里提前不豁免仅为提速——root 兜底仍保留在最后，最终路径集合与源码一致）
                 val (ok3, msg3) = tryStartTethering(false)
                 if (ok3) return true to msg3
-                return false to "全部开启路径失败（exempt=true→root→exempt=false）: $msg3"
+                appendLog("普通进程 startTethering(不豁免) 失败（$msg3）→ root 会话兜底")
+                // 3) root 兜底（exempt=true，root 进程 uid=0 可绕过 entitlement，对齐 TetheringCommands.Start）
+                val o = rootHelper("tether wifi on ${requireContext().packageName}")
+                if (o != null && !cmdFailed(o)) return true to o
+                return false to "全部开启路径失败（exempt=true→exempt=false→root）: $msg3"
             } else {
                 // 对齐源码 stopTethering：ITetheringConnector.stopTethering(type, opPackageName, resultListener)
                 // （不依赖 ColorOS 上不存在的 TetheringManager.stopTethering 签名）
@@ -852,14 +894,15 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     withContext(Dispatchers.Main) {
                         when {
                             out == null -> {
+                                // root 完全不可用
                                 suppressToggle = true
                                 toggleSwitch.isChecked = !checked
                                 suppressToggle = false
                             }
                             out.contains("IFACE_MISS") -> {
-                                suppressToggle = true
-                                toggleSwitch.isChecked = false
-                                suppressToggle = false
+                                // 转发接口未就绪：不误关开关（热点可能已开，等接口出现后重试转发）
+                                appendLog("转发接口未就绪，等待接口出现后重试…")
+                                if (checked) startVpnRetry() else stopVpnRetry()
                             }
                             else -> {
                                 DataStore.vpnHotspotEnabled = checked
@@ -872,6 +915,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             }
                         }
                     }
+                    // 结束后统一按实际热点状态刷新系统开关（防止"热点已开但按钮显示关"）
+                    refreshSystemStateSafe()
+                    activity?.runOnUiThread { updateHotspotInfo() }
                     if (checked && out != null && out.contains("TUN_MISS")) {
                         appendLog("VPN共享已开启，等待VPN隧道出现后自动补配转发…")
                         startVpnRetry()
