@@ -156,6 +156,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         toolbar.menu.findItem(R.id.action_multi_range)?.isVisible = on
         if (!on) {
             toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
+            toolbar.menu.findItem(R.id.action_auto_test_retry)?.isChecked = DataStore.autoTestRetry
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
             toolbar.menu.findItem(R.id.action_toggle_sync_ping_fail)?.isChecked = DataStore.syncPingFailed
             toolbar.menu.findItem(R.id.action_global_mode)?.isChecked = DataStore.globalMode
@@ -430,6 +431,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             toolbar.menu.findItem(R.id.action_auto_test_delay)?.setTitle(
                 getString(R.string.auto_test_delay_format, DataStore.autoTestDelay)
             )
+            toolbar.menu.findItem(R.id.action_auto_test_retry)?.isChecked = DataStore.autoTestRetry
         } else {
             toolbar.setTitle(titleRes)
             toolbar.setNavigationIcon(R.drawable.ic_navigation_close)
@@ -1065,20 +1067,35 @@ class ConfigurationFragment @JvmOverloads constructor(
                 true
             }
 
-            // ZyBox: 自动测速等待时间（弹输入框修改，默认 1000ms）
+            // ZyBox: 自动测速等待时间（弹输入框修改，ms 只读展示、只改数字）
             R.id.action_auto_test_delay -> {
+                val container = android.widget.LinearLayout(requireContext()).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(48, 8, 48, 8)
+                }
                 val edit = androidx.appcompat.widget.AppCompatEditText(requireContext()).apply {
-                    // ZyBox: 默认值带 ms 单位，输入时保留或删除均可
-                    setText(DataStore.autoTestDelay.toString() + "ms")
+                    setText(DataStore.autoTestDelay.toString())
                     inputType = android.text.InputType.TYPE_CLASS_NUMBER
                     setSelectAllOnFocus(true)
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+                    )
                 }
+                val unit = android.widget.TextView(requireContext()).apply {
+                    text = "ms"
+                    textSize = 16f
+                    setTextColor(android.graphics.Color.parseColor("#9E9E9E"))
+                    setPadding(8, 0, 0, 0)
+                }
+                container.addView(edit)
+                container.addView(unit)
                 MaterialAlertDialogBuilder(requireContext())
                     .setTitle(R.string.auto_test_delay_title)
                     .setMessage(R.string.auto_test_delay_tip)
-                    .setView(edit)
+                    .setView(container)
                     .setPositiveButton(R.string.yes) { _, _ ->
-                        val v = edit.text.toString().replace("ms", "").trim().toIntOrNull()
+                        val v = edit.text.toString().trim().toIntOrNull()
                         if (v != null && v > 0) {
                             DataStore.autoTestDelay = v
                             toolbar.menu.findItem(R.id.action_auto_test_delay)?.setTitle(
@@ -1090,6 +1107,13 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                     .setNegativeButton(android.R.string.cancel, null)
                     .show()
+                true
+            }
+
+            // ZyBox: 首次失败重试 开关（默认开）
+            R.id.action_auto_test_retry -> {
+                DataStore.autoTestRetry = !DataStore.autoTestRetry
+                item.isChecked = DataStore.autoTestRetry
                 true
             }
 

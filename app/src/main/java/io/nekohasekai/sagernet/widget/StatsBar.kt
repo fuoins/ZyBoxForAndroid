@@ -24,6 +24,7 @@ import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class StatsBar @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null,
@@ -197,13 +198,20 @@ class StatsBar @JvmOverloads constructor(
 
     fun testConnection() {
         val activity = context as MainActivity
+        activity.lifecycleScope.launch {
+            testConnectionOnce()
+        }
+    }
+
+    // ZyBox: 单次测速（挂起，返回是否成功）。手动点击/连接自动测速/首次失败重试都走这里。
+    // 后台隧道测速（service.urlTest，走真实连接线路，结果更真实）
+    suspend fun testConnectionOnce(): Boolean {
+        val activity = context as MainActivity
         isEnabled = false
         suppressConnectedText = true
         setStatus(app.getText(R.string.connection_test_testing))
-        runOnDefaultDispatcher {
+        return withContext(Dispatchers.IO) {
             try {
-                // ZyBox: 后台隧道测速（service.urlTest，走真实连接线路，结果更真实）。
-                // 自动测速已在连接后延迟 2 秒等待隧道稳定，避免刚建立时超时
                 val elapsed = activity.urlTest()
                 // ZyBox: 同步测速结果到节点列表的延迟显示（当前连接节点）
                 // 可在主页 ⋮ 菜单关闭"连接延迟同步节点"
@@ -231,7 +239,7 @@ class StatsBar @JvmOverloads constructor(
                         )
                     )
                 }
-
+                true
             } catch (e: Exception) {
                 // ZyBox: 同↑+红色保留——失败结果(超时/不可用/连接重置)也持久化到当前节点
                 if (DataStore.syncPingFailed) {
@@ -258,6 +266,7 @@ class StatsBar @JvmOverloads constructor(
                         )
                     ).show()
                 }
+                false
             }
         }
     }

@@ -554,9 +554,14 @@ class MainActivity : ThemedActivity(),
         // ZyBox: 可在主页 ⋮ 菜单关闭"连接自动测速"
         if (DataStore.autoTestOnConnect) {
             lifecycleScope.launch {
-                // ZyBox: 等待时间可在 ⋮ → 连接自动测速 → 等待时间 中自定义（默认 1000ms）
+                // ZyBox: 等待时间可在 ⋮ → 连接自动测速 → 等待时间 中自定义（默认 1ms）
                 delay(DataStore.autoTestDelay.toLong())
-                binding.stats.testConnection()
+                // ZyBox: 首次失败重试（默认开）——首次超时再测一次，第二次还超时不再测；
+                // 断开重连后仍按首次处理（不永久记住失败）
+                val firstOk = binding.stats.testConnectionOnce()
+                if (!firstOk && DataStore.autoTestRetry) {
+                    binding.stats.testConnectionOnce()
+                }
             }
         }
     }

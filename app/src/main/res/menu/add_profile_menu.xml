@@ -287,6 +287,11 @@
                     <item
                         android:id="@+id/action_auto_test_delay"
                         android:title="@string/auto_test_delay_format" />
+                    <!-- ZyBox: 首次失败重试（默认开） -->
+                    <item
+                        android:id="@+id/action_auto_test_retry"
+                        android:checkable="true"
+                        android:title="@string/auto_test_retry" />
                 </menu>
             </item>
             <item

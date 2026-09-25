@@ -557,6 +557,7 @@
     <string name="auto_test_delay_tip">等待时间越少越容易隧道未稳定测速导致超时，实际节点可能可用，可增加等待时间或自动测速后手动点击左下角延迟再次测速</string>
     <string name="auto_test_delay_title">自动测速等待时间</string>
     <string name="auto_test_delay_format">等待时间: %1$dms</string>
+    <string name="auto_test_retry">首次失败重试</string>
     <string name="toggle_sync_ping">测速延迟持久化同步</string>
     <string name="toggle_sync_ping_fail">同↑+红色保留</string>
     <string name="action_import_clipboard_ping">从剪切板导入+ping到当前分组</string>

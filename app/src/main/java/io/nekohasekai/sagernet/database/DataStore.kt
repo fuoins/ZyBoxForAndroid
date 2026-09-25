@@ -98,6 +98,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var autoTestOnConnect by configurationStore.boolean(Key.AUTO_TEST_ON_CONNECT) { true }
     // ZyBox: 连接自动测速等待时间（毫秒），默认 1ms（最低 1ms）——等 VPN 隧道稳定后再测，避免刚连接超时
     var autoTestDelay by configurationStore.int(Key.AUTO_TEST_DELAY) { 1 }
+    // ZyBox: 连接自动测速首次失败重试（默认开：首次超时再测一次，第二次还超时不再测；断开重连后仍是首次）
+    var autoTestRetry by configurationStore.boolean(Key.AUTO_TEST_RETRY) { true }
     var syncPingOnTest by configurationStore.boolean(Key.SYNC_PING_ON_TEST) { true }
     // ZyBox: 同↑+红色保留——同步成功延迟的同时，把超时/不可用/连接重置的失败结果也持久化（节点延迟显示红色）
     var syncPingFailed by configurationStore.boolean(Key.SYNC_PING_FAILED) { false }

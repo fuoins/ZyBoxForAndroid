@@ -150,6 +150,7 @@ object Key {
     const val SUBSCRIPTION_UPDATE = "subscriptionUpdate"
     const val AUTO_TEST_ON_CONNECT = "autoTestOnConnect"
     const val AUTO_TEST_DELAY = "autoTestDelay"
+    const val AUTO_TEST_RETRY = "autoTestRetry"
     const val SYNC_PING_ON_TEST = "syncPingOnTest"
     const val SYNC_PING_FAILED = "syncPingFailed"
     const val SUBSCRIPTION_UPDATE_WHEN_CONNECTED_ONLY = "subscriptionUpdateWhenConnectedOnly"
