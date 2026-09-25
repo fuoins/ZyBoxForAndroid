@@ -31,7 +31,7 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
         OptGroup(
             "节点功能优化", listOf(
                 "去重 zy 版" to "除名字外，其他配置完全相同的节点才视为重复（TLS/SNI/路径等任一不同都会保留），避免误删可用节点；无重复时明确提示。",
-                "多选" to "⋮ → 多选，点击节点即选择（样式跟随当前卡片：描边=粉色整卡描边 / 经典=左侧主题色竖条）；顶部一键全选/反选/退出；批量清空流量、删除节点、删除重复/去重zy版、TCPing、URL Test、清理测试结果、清理不可用配置、批量二维码与剪切板导出（标准/标准+ping/SN Link）。",
+                "多选" to "⋮ → 多选，点击节点即选择（样式跟随当前卡片：描边=粉色整卡描边 / 经典=左侧主题色竖条；区间选择有独立样式）；顶部一键全选/反选/退出，区间按钮点击后连点两个节点选中区间及本身，再次点击恢复普通多选；批量清空流量、删除节点、删除重复/去重zy版、TCPing、URL Test、清理测试结果、清理不可用配置、批量二维码与剪切板/文件导出（标准/标准+ping/SN Link）。",
                 "全局模式" to "绕过所有路由规则，全部流量走当前节点（默认关闭，可保留内网直连）。",
             )
         ),
@@ -63,6 +63,16 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
         OptGroup(
             "首次初始化向导", listOf(
                 "一键初始化" to "首次启动弹出初始化向导：自动初始化（自动申请权限并进入一次设置页完成速度显示初始化后返回主页）、单独授权通知/VPN 权限，进度 0/3 实时显示；菜单「权限与初始化查询」页可随时查询并补做未完成项。",
+            )
+        ),
+        OptGroup(
+            "VPN 热点", listOf(
+                "VPN 热点" to "菜单 → VPN 热点：开启后热点即带 VPN 共享。开关与 VPNHotspot 同路径：优先 root 会话反射系统服务直连（root uid=0 绕过 entitlement），无 root 自动降级普通进程（exempt=true→exempt=false→connector/legacy）。",
+                "热点开关与状态实时同步" to "开启/关闭热点实时生效；热点状态、已连接设备数通过 root IWifiManager SoftAp 回调每 2 秒刷新快照，系统设置中手动开关热点，页面按钮与状态卡自动跟随（ColorOS 普通进程回调不触发的问题已解决）。",
+                "已连接设备数实时显示" to "热点状态卡实时显示已连接设备数/最大支持数，数据来自 root SoftAp 回调（onConnectedClientsChanged / onNumClientsChanged），非普通进程不可靠回调。",
+                "管理系统共享" to "热点 / USB / 蓝牙 / 以太网网络共享统一入口，一键跳转系统对应设置页。",
+                "网络共享硬件加速" to "显示系统当前开关状态（只读不修改）；若 VPN 共享无法使用，请尝试在开发者选项关闭「网络共享硬件加速」。",
+                "权限状态" to "页面内实时查询 Root、附近的设备、修改系统设置权限状态，一键跳转授权。",
             )
         ),
         OptGroup(

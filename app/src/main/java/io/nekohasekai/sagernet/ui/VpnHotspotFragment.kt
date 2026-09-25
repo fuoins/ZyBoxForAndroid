@@ -41,8 +41,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 false
             }
         }
-
-        // 对齐 librootkotlinx RootProcessLauncher.startRootShell：裸 su（无 -c），命令写 stdin。
         // su -c 对含 ;/exec/重定向的长命令在 ColorOS 上不可靠（命令静默失效→输出全空，v16-v29 根因），
         // stdin 写入是 libsu/librootkotlinx 验证过的兼容方式。
         fun rootExec(cmd: String): String? {
@@ -153,6 +151,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private var hotspotStateText = ""
     private var hotspotInfo: Any? = null
     private var cachedApMac: String? = null
+    private var rootCached: Boolean? = null
+    private var statePoller: Runnable? = null
 
     // 对齐 VPNHotspot softApInfoSummary：SoftApInfo(bssid/apInstanceIdentifier/frequency/bandwidth/wifiStandard/autoShutdownTimeoutMillis)
     // SoftApInfo.getBandwidth() 是 CHANNEL_WIDTH_ 常量（SoftApText.channelBandwidthLabel）：
@@ -415,20 +415,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         } catch (_: Exception) { }
     }
 
-    // ===== 页面日志（完整输出，防 snack 截断）=====
-    private val logBuf = StringBuilder()
-    private var logView: TextView? = null
-    private fun appendLog(msg: String) {
-        try {
-            if (logBuf.length > 20000) logBuf.setLength(0)
-            logBuf.append(msg).append("\n")
-            val v = logView ?: return
-            activity?.runOnUiThread {
-                v.text = logBuf.toString()
-                v.post { v.scrollTo(0, v.layout?.height ?: 0) }
-            }
-        } catch (_: Exception) { }
-    }
+    // 日志功能已按用户要求全部移除（保留空实现，避免改动所有调用点）
+    private fun appendLog(msg: String) { }
 
     // ===== 状态读取（多源兜底，全部 try-catch）=====
     private fun hotspotEnabled(): Boolean {
@@ -511,6 +499,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
+    // root 可用性缓存（避免每次开关都 su id 慢查询；refreshRoot/手动刷新时更新）
+    private fun rootAvailableCached(): Boolean {
+        rootCached?.let { return it }
+        val ok = rootAvailable()
+        rootCached = ok
+        return ok
+    }
+
     // 命令输出是否失败（ColorOS/Android15 报错文本不能当作成功）
     private fun cmdFailed(out: String): Boolean {
         val s = out.lowercase()
@@ -520,26 +516,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             s.contains("error") || s.contains("usage:") || s.contains("fail")
     }
 
-    // 热点：先普通进程 startTethering 并等待系统回调；
-    // entitlement 豁免需 TETHER_PRIVILEGED（普通进程拿不到），onTetheringFailed/异常 → 自动 root 会话兜底（同 VPNHotspot）
+    // 热点开关：
+    // 有 root → 直接 root 路径（对齐 VPNHotspot 实际行为——普通进程 entitlement 在 ColorOS 上 code=14，
+    //   root 进程 uid=0 是唯一可靠路径，VPNHotspot 在这台设备同样依赖 root 兜底；root 直连响应最快）
+    // 无 root / root 失败 → 普通进程降级链（exempt=true → exempt=false → connector/legacy）
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
         var started = false
         var failed = false
-        val latch = java.util.concurrent.CountDownLatch(1)
         try {
-            val tm = requireContext().getSystemService("tethering") ?: throw RuntimeException("no tether svc")
-            val cbCls = Class.forName("android.net.TetheringManager\$StartTetheringCallback")
-            val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
-            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, _ ->
-                when (m.name) {
-                    "onTetheringStarted" -> { started = true; appendLog("TetheringManager: 热点已启动 (onTetheringStarted)") }
-                    "onTetheringStopped" -> { started = true; appendLog("TetheringManager: 热点已关闭 (onTetheringStopped)") }
-                    "onTetheringFailed" -> { failed = true; appendLog("TetheringManager: 热点启动失败 (onTetheringFailed)") }
-                }
-                try { latch.countDown() } catch (_: Throwable) { }
-                null
-            }
+            val pkg = requireContext().packageName
             if (on) {
+                // ===== 开启 =====
+                if (rootAvailableCached()) {
+                    val o = rootHelper("tether wifi on $pkg")
+                    if (o != null && !cmdFailed(o)) return true to o
+                    appendLog("root 直连开启未生效（${o?.take(200) ?: "空输出"}）→ 普通进程降级链")
+                }
                 // 对齐源码 TetheringScreen toggle：startTethering 官方要求 WRITE_SETTINGS，
                 // 先检查 Settings.System.canWrite，没有则跳转系统设置授权（同 VPNHotspot 行为）
                 if (!android.provider.Settings.System.canWrite(requireContext())) {
@@ -548,35 +540,32 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         requireContext().startActivity(
                             android.content.Intent(
                                 android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                                android.net.Uri.parse("package:${requireContext().packageName}")
+                                android.net.Uri.parse("package:$pkg")
                             )
                         )
                     } catch (_: Exception) { }
                     return false to "需要 WRITE_SETTINGS 权限（已跳转系统设置，授权后重新打开）"
                 }
-                // 对齐源码 startTethering(type, showProvisioningUi)：
-                // 1) 普通进程 exempt=true + showUi=true（VPNHotspot TetheringScreen 传 true）
+                // 普通进程 exempt=true + showUi=true（对齐源码 TetheringScreen）
                 val (ok1, msg1) = tryStartTethering(true)
                 if (ok1) return true to msg1
-                // 对齐源码：仅 NO_CHANGE_TETHERING_PERMISSION 才继续降级，其他错误码直接失败
                 val nc = Regex("code=(\\d+)").find(msg1)?.groupValues?.get(1)?.toIntOrNull()
                 if (nc != null && nc != noChangeTetheringPermission()) {
                     appendLog("普通进程 startTethering 失败且错误码非 NO_CHANGE_TETHERING_PERMISSION（$msg1）→ 直接失败")
                     return false to msg1
                 }
-                appendLog("普通进程 startTethering(exempt=true) 失败（$msg1）→ 先试不豁免降级（响应快，多数 ColorOS 直接通过）")
-                // 2) 不豁免降级：走正常 entitlement 流程（ColorOS 无运营商限制时直接通过；源码顺序 root→不豁免，
-                //    这里提前不豁免仅为提速——root 兜底仍保留在最后，最终路径集合与源码一致）
+                appendLog("普通进程 startTethering(exempt=true) 失败（$msg1）→ 不豁免降级")
                 val (ok3, msg3) = tryStartTethering(false)
                 if (ok3) return true to msg3
-                appendLog("普通进程 startTethering(不豁免) 失败（$msg3）→ root 会话兜底")
-                // 3) root 兜底（exempt=true，root 进程 uid=0 可绕过 entitlement，对齐 TetheringCommands.Start）
-                val o = rootHelper("tether wifi on ${requireContext().packageName}")
-                if (o != null && !cmdFailed(o)) return true to o
-                return false to "全部开启路径失败（exempt=true→exempt=false→root）: $msg3"
+                return false to "开启失败（root 直连 + 普通进程 exempt=true/false 均未生效）: $msg3"
             } else {
+                // ===== 关闭 =====
+                if (rootAvailableCached()) {
+                    val o = rootHelper("tether wifi off $pkg")
+                    if (o != null && !cmdFailed(o)) return true to o
+                    appendLog("root 直连关闭未生效（${o?.take(200) ?: "空输出"}）→ 普通进程降级链")
+                }
                 // 对齐源码 stopTethering：ITetheringConnector.stopTethering(type, opPackageName, resultListener)
-                // （不依赖 ColorOS 上不存在的 TetheringManager.stopTethering 签名）
                 val (cok, cout) = stopViaConnector()
                 if (cok) return true to cout
                 appendLog("普通进程 connector 关闭未生效（$cout）→ root 会话兜底")
@@ -585,7 +574,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             appendLog("普通进程 startTethering 异常：${e.message}")
         }
         if (failed || !started) {
-            appendLog("普通进程路径未成功（started=$started failed=$failed）→ root 会话兜底（entitlement 豁免需 TETHER_PRIVILEGED）")
+            appendLog("普通进程路径未成功（started=$started failed=$failed）→ root 会话兜底")
             val o = rootHelper("tether wifi ${if (on) "on" else "off"} ${requireContext().packageName}")
             if (o != null && !cmdFailed(o)) return true to o
             // 最后降级：legacy ConnectivityManager.stopTethering(0)（对齐源码 stopTetheringLegacy）
@@ -756,6 +745,12 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         super.onResume()
         // 从系统授权页/权限弹窗返回后刷新
         refreshPerms()
+        // 系统设置里手动开关热点后返回 → 立即同步按钮与状态卡
+        refreshSystemStateSafe()
+        updateHotspotInfo()
+        refreshOffload()
+        // 页面可见期间轻量轮询（2s）：兜底回调不触发/状态变化来源多样的场景（系统设置、外部开关等）
+        startStatePoller()
         try {
             val icon = view?.findViewById<TextView>(R.id.hotspot_root_status)
             val hint = view?.findViewById<TextView>(R.id.hotspot_root_hint)
@@ -764,6 +759,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 hint.text = getString(R.string.vpn_hotspot_root_checking)
                 lifecycleScope.launch(Dispatchers.IO) {
                     val ok = rootAvailable()
+                    rootCached = ok
                     withContext(Dispatchers.Main) {
                         icon.text = if (ok) "✓" else "❌"
                         hint.text = if (ok) "Root" else "No Root"
@@ -771,6 +767,89 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 }
             }
         } catch (_: Exception) { }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopStatePoller()
+    }
+
+    // root 快照：root 进程 IWifiManager 注册 SoftAp 回调，收集状态/客户端数（对齐 VPNHotspot binder 路径）
+    private fun rootSoftApSnapshot(): String? {
+        return try {
+            val apk = requireContext().applicationInfo.sourceDir
+            val cmd = "setenforce 0; CLASSPATH=$apk exec /system/bin/app_process64 -Xnoimage-dex2oat " +
+                "/system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper softap_status " +
+                requireContext().packageName
+            rootExec(cmd)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // 网络共享硬件加速：只显示系统当前状态（不做处理，对齐用户要求）
+    private fun refreshOffload() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val out = rootExec("settings get global $TETHER_OFFLOAD")
+            val disabled = out?.trim() == "1"
+            activity?.runOnUiThread {
+                try {
+                    view?.findViewById<TextView>(R.id.hotspot_offload_status)?.text = when {
+                        out.isNullOrBlank() -> getString(R.string.vpn_hotspot_offload_unknown)
+                        disabled -> getString(R.string.vpn_hotspot_offload_off)
+                        else -> getString(R.string.vpn_hotspot_offload_on)
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
+    private fun startStatePoller() {
+        stopStatePoller()
+        val h = view?.handler ?: return
+        statePoller = object : Runnable {
+            override fun run() {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val out = rootSoftApSnapshot()
+                        out?.let { o ->
+                            // 状态 → 按钮 + 状态文本（系统设置/外部开关变化都能同步）
+                            Regex("SOFTAP_STATE=(\\d+)").find(o)?.groupValues?.get(1)?.toIntOrNull()?.let { st ->
+                                hotspotStateText = when (st) {
+                                    10 -> "正在关闭…"
+                                    11 -> "已关闭"
+                                    12 -> "正在开启…"
+                                    13 -> "已开启"
+                                    14 -> "开启失败"
+                                    else -> "未知状态"
+                                }
+                                if (st == 13 || st == 11) {
+                                    val hOn = st == 13
+                                    activity?.runOnUiThread {
+                                        view?.findViewById<Switch>(R.id.hotspot_wifi_switch)?.isChecked = hOn
+                                    }
+                                }
+                            }
+                            // 客户端数（onConnectedClientsChanged 列表或 onNumClientsChanged int）
+                            val c = Regex("SOFTAP_CONNECTED=(\\d+)").find(o)
+                                ?: Regex("SOFTAP_NUMCLIENTS=(\\d+)").find(o)
+                            c?.groupValues?.get(1)?.toIntOrNull()?.let { hotspotClientCount = it }
+                        }
+                    } catch (_: Exception) { }
+                    activity?.runOnUiThread { updateHotspotInfo() }
+                }
+                val h2 = view?.handler ?: return
+                h2.postDelayed(this, 2000)
+            }
+        }
+        h.postDelayed(statePoller!!, 2000)
+    }
+
+    private fun stopStatePoller() {
+        statePoller?.let {
+            try { view?.handler?.removeCallbacks(it) } catch (_: Exception) { }
+        }
+        statePoller = null
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -781,7 +860,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         val toggleState = view.findViewById<TextView>(R.id.hotspot_toggle_state)
         val toggleSwitch = view.findViewById<Switch>(R.id.hotspot_toggle_switch)
         val wifiSwitch = view.findViewById<Switch>(R.id.hotspot_wifi_switch)
-        logView = view.findViewById<TextView>(R.id.hotspot_log)
 
         // 附近设备权限（Android 13+，VPNHotspot 开热点前也请求）
         if (Build.VERSION.SDK_INT >= 33) {
@@ -790,11 +868,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     arrayOf("android.permission.NEARBY_WIFI_DEVICES"), 0x5A17
                 )
             } catch (_: Exception) { }
-        }
-
-        view.findViewById<View>(R.id.hotspot_log_clear)?.setOnClickListener {
-            logBuf.setLength(0)
-            logView?.text = ""
         }
 
         fun snack(msg: String) {
@@ -809,6 +882,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             rootHint.text = getString(R.string.vpn_hotspot_root_checking)
             lifecycleScope.launch(Dispatchers.IO) {
                 val ok = rootAvailable()
+                rootCached = ok
                 withContext(Dispatchers.Main) {
                     statusIcon.text = if (ok) "✓" else "❌"
                     rootHint.text = if (ok) "Root" else "No Root"
@@ -839,6 +913,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         refreshPerms()
         refreshToggleState()
         refreshSystemState()
+        refreshOffload()
         registerSoftApMonitor()
         registerTetheringMonitor()
         updateHotspotInfo()

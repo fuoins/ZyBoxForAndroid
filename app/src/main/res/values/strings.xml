@@ -665,6 +665,11 @@
     <string name="vpn_hotspot_hw_read_fail">Read failed</string>
     <string name="vpn_hotspot_manage">Hotspot / USB / Bluetooth / Ethernet network sharing</string>
     <string name="vpn_hotspot_manage_desc">Open system tethering settings to manage hotspot / USB / Bluetooth / Ethernet sharing</string>
+    <string name="vpn_hotspot_offload">Tethering hardware acceleration</string>
+    <string name="vpn_hotspot_offload_desc">Display the system current state only (not modified). If VPN sharing fails, try disabling "tethering hardware acceleration" in Developer options</string>
+    <string name="vpn_hotspot_offload_on">Enabled (system default)</string>
+    <string name="vpn_hotspot_offload_off">Disabled</string>
+    <string name="vpn_hotspot_offload_unknown">Unknown</string>
     <string name="vpn_hotspot_open">On</string>
     <string name="vpn_hotspot_close">Off</string>
     <string name="vpn_hotspot_tun_miss">VPN tunnel interface not found. Connect VPN first</string>
