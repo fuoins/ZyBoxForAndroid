@@ -149,31 +149,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
-    // 读系统已有热点配置（SSID/安全类型/密码），返回 start-softap 参数；无配置返回 null
-    private fun systemHotspotArgs(): String? {
-        return try {
-            if (Build.VERSION.SDK_INT < 30) return null
-            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm) ?: return null
-            val ssid = cfg.javaClass.getMethod("getSsid").invoke(cfg) as? String ?: return null
-            if (ssid.isBlank()) return null
-            val st = cfg.javaClass.getMethod("getSecurityType").invoke(cfg) as? Int ?: 0
-            val sec = when (st) {
-                1 -> "wpa2"
-                2 -> "wpa3"
-                3 -> "wpa3_transition"
-                4 -> "owe"
-                else -> "open"
-            }
-            val pass = if (st == 0) "" else {
-                " \"" + (cfg.javaClass.getMethod("getPassphrase").invoke(cfg) as? String ?: "") + "\""
-            }
-            "\"$ssid\" $sec$pass"
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     // RootHelper（app_process 以 root 反射系统 TetheringManager，效果同系统设置开关）
     private fun rootHelper(action: String): String? {
         return try {
@@ -198,32 +173,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             s.contains("error") || s.contains("usage:") || s.contains("fail")
     }
 
-    // 热点：start-softap + 系统已有配置（无系统配置不开，绝不创建 ZyBox）
+    // 热点：系统级 tethering（TetheringManager.startTethering，同 VPNHotspot/系统设置开关）
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
-        var lastOut: String = ""
-        fun run(cmd: String): Boolean {
-            val o = rootExec(cmd)
-            if (o != null) lastOut = o
-            return o != null && !cmdFailed(o)
-        }
-        if (on) {
-            val sysArgs = systemHotspotArgs()
-            if (sysArgs == null) {
-                return false to "未找到系统热点配置，请先在系统设置中创建热点"
-            }
-            // ColorOS/多数设备：开热点前需断开 WiFi STA
-            run("cmd wifi set-wifi-enabled disabled")
-            run("svc wifi disable")
-            val cmds = listOf(
-                "cmd wifi start-softap $sysArgs -b any",
-                "cmd wifi start-softap $sysArgs"
-            )
-            for (c in cmds) if (run(c)) return true to lastOut
-            return false to lastOut
-        } else {
-            if (run("cmd wifi stop-softap")) return true to lastOut
-            return false to lastOut
-        }
+        val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
+        if (o != null && !cmdFailed(o)) return true to o
+        return false to (o ?: "roothelper 执行失败")
     }
 
     // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
