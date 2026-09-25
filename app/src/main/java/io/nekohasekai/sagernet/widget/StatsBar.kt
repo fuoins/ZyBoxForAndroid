@@ -32,7 +32,8 @@ class StatsBar @JvmOverloads constructor(
     private lateinit var statusText: TextView
     private lateinit var txText: TextView
     private lateinit var rxText: TextView
-    private lateinit var ipGeoText: TextView
+    private lateinit var ipText: TextView
+    private lateinit var geoText: TextView
     private lateinit var behavior: YourBehavior
 
     var allowShow = true
@@ -78,7 +79,8 @@ class StatsBar @JvmOverloads constructor(
         statusText = findViewById(R.id.status)
         txText = findViewById(R.id.tx)
         rxText = findViewById(R.id.rx)
-        ipGeoText = findViewById(R.id.ip_geo)
+        ipText = findViewById(R.id.ip_text)
+        geoText = findViewById(R.id.geo_text)
         super.setOnClickListener(l)
     }
 
@@ -108,7 +110,8 @@ class StatsBar @JvmOverloads constructor(
             postWhenStarted {
                 performHide()
             }
-            ipGeoText.text = ""
+            ipText.text = ""
+            geoText.text = ""
             updateSpeed(0, 0)
             setStatus(
                 context.getText(
@@ -122,7 +125,7 @@ class StatsBar @JvmOverloads constructor(
         }
     }
 
-    // ZyBox: 查询当前出口 IP 与 geoip 国家（走 VPN 隧道，显示在右下角）
+    // ZyBox: 查询当前出口 IP 与 geoip 国家（走 VPN 隧道，IP 与上传速度同高、国家中文名与延迟同高）
     private fun fetchIpGeo() {
         val activity = context as? MainActivity ?: return
         activity.lifecycleScope.launch(Dispatchers.IO) {
@@ -134,18 +137,48 @@ class StatsBar @JvmOverloads constructor(
                 val json = conn.inputStream.bufferedReader().use { it.readText() }
                 val obj = JSONObject(json)
                 val ip = obj.optString("ip", "")
-                val cc = obj.optString("country_code", "")
+                val cc = obj.optString("country_code", "").uppercase()
                 val flag = if (cc.length == 2) {
-                    cc.uppercase().map { Character.toChars(0x1F1E6 + (it - 'A')).concatToString() }.joinToString("")
+                    cc.map { Character.toChars(0x1F1E6 + (it - 'A')).concatToString() }.joinToString("")
                 } else ""
-                val text = "$ip  $flag$cc"
+                val countryCn = countryNameCn(cc)
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
-                    ipGeoText.text = text
+                    ipText.text = ip
+                    geoText.text = "$flag $countryCn"
                 }
             } catch (_: Exception) {
                 // 查询失败保持空白，不打扰用户
             }
         }
+    }
+
+    // ZyBox: 国家代码 → 中文名（常用国家）
+    private fun countryNameCn(cc: String): String = when (cc) {
+        "US" -> "美国"; "GB" -> "英国"; "JP" -> "日本"; "DE" -> "德国"; "FR" -> "法国"
+        "SG" -> "新加坡"; "HK" -> "中国香港"; "TW" -> "中国台湾"; "KR" -> "韩国"; "CA" -> "加拿大"
+        "AU" -> "澳大利亚"; "NL" -> "荷兰"; "RU" -> "俄罗斯"; "IN" -> "印度"; "BR" -> "巴西"
+        "IT" -> "意大利"; "ES" -> "西班牙"; "TH" -> "泰国"; "VN" -> "越南"; "MY" -> "马来西亚"
+        "ID" -> "印度尼西亚"; "PH" -> "菲律宾"; "TR" -> "土耳其"; "AE" -> "阿联酋"; "SA" -> "沙特阿拉伯"
+        "IL" -> "以色列"; "PL" -> "波兰"; "SE" -> "瑞典"; "CH" -> "瑞士"; "BE" -> "比利时"
+        "AT" -> "奥地利"; "IE" -> "爱尔兰"; "PT" -> "葡萄牙"; "DK" -> "丹麦"; "NO" -> "挪威"
+        "FI" -> "芬兰"; "GR" -> "希腊"; "MX" -> "墨西哥"; "AR" -> "阿根廷"; "CL" -> "智利"
+        "CO" -> "哥伦比亚"; "ZA" -> "南非"; "EG" -> "埃及"; "UA" -> "乌克兰"; "KZ" -> "哈萨克斯坦"
+        "NZ" -> "新西兰"; "MO" -> "中国澳门"; "CN" -> "中国"; "CZ" -> "捷克"; "HU" -> "匈牙利"
+        "RO" -> "罗马尼亚"; "BG" -> "保加利亚"; "HR" -> "克罗地亚"; "RS" -> "塞尔维亚"; "SI" -> "斯洛文尼亚"
+        "SK" -> "斯洛伐克"; "EE" -> "爱沙尼亚"; "LT" -> "立陶宛"; "LV" -> "拉脱维亚"; "LU" -> "卢森堡"
+        "IS" -> "冰岛"; "MT" -> "马耳他"; "CY" -> "塞浦路斯"; "QA" -> "卡塔尔"; "KW" -> "科威特"
+        "OM" -> "阿曼"; "BH" -> "巴林"; "JO" -> "约旦"; "LB" -> "黎巴嫩"; "IR" -> "伊朗"
+        "IQ" -> "伊拉克"; "PK" -> "巴基斯坦"; "BD" -> "孟加拉国"; "LK" -> "斯里兰卡"; "NP" -> "尼泊尔"
+        "MM" -> "缅甸"; "KH" -> "柬埔寨"; "LA" -> "老挝"; "MN" -> "蒙古"; "UZ" -> "乌兹别克斯坦"
+        "GE" -> "格鲁吉亚"; "AM" -> "亚美尼亚"; "AZ" -> "阿塞拜疆"; "BY" -> "白俄罗斯"; "MD" -> "摩尔多瓦"
+        "BA" -> "波黑"; "MK" -> "北马其顿"; "AL" -> "阿尔巴尼亚"; "ME" -> "黑山"; "PE" -> "秘鲁"
+        "VE" -> "委内瑞拉"; "EC" -> "厄瓜多尔"; "BO" -> "玻利维亚"; "PY" -> "巴拉圭"; "UY" -> "乌拉圭"
+        "PA" -> "巴拿马"; "CR" -> "哥斯达黎加"; "GT" -> "危地马拉"; "HN" -> "洪都拉斯"; "NI" -> "尼加拉瓜"
+        "SV" -> "萨尔瓦多"; "DO" -> "多米尼加"; "CU" -> "古巴"; "JM" -> "牙买加"; "PR" -> "波多黎各"
+        "NG" -> "尼日利亚"; "KE" -> "肯尼亚"; "MA" -> "摩洛哥"; "DZ" -> "阿尔及利亚"; "TN" -> "突尼斯"
+        "ET" -> "埃塞俄比亚"; "GH" -> "加纳"; "TZ" -> "坦桑尼亚"; "UG" -> "乌干达"; "ZW" -> "津巴布韦"
+        "MZ" -> "莫桑比克"; "AO" -> "安哥拉"; "GE" -> "格鲁吉亚"
+        else -> cc
     }
 
     @SuppressLint("SetTextI18n")

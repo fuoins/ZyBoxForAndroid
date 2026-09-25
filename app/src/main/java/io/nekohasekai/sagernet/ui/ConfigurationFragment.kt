@@ -1068,7 +1068,8 @@ class ConfigurationFragment @JvmOverloads constructor(
             // ZyBox: 自动测速等待时间（弹输入框修改，默认 1000ms）
             R.id.action_auto_test_delay -> {
                 val edit = androidx.appcompat.widget.AppCompatEditText(requireContext()).apply {
-                    setText(DataStore.autoTestDelay.toString())
+                    // ZyBox: 默认值带 ms 单位，输入时保留或删除均可
+                    setText(DataStore.autoTestDelay.toString() + "ms")
                     inputType = android.text.InputType.TYPE_CLASS_NUMBER
                     setSelectAllOnFocus(true)
                 }
@@ -1077,7 +1078,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     .setMessage(R.string.auto_test_delay_tip)
                     .setView(edit)
                     .setPositiveButton(R.string.yes) { _, _ ->
-                        val v = edit.text.toString().trim().toIntOrNull()
+                        val v = edit.text.toString().replace("ms", "").trim().toIntOrNull()
                         if (v != null && v > 0) {
                             DataStore.autoTestDelay = v
                             toolbar.menu.findItem(R.id.action_auto_test_delay)?.setTitle(
