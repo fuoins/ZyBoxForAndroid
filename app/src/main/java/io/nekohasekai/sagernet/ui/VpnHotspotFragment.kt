@@ -18,18 +18,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
-// ZyBox: VPN 热点页（学习 VPNHotspot 实现：tether_offload_disabled 硬件加速、ndc ipfwd/sysctl 转发、
-// iptables MASQUERADE+FORWARD、TetheringManager 反射开关；Android 13+ 开启时自动禁用硬件加速）
+// ZyBox: VPN 热点页 v4——不跳设置，root 命令直接开关并读回验证；修复开关死循环；
+// 管理系统共享按钮单独跳正确系统页（WIFI_TETHER_SETTINGS）
 class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     companion object {
-        // VPN 隧道接口（tun0 / utun* 等）
         const val TUN_PATTERN = "tun[0-9]+|utun[0-9]+"
-        // 共享接口（热点/USB/蓝牙）
         const val IFACE_PATTERN = "usb0 rndis0 bnep0 wlan0 ap0"
-
-        // 学习 VPNHotspot：硬件加速全局设置是 tether_offload_disabled（0=加速开，1=禁用）
         const val TETHER_OFFLOAD = "tether_offload_disabled"
 
         fun rootAvailable(): Boolean {
@@ -55,8 +53,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             }
         }
 
-        // VPN 热点脚本（on=true 开启转发；false 清理规则）。学习 VPNHotspot：
-        // IP 转发 ndc ipfwd（fallback sysctl）+ iptables NAT/FORWARD
         fun vpnHotspotScript(on: Boolean): String {
             val tunFind = "ip -o link show | grep -oE '" + TUN_PATTERN + "' | head -1"
             val ifaceFind = "for i in " + IFACE_PATTERN + "; do ip link show \$i >/dev/null 2>&1 && echo \$i && break; done"
@@ -78,13 +74,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 rules + "; echo DONE"
         }
 
-        // 启动清理：清除可能残留的规则并复位状态
         fun cleanupAtStartup() {
             rootExec(vpnHotspotScript(false))
         }
     }
 
-    // ---- 系统真实状态 ----
     private fun hotspotEnabled(): Boolean {
         return try {
             val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -112,30 +106,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private fun usbEnabled(): Boolean = tetheredIfaces().any { it.contains("usb") || it.contains("rndis") }
     private fun btEnabled(): Boolean = tetheredIfaces().any { it.contains("bnep") }
 
-    // 学习 VPNHotspot：API 30+ 用 TetheringManager（root 下反射调用，含 WiFi/USB/蓝牙 tethering）
-    private fun setTetheringSystem(type: Int, on: Boolean): Boolean {
-        return try {
-            val tm = requireContext().getSystemService("tethering") ?: return false
-            val cls = tm.javaClass
-            val cbClass = Class.forName("android.net.TetheringManager\$TetheringCallback")
-            val m = if (on) {
-                cls.getMethod("startTethering", Int::class.javaPrimitiveType,
-                    java.util.concurrent.Executor::class.java, cbClass)
-            } else {
-                cls.getMethod("stopTethering", Int::class.javaPrimitiveType,
-                    java.util.concurrent.Executor::class.java, cbClass)
-            }
-            val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
-            m.invoke(tm, type, exe, null)
-            true
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    // 热点开关：API<33 反射 setWifiApEnabled；API>=33 root cmd wifi / TetheringManager
+    // 热点：API<33 反射 setWifiApEnabled（普通权限即可）；API>=33 root cmd wifi start-softap
     private fun setHotspot(on: Boolean): Boolean {
-        if (setTetheringSystem(0, on)) return true
         return try {
             if (Build.VERSION.SDK_INT >= 33) {
                 rootExec(if (on) "cmd wifi start-softap" else "cmd wifi stop-softap")
@@ -155,27 +127,51 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
+    // USB：root svc usb setFunctions rndis/none
     private fun setUsb(on: Boolean): Boolean {
-        if (setTetheringSystem(1, on)) return true
         return try {
-            rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
+            val out = rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
             true
         } catch (_: Exception) {
             false
         }
     }
 
+    // 蓝牙：root 开/关蓝牙 + 反射 BluetoothPan.setBluetoothTethering
     private fun setBt(on: Boolean): Boolean {
-        if (setTetheringSystem(2, on)) return true
-        return try {
+        try {
             rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
+        } catch (_: Exception) {
+        }
+        return try {
+            val adapter = requireContext().getSystemService(Context.BLUETOOTH_SERVICE)
+                as? android.bluetooth.BluetoothAdapter ?: return false
+            val pan = arrayOfNulls<android.bluetooth.BluetoothProfile>(1)
+            val latch = CountDownLatch(1)
+            val listener = object : android.bluetooth.BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(profile: Int, proxy: android.bluetooth.BluetoothProfile) {
+                    pan[0] = proxy
+                    latch.countDown()
+                }
+
+                override fun onServiceDisconnected(profile: Int) {}
+            }
+            val m = android.bluetooth.BluetoothAdapter::class.java.getMethod(
+                "getProfileProxy", Context::class.java,
+                android.bluetooth.BluetoothProfile.ServiceListener::class.java,
+                Int::class.javaPrimitiveType
+            )
+            m.invoke(adapter, requireContext(), listener, 2) // BluetoothProfile.PAN = 2
+            latch.await(3, TimeUnit.SECONDS)
+            val proxy = pan[0] ?: return false
+            val setM = proxy.javaClass.getMethod("setBluetoothTethering", Boolean::class.javaPrimitiveType)
+            setM.invoke(proxy, on)
             true
         } catch (_: Exception) {
             false
         }
     }
 
-    // 硬件加速（tether_offload_disabled：0=开 1=关）
     private fun hwAccelOn(): Boolean {
         return try {
             val out = rootExec("settings get global $TETHER_OFFLOAD")
@@ -217,11 +213,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             }
         }
 
-        // 每次进页面默认关闭（用户要求：每次打开软件都是默认关闭）
+        // 防死循环：程序性设置 isChecked 时暂停 listener
+        var suppressToggle = false
         fun refreshToggleState() {
             DataStore.vpnHotspotEnabled = false
-            toggleState.text = getString(R.string.vpn_hotspot_off)
+            suppressToggle = true
             toggleSwitch.isChecked = false
+            toggleState.text = getString(R.string.vpn_hotspot_off)
+            suppressToggle = false
         }
 
         fun refreshSystemState() {
@@ -256,27 +255,46 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             refreshSystemState()
         }
 
-        // VPN 热点开关：开启时自动禁用硬件加速（学习 VPNHotspot：Android 8.1+ 必须关加速才能转发）
+        // VPN 热点开关（开启时自动禁用硬件加速）
         toggleSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressToggle) return@setOnCheckedChangeListener
             if (!rootAvailable()) {
                 snack(getString(R.string.vpn_hotspot_need_root))
+                suppressToggle = true
                 toggleSwitch.isChecked = false
+                suppressToggle = false
                 return@setOnCheckedChangeListener
             }
             lifecycleScope.launch(Dispatchers.IO) {
                 if (checked) {
-                    setHwAccel(false) // 禁用硬件加速 tether_offload_disabled=1
+                    setHwAccel(false)
                 }
                 val out = rootExec(vpnHotspotScript(checked))
                 withContext(Dispatchers.Main) {
                     when {
-                        out == null -> snack(getString(R.string.vpn_hotspot_cmd_fail))
-                        out.contains("TUN_MISS") -> snack(getString(R.string.vpn_hotspot_tun_miss))
-                        out.contains("IFACE_MISS") -> snack(getString(R.string.vpn_hotspot_no_iface))
+                        out == null -> {
+                            snack(getString(R.string.vpn_hotspot_cmd_fail))
+                            suppressToggle = true
+                            toggleSwitch.isChecked = !checked
+                            suppressToggle = false
+                        }
+                        out.contains("TUN_MISS") -> {
+                            snack(getString(R.string.vpn_hotspot_tun_miss))
+                            suppressToggle = true
+                            toggleSwitch.isChecked = false
+                            suppressToggle = false
+                        }
+                        out.contains("IFACE_MISS") -> {
+                            snack(getString(R.string.vpn_hotspot_no_iface))
+                            suppressToggle = true
+                            toggleSwitch.isChecked = false
+                            suppressToggle = false
+                        }
                         else -> {
                             DataStore.vpnHotspotEnabled = checked
-                            refreshToggleState()
+                            suppressToggle = true
                             toggleSwitch.isChecked = checked
+                            suppressToggle = false
                             toggleState.text = getString(
                                 if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off
                             )
@@ -287,19 +305,21 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             }
         }
 
-        // 热点开关
+        // 热点开关：不跳设置，命令失败给出提示并回读状态
         wifiSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 setHotspot(checked)
-                delay(1000)
+                delay(1500)
                 val now = hotspotEnabled()
                 withContext(Dispatchers.Main) {
                     if (now == checked) {
                         snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
                     } else {
+                        suppressToggle = true
                         wifiSwitch.isChecked = now
-                        snack(getString(R.string.vpn_hotspot_open_settings))
-                        startTetherSettings()
+                        suppressToggle = false
+                        snack(getString(R.string.vpn_hotspot_wifi_fail))
                     }
                 }
             }
@@ -307,17 +327,19 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
         // USB 开关
         usbSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 setUsb(checked)
-                delay(1000)
+                delay(1500)
                 val now = usbEnabled()
                 withContext(Dispatchers.Main) {
                     if (now == checked) {
                         snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
                     } else {
+                        suppressToggle = true
                         usbSwitch.isChecked = now
-                        snack(getString(R.string.vpn_hotspot_open_settings))
-                        startTetherSettings()
+                        suppressToggle = false
+                        snack(getString(R.string.vpn_hotspot_usb_fail))
                     }
                 }
             }
@@ -325,30 +347,32 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
         // 蓝牙开关
         btSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 setBt(checked)
-                delay(1000)
+                delay(1500)
                 val now = btEnabled()
                 withContext(Dispatchers.Main) {
                     if (now == checked) {
                         snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
                     } else {
+                        suppressToggle = true
                         btSwitch.isChecked = now
-                        snack(getString(R.string.vpn_hotspot_open_settings))
-                        startTetherSettings()
+                        suppressToggle = false
+                        snack(getString(R.string.vpn_hotspot_bt_fail))
                     }
                 }
             }
         }
 
-        // 硬件加速（tether_offload_disabled）
+        // 硬件加速
         hwSwitch.setOnCheckedChangeListener { _, checked ->
             lifecycleScope.launch(Dispatchers.IO) {
                 setHwAccel(checked)
             }
         }
 
-        // 管理系统共享
+        // 管理系统共享（跳正确系统页）
         view.findViewById<MaterialCardView>(R.id.hotspot_manage).setOnClickListener {
             startTetherSettings()
         }
@@ -370,12 +394,17 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
+    // 系统共享设置：优先热点共享页，逐级 fallback
     private fun startTetherSettings() {
-        try {
-            startActivity(Intent("android.settings.TETHERING_SETTINGS"))
-        } catch (_: Exception) {
+        val actions = listOf(
+            "android.settings.WIFI_TETHER_SETTINGS",
+            "android.settings.TETHERING_SETTINGS",
+            "android.settings.SETTINGS"
+        )
+        for (a in actions) {
             try {
-                startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                startActivity(Intent(a))
+                return
             } catch (_: Exception) {
             }
         }

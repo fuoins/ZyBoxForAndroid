@@ -660,6 +660,9 @@
     <string name="vpn_hotspot_tun_miss">VPN tunnel interface not found. Connect VPN first</string>
     <string name="vpn_hotspot_hw_tip">If VPN sharing fails, turn off "Tethering hardware acceleration" and retry</string>
     <string name="vpn_hotspot_open_settings">Opened system tethering settings</string>
+    <string name="vpn_hotspot_wifi_fail">Failed to toggle hotspot, please enable it in system settings</string>
+    <string name="vpn_hotspot_usb_fail">Failed to toggle USB tethering, please enable it in system settings</string>
+    <string name="vpn_hotspot_bt_fail">Failed to toggle Bluetooth tethering, please enable it in system settings</string>
     <string name="toggle_sync_ping">Persist sync speed-test latency</string>
     <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
     <string name="action_import_clipboard_ping">Import from clipboard +ping to current group</string>
