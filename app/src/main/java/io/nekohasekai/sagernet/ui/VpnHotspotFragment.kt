@@ -155,13 +155,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             // ColorOS/多数设备：开热点前需断开 WiFi STA
             run("cmd wifi set-wifi-enabled disabled")
             run("svc wifi disable")
+            // Android15/ColorOS: start-softap 需要 频段+信道 两个参数（信道 0=自动）
             val startCmds = listOf(
-                "cmd wifi start-softap -1",
-                "cmd wifi start-softap 0",
-                "cmd wifi start-softap ANY",
-                "cmd wifi start-softap 2G",
-                "cmd wifi start-softap 1",
-                "cmd wifi start-softap 5G"
+                "cmd wifi start-softap -1 0",
+                "cmd wifi start-softap ANY 0",
+                "cmd wifi start-softap 2G 0",
+                "cmd wifi start-softap 0 0",
+                "cmd wifi start-softap 5G 0",
+                "cmd wifi start-softap 1 0"
             )
             for (c in startCmds) if (run(c)) return true to lastOut
         } else {
@@ -222,6 +223,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private fun setBt(on: Boolean): Pair<Boolean, String> {
         val svcOut = rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
         if (svcOut != null && cmdFailed(svcOut)) return false to svcOut
+        val btOk = svcOut != null && svcOut.contains("Success")
         return try {
             val adapter = requireContext().getSystemService(Context.BLUETOOTH_SERVICE)
                 as? android.bluetooth.BluetoothAdapter ?: return false to (svcOut ?: "")
@@ -247,7 +249,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             setM.invoke(proxy, on)
             true to "PAN"
         } catch (_: Exception) {
-            false to (svcOut ?: "")
+            // 蓝牙已开但 PAN 反射无权限：提示系统设置
+            if (btOk) true to "蓝牙已开启；网络共享请在系统蓝牙设置中开启（需已配对设备）"
+            else false to (svcOut ?: "")
         }
     }
 
