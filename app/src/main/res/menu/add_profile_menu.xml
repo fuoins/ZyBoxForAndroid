@@ -273,11 +273,22 @@
         android:title=""
         app:showAsAction="always">
         <menu>
-            <!-- ZyBox: 可切换的开关项，默认开启 -->
-            <item
-                android:id="@+id/action_toggle_auto_test"
-                android:checkable="true"
-                android:title="@string/toggle_auto_test" />
+            <!-- ZyBox: 连接自动测速（子菜单：开关 + 提示 + 等待时间设置） -->
+            <item android:title="@string/toggle_auto_test">
+                <menu>
+                    <item
+                        android:id="@+id/action_toggle_auto_test"
+                        android:checkable="true"
+                        android:title="@string/toggle_auto_test" />
+                    <item
+                        android:id="@+id/action_auto_test_delay_tip"
+                        android:enabled="false"
+                        android:title="@string/auto_test_delay_tip" />
+                    <item
+                        android:id="@+id/action_auto_test_delay"
+                        android:title="@string/auto_test_delay_format" />
+                </menu>
+            </item>
             <item
                 android:id="@+id/action_toggle_sync_ping"
                 android:checkable="true"

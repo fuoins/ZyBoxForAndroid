@@ -554,7 +554,8 @@ class MainActivity : ThemedActivity(),
         // ZyBox: 可在主页 ⋮ 菜单关闭"连接自动测速"
         if (DataStore.autoTestOnConnect) {
             lifecycleScope.launch {
-                delay(2000)
+                // ZyBox: 等待时间可在 ⋮ → 连接自动测速 → 等待时间 中自定义（默认 1000ms）
+                delay(DataStore.autoTestDelay.toLong())
                 binding.stats.testConnection()
             }
         }

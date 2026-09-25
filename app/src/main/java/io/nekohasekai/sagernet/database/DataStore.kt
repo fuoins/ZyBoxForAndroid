@@ -96,6 +96,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var showBottomBar by configurationStore.boolean(Key.SHOW_BOTTOM_BAR)
     // ZyBox: 连接后自动测速 / 测速同步节点列表（默认开启，可在主页 ⋮ 菜单切换）
     var autoTestOnConnect by configurationStore.boolean(Key.AUTO_TEST_ON_CONNECT) { true }
+    // ZyBox: 连接自动测速等待时间（毫秒），默认 1000ms——等 VPN 隧道稳定后再测，避免刚连接超时
+    var autoTestDelay by configurationStore.int(Key.AUTO_TEST_DELAY) { 1000 }
     var syncPingOnTest by configurationStore.boolean(Key.SYNC_PING_ON_TEST) { true }
     // ZyBox: 同↑+红色保留——同步成功延迟的同时，把超时/不可用/连接重置的失败结果也持久化（节点延迟显示红色）
     var syncPingFailed by configurationStore.boolean(Key.SYNC_PING_FAILED) { false }

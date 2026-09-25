@@ -427,6 +427,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
             toolbar.menu.findItem(R.id.action_toggle_sync_ping_fail)?.isChecked = DataStore.syncPingFailed
             toolbar.menu.findItem(R.id.action_global_mode)?.isChecked = DataStore.globalMode
+            toolbar.menu.findItem(R.id.action_auto_test_delay)?.setTitle(
+                getString(R.string.auto_test_delay_format, DataStore.autoTestDelay)
+            )
         } else {
             toolbar.setTitle(titleRes)
             toolbar.setNavigationIcon(R.drawable.ic_navigation_close)
@@ -1059,6 +1062,33 @@ class ConfigurationFragment @JvmOverloads constructor(
             R.id.action_toggle_auto_test -> {
                 DataStore.autoTestOnConnect = !DataStore.autoTestOnConnect
                 item.isChecked = DataStore.autoTestOnConnect
+                true
+            }
+
+            // ZyBox: 自动测速等待时间（弹输入框修改，默认 1000ms）
+            R.id.action_auto_test_delay -> {
+                val edit = androidx.appcompat.widget.AppCompatEditText(requireContext()).apply {
+                    setText(DataStore.autoTestDelay.toString())
+                    inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                    setSelectAllOnFocus(true)
+                }
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.auto_test_delay_title)
+                    .setMessage(R.string.auto_test_delay_tip)
+                    .setView(edit)
+                    .setPositiveButton(R.string.yes) { _, _ ->
+                        val v = edit.text.toString().trim().toIntOrNull()
+                        if (v != null && v > 0) {
+                            DataStore.autoTestDelay = v
+                            toolbar.menu.findItem(R.id.action_auto_test_delay)?.setTitle(
+                                getString(R.string.auto_test_delay_format, DataStore.autoTestDelay)
+                            )
+                        } else {
+                            snackbar(getString(R.string.action_import_err)).show()
+                        }
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
                 true
             }
 
