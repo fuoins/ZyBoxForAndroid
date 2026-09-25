@@ -24,7 +24,7 @@ public class RootHelper {
     public static void main(String[] args) throws Exception {
         System.out.println("RH_START pid=" + android.os.Process.myPid() + " args=" + java.util.Arrays.toString(args));
         if (args.length < 1) { System.out.println("NO_ARGS"); System.exit(2); return; }
-        ctx = systemContext();
+        ctx = rootContext(args.length >= 4 ? args[3] : "moe.nb4a");
         switch (args[0]) {
             case "tether":
                 if (args.length < 3) { System.out.println("NO_ARGS"); System.exit(2); return; }
@@ -43,6 +43,25 @@ public class RootHelper {
         Class<?> at = Class.forName("android.app.ActivityThread");
         Object thread = at.getMethod("systemMain").invoke(null);
         return (Context) at.getMethod("getSystemContext").invoke(thread);
+    }
+
+    // 对齐 librootkotlinx RootProcessBootstrap.createRootPackageContext：
+    // 用真实 app 包上下文（opPackageName=moe.nb4a）而非 systemContext("android")，
+    // 保证 stopTethering/connector 的 opPackageName 与调用 uid 语义正确（uid 0 + 包名一致）
+    static Context rootContext(String pkg) {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Object thread = at.getMethod("systemMain").invoke(null);
+            Context sys = (Context) at.getMethod("getSystemContext").invoke(thread);
+            int userId = android.os.Process.myUid() / 100000;
+            Class<?> uh = Class.forName("android.os.UserHandle");
+            Object userHandle = uh.getMethod("of", int.class).invoke(null, userId);
+            return (Context) sys.getClass().getMethod(
+                "createPackageContextAsUser", String.class, int.class, uh)
+                .invoke(sys, pkg, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY, userHandle);
+        } catch (Throwable e) {
+            try { return systemContext(); } catch (Throwable ignored) { return null; }
+        }
     }
 
     static void fail(String msg) {
