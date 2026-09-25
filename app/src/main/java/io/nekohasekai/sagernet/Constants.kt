@@ -152,6 +152,7 @@ object Key {
     const val AUTO_TEST_DELAY = "autoTestDelay"
     const val AUTO_TEST_RETRY = "autoTestRetry"
     const val SYNC_PING_ON_TEST = "syncPingOnTest"
+    const val VPN_HOTSPOT_ENABLED = "vpnHotspotEnabled"
     const val SYNC_PING_FAILED = "syncPingFailed"
     const val SUBSCRIPTION_UPDATE_WHEN_CONNECTED_ONLY = "subscriptionUpdateWhenConnectedOnly"
     const val SUBSCRIPTION_USER_AGENT = "subscriptionUserAgent"

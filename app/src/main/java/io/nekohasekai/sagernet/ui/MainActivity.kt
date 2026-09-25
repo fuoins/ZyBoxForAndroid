@@ -506,6 +506,7 @@ class MainActivity : ThemedActivity(),
             R.id.nav_zybox_about -> displayFragment(ZyBoxAboutFragment())
             R.id.nav_zybox_permission -> displayFragment(ZyBoxPermissionFragment())
             R.id.nav_zybox_optimization -> displayFragment(ZyBoxOptimizationFragment())
+            R.id.nav_vpn_hotspot -> displayFragment(VpnHotspotFragment())
             R.id.nav_tuiguang -> {
                 launchCustomTab("https://neko-box.pages.dev/喵")
                 return false
