@@ -435,7 +435,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             )
             for (c in cmds) {
                 // 输出重定向到文件再读（app_process stdout 经 su 传递不可靠，见 v16 空输出问题）
-                val o = rootExec("$c > $logf 2>&1; cat $logf; rm -f $logf")
+                val o = rootExec("$c > $logf 2>&1; echo EXIT=\$? >> $logf; cat $logf; rm -f $logf")
                 appendLog("root: $action\n${o ?: "(null)"}")
                 if (o != null && o.contains("killed")) continue
                 if (o != null) {
