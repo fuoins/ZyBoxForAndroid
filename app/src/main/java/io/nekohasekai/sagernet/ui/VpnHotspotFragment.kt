@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 // ZyBox: VPN 热点页 v6（参考 Mygod/VPNHotspot 实现思路）
 // - 开关一律走 root shell 命令（cmd wifi / cmd tethering / svc），普通进程不触碰 TetheringManager，避免权限异常与闪退
 // - 热点多级尝试：cmd wifi start-softap → cmd tethering start wifi → 反射 startTetheredHotspot → setWifiApEnabled
-// - VPN 转发：MASQUERADE + FORWARD + DNS 重定向（53→8.8.8.8 使客户端 DNS 走隧道）
+// - VPN 转发：对齐 routing.rs（20700 lookup 1000+ifindex / 20900 unreachable / ndc nat+ipfwd / MASQUERADE / FORWARD）
 // - 管理系统共享：android.settings.TETHER_SETTINGS → Settings$TetherSettingsActivity（同 ManageBar）
 class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
@@ -57,33 +57,26 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
 
         // VPN 转发脚本（参考 VPNHotspot routing 思路的可落地子集）：
-        // 转发 + NAT + 双向 FORWARD + DNS 重定向到 8.8.8.8（客户端 DNS 查询走隧道，避免被墙 DNS 污染）
+        // 转发 + NAT + 双向 FORWARD（对齐 routing.rs desired_mutations）
         fun vpnHotspotScript(on: Boolean): String {
             val tunFind = "ip -o link show | grep -oE '" + TUN_PATTERN + "' | head -1"
             val ifaceFind = "for i in " + IFACE_PATTERN + "; do ip link show \$i >/dev/null 2>&1 && echo \$i && break; done"
             val rules = if (on) {
-                // ① 对齐 VPNHotspot：downstream 流量 lookup netd 的 tun 接口表（1000+ifindex），优先级插系统 tethering 规则间
+                // 对齐 routing.rs：upstream 规则 lookup netd 为 tun 建的接口表（1000+ifindex），
+                // 优先级 20700（API>=12 系统 tethering 规则 20000/21000 之间）+ 20900 防泄漏 unreachable；
+                // NAT 出口 = ndc nat enable（NetdNat）、ndc ipfwd enable（IpForward），不碰全局 sysctl
                 "IFIDX=\$(cat /sys/class/net/\$TUN/ifindex 2>/dev/null); " +
                     "ip rule add iif \$IFACE priority 20700 lookup \$((1000+IFIDX)) 2>/dev/null; " +
-                    // ② 兜底：自定义表 97 默认走 tun（netd 未建接口表时）
-                    "ip route replace 0.0.0.0/0 dev \$TUN table 96 2>/dev/null; " +
-                    "ip rule add iif \$IFACE priority 20701 lookup 96 2>/dev/null; " +
-                    // ③ 防泄漏：VPN 路由缺失时 unreachable（绝不走蜂窝直连）
                     "ip rule add iif \$IFACE priority 20900 unreachable 2>/dev/null; " +
-                    // ④ NAT 出口指向 VPN
                     "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
                     "ndc ipfwd enable \$IFACE 2>/dev/null; " +
                     "iptables -t nat -C POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o \$TUN -j MASQUERADE; " +
-                    // ⑤ 转发允许
                     "iptables -C FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$IFACE -o \$TUN -j ACCEPT; " +
                     "iptables -C FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; " +
-                    // ⑥ DNS 走隧道
-                    "iptables -t nat -C PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
-                    "iptables -t nat -C PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
-                    "echo RULE:; ip rule show | grep -E '20700|20701|20900'; echo ROUTE96:; ip route show table 96; " +
-                    "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; echo CLEAN97_OK"
+                    "echo RULE:; ip rule show | grep -E '20700|20900'; echo DONE"
             } else {
-                // 全局清扫（等价 daemon CleanRouting）：不依赖接口/隧道是否还存在，遍历所有可能接口与优先级，见啥删啥
+                // 全局清扫（等价 daemon CleanRouting）：不依赖接口/隧道是否还存在，遍历所有可能接口与优先级，见啥删啥。
+                // 20701/表96/97 仅做兼容清理（旧版本曾添加），新版本不再创建
                 "while ip rule del priority 20700 2>/dev/null; do :; done; " +
                     "while ip rule del priority 20701 2>/dev/null; do :; done; " +
                     "while ip rule del priority 20800 2>/dev/null; do :; done; " +
@@ -93,8 +86,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     "for I in " + IFACE_PATTERN + "; do " +
                     "ndc nat disable \$I 2>/dev/null; " +
                     "ndc ipfwd disable \$I 2>/dev/null; " +
-                    "iptables -t nat -D PREROUTING -i \$I -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
-                    "iptables -t nat -D PREROUTING -i \$I -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
                     "iptables -D FORWARD -i \$I -o tun0 -j ACCEPT 2>/dev/null; " +
                     "iptables -D FORWARD -i tun0 -o \$I -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
                     "iptables -D FORWARD -i \$I -o tun1 -j ACCEPT 2>/dev/null; " +
@@ -149,6 +140,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     // ===== 热点实时状态（SoftApCallback + TetheringEventCallback，学习 VPNHotspot 的状态识别）=====
     private var hotspotClientCount = 0
+    private var hotspotMaxClients = 0
+    private var hotspotStateText = ""
     private var hotspotInfo: Any? = null
 
     // 对齐 VPNHotspot softApInfoSummary：SoftApInfo(bssid/apInstanceIdentifier/frequency/bandwidth/wifiStandard/autoShutdownTimeoutMillis)
@@ -194,6 +187,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 cfg?.let { ssid = it.javaClass.getMethod("getSsid").invoke(it) as? String ?: "" }
             } catch (_: Exception) { }
             val on = hotspotEnabled()
+            try {
+                val st = view?.findViewById<TextView>(R.id.hotspot_wifi_state)
+                st?.text = if (hotspotStateText.isNotBlank()) hotspotStateText else if (on) "已开启" else "已关闭"
+            } catch (_: Exception) { }
             val sb = StringBuilder()
             sb.append(if (on) "● 已开启" else "○ 已关闭")
             if (ssid.isNotBlank()) sb.append(" · ").append(ssid)
@@ -250,7 +247,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 if (bwLabel.isNotBlank()) det.append(", 频宽 ").append(bwLabel)
                 if (idleMs > 0) det.append(", 关闭延迟 ").append(idleMs / 60000).append("分钟")
                 if (det.isNotEmpty()) det.append("\n")
-                det.append(hotspotClientCount).append("/16 ").append(getString(R.string.vpn_hotspot_status_clients)).append("已连接")
+                det.append(hotspotClientCount).append("/").append(if (hotspotMaxClients > 0) hotspotMaxClients else 16)
+                    .append(" ").append(getString(R.string.vpn_hotspot_status_clients)).append("已连接")
             } else {
                 det.append("—")
             }
@@ -290,9 +288,25 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             val info = args?.get(0) ?: return@newProxyInstance null
                             hotspotInfo = info
                         }
+                        "onCapabilityChanged" -> {
+                            val cap = args?.get(0) ?: return@newProxyInstance null
+                            try { hotspotMaxClients = cap.javaClass.getMethod("getMaxSupportedClients").invoke(cap) as? Int ?: 0 } catch (_: Exception) { }
+                        }
                         "onStateChanged" -> {
                             hotspotClientCount = 0
                             hotspotInfo = null
+                            hotspotMaxClients = 0
+                            try {
+                                val state = args?.get(0) as? Int ?: -1
+                                hotspotStateText = when (state) {
+                                    10 -> "正在关闭…"
+                                    11 -> "已关闭"
+                                    12 -> "正在开启…"
+                                    13 -> "已开启"
+                                    14 -> "开启失败"
+                                    else -> "未知状态"
+                                }
+                            } catch (_: Exception) { }
                         }
                     }
                     updateHotspotInfo()
@@ -443,6 +457,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, _ ->
                 when (m.name) {
                     "onTetheringStarted" -> { started = true; appendLog("TetheringManager: 热点已启动 (onTetheringStarted)") }
+                    "onTetheringStopped" -> { started = true; appendLog("TetheringManager: 热点已关闭 (onTetheringStopped)") }
                     "onTetheringFailed" -> { failed = true; appendLog("TetheringManager: 热点启动失败 (onTetheringFailed)") }
                 }
                 try { latch.countDown() } catch (_: Throwable) { }
@@ -464,6 +479,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
                 if (started) return true to "startTethering 成功（系统回调确认）"
             } else {
+                // 对齐源码 stopTethering：TetheringManager.stopTethering(type, executor, callback)
+                // （API 30+ 公共 API），onTetheringStopped 回调确认
                 try {
                     tm.javaClass.getMethod("stopTethering", Int::class.java, java.util.concurrent.Executor::class.java, cbCls)
                         .invoke(tm, 0, exe, cb)
@@ -471,9 +488,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     tm.javaClass.getMethod("stopTethering", Int::class.java, String::class.java, java.util.concurrent.Executor::class.java, cbCls)
                         .invoke(tm, 0, requireContext().packageName, exe, cb)
                 }
-                appendLog("TetheringManager.stopTethering(wifi) 已调用，等待系统处理…")
-                Thread.sleep(1200)
-                if (!hotspotEnabled()) return true to "stopTethering 已生效"
+                appendLog("TetheringManager.stopTethering(wifi) 已调用，等待 onTetheringStopped 回调…")
+                latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+                if (started) return true to "stopTethering 已生效（系统回调确认）"
+                if (!hotspotEnabled()) return true to "stopTethering 已生效（状态确认）"
                 appendLog("普通进程关闭未生效 → root 会话兜底")
             }
         } catch (e: Exception) {
@@ -483,6 +501,20 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             appendLog("普通进程路径未成功（started=$started failed=$failed）→ root 会话兜底（entitlement 豁免需 TETHER_PRIVILEGED）")
             val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
             if (o != null && !cmdFailed(o)) return true to o
+            // 最后降级：legacy ConnectivityManager.stopTethering(0)（对齐源码 stopTetheringLegacy）
+            if (!on) {
+                appendLog("root 兜底未生效 → legacy stopTethering 兜底")
+                return try {
+                    val cm = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                    val m = ConnectivityManager::class.java.getDeclaredMethod("stopTethering", Int::class.java)
+                    m.isAccessible = true
+                    m.invoke(cm, 0)
+                    Thread.sleep(1200)
+                    if (!hotspotEnabled()) true to "legacy stopTethering 已生效" else false to "legacy 未生效"
+                } catch (_: Exception) {
+                    false to "legacy 调用失败"
+                }
+            }
             return false to (o ?: "roothelper 执行失败")
         }
         return false to "未收到系统回调"

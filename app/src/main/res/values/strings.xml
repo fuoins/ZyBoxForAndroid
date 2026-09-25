@@ -669,7 +669,7 @@
     <string name="vpn_hotspot_log">Runtime log</string>
     <string name="vpn_hotspot_log_clear">Clear</string>
     <string name="vpn_hotspot_status">Hotspot status</string>
-    <string name="vpn_hotspot_status_clients">clients connected</string>
+    <string name="vpn_hotspot_status_clients">个客户端</string>
     <string name="toggle_sync_ping">Persist sync speed-test latency</string>
     <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
     <string name="action_import_clipboard_ping">Import from clipboard +ping to current group</string>

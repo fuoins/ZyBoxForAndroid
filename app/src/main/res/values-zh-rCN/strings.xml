@@ -576,8 +576,8 @@
     <string name="vpn_hotspot_no_iface">未找到共享接口或 VPN 隧道接口，请先开启热点/USB/蓝牙共享并连接 VPN</string>
     <string name="vpn_hotspot_cmd_fail">命令执行失败</string>
     <string name="vpn_hotspot_hw_read_fail">读取失败</string>
-    <string name="vpn_hotspot_manage">管理系统共享</string>
-    <string name="vpn_hotspot_manage_desc">跳转到系统网络共享设置（热点 / USB / 蓝牙）</string>
+    <string name="vpn_hotspot_manage">热点 / USB / 蓝牙 / 以太网络共享</string>
+    <string name="vpn_hotspot_manage_desc">跳转到系统网络共享设置（热点 / USB / 蓝牙 / 以太网）</string>
     <string name="vpn_hotspot_open">已开启</string>
     <string name="vpn_hotspot_close">已关闭</string>
     <string name="vpn_hotspot_tun_miss">未找到 VPN 隧道接口，请先连接 VPN 再开启</string>
