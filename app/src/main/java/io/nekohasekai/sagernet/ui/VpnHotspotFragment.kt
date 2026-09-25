@@ -82,9 +82,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     "echo RULE:; ip rule show | grep -E '20700|20701|20900'; echo ROUTE96:; ip route show table 96; " +
                     "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; echo CLEAN97_OK"
             } else {
-                "ip rule del iif \$IFACE priority 20700 2>/dev/null; " +
-                    "ip rule del iif \$IFACE priority 20701 2>/dev/null; " +
-                    "ip rule del iif \$IFACE priority 20900 2>/dev/null; " +
+                "while ip rule del priority 20700 2>/dev/null; do :; done; " +
+                    "while ip rule del priority 20701 2>/dev/null; do :; done; " +
+                    "while ip rule del priority 20900 2>/dev/null; do :; done; " +
                     "ip route flush table 96 2>/dev/null; " +
                     "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
                     "ndc nat disable \$IFACE 2>/dev/null; " +
@@ -109,6 +109,112 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         fun cleanupAtStartup() {
             rootExec(vpnHotspotScript(false))
         }
+    }
+
+    // ===== 热点实时状态（SoftApCallback + TetheringEventCallback，学习 VPNHotspot 的状态识别）=====
+    private var hotspotClientCount = 0
+    private var hotspotFreq = 0
+    private var hotspotBandwidth = 0
+
+    private fun updateHotspotInfo() {
+        try {
+            val ssidView = view?.findViewById<TextView>(R.id.hotspot_status_ssid) ?: return
+            val detailView = view?.findViewById<TextView>(R.id.hotspot_status_detail) ?: return
+            var ssid = ""
+            if (Build.VERSION.SDK_INT >= 30) try {
+                val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm)
+                cfg?.let { ssid = it.javaClass.getMethod("getSsid").invoke(it) as? String ?: "" }
+            } catch (_: Exception) { }
+            val on = hotspotEnabled()
+            val sb = StringBuilder()
+            sb.append(if (on) "● 已开启" else "○ 已关闭")
+            if (ssid.isNotBlank()) sb.append(" · ").append(ssid)
+            ssidView.text = sb.toString()
+            val det = StringBuilder()
+            if (hotspotFreq > 0) det.append(hotspotFreq).append(" MHz")
+            if (hotspotBandwidth > 0) det.append(" · 频宽 ").append(
+                when (hotspotBandwidth) {
+                    1 -> "20"; 2 -> "40"; 3 -> "80"; 4 -> "160"; else -> "$hotspotBandwidth"
+                }
+            ).append(" MHz")
+            if (hotspotClientCount > 0) {
+                if (det.isNotEmpty()) det.append(" · ")
+                det.append(hotspotClientCount).append("/16 ").append(getString(R.string.vpn_hotspot_status_clients))
+            }
+            detailView.text = if (det.isNotEmpty()) det.toString() else "—"
+        } catch (_: Exception) { }
+    }
+
+    private fun registerSoftApMonitor() {
+        if (Build.VERSION.SDK_INT < 29) return
+        try {
+            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val cbCls = Class.forName("android.net.wifi.WifiManager\$SoftApCallback")
+            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, args ->
+                try {
+                    when (m.name) {
+                        "onConnectedClientsChanged" -> {
+                            val list = args?.get(0) as? List<*> ?: emptyList<Any>()
+                            hotspotClientCount = list.size
+                        }
+                        "onInfoChanged" -> {
+                            val info = args?.get(0) ?: return@newProxyInstance null
+                            try { hotspotFreq = info.javaClass.getMethod("getFrequency").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                            try { hotspotBandwidth = info.javaClass.getMethod("getBandwidth").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                        }
+                        "onStateChanged" -> {
+                            hotspotClientCount = 0
+                            hotspotFreq = 0
+                            hotspotBandwidth = 0
+                        }
+                    }
+                    updateHotspotInfo()
+                } catch (_: Exception) { }
+                null
+            }
+            wm.javaClass.getMethod("registerSoftApCallback", cbCls, android.os.Handler::class.java)
+                .invoke(wm, cb, android.os.Handler(android.os.Looper.getMainLooper()))
+        } catch (_: Exception) { }
+    }
+
+    private fun registerTetheringMonitor() {
+        if (Build.VERSION.SDK_INT < 30) return
+        try {
+            val tm = requireContext().getSystemService("tethering")
+            val cbCls = Class.forName("android.net.TetheringManager\$TetheringEventCallback")
+            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, _ ->
+                try {
+                    when (m.name) {
+                        "onTetheringStarted", "onTetheringStopped", "onError", "onUpstreamChanged", "onInterfaceStateChanged" -> {
+                            refreshSystemStateSafe()
+                            updateHotspotInfo()
+                        }
+                    }
+                } catch (_: Exception) { }
+                null
+            }
+            tm.javaClass.getMethod("registerTetheringEventCallback", java.util.concurrent.Executor::class.java, cbCls)
+                .invoke(tm, java.util.concurrent.Executors.newSingleThreadExecutor(), cb)
+        } catch (_: Exception) { }
+    }
+
+    private fun refreshSystemStateSafe() {
+        try {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val h = hotspotEnabled()
+                val u = usbEnabled()
+                val b = btEnabled()
+                val e = ethernetEnabled()
+                withContext(Dispatchers.Main) {
+                    val ws = view?.findViewById<Switch>(R.id.hotspot_wifi_switch) ?: return@withContext
+                    ws.isChecked = h
+                    view?.findViewById<Switch>(R.id.hotspot_usb_switch)?.isChecked = u
+                    view?.findViewById<Switch>(R.id.hotspot_bt_switch)?.isChecked = b
+                    view?.findViewById<Switch>(R.id.hotspot_ethernet_switch)?.isChecked = e
+                }
+            }
+        } catch (_: Exception) { }
     }
 
     // ===== 页面日志（完整输出，防 snack 截断）=====
@@ -414,22 +520,18 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         refreshToggleState()
         refreshSystemState()
         refreshHw()
+        registerSoftApMonitor()
+        registerTetheringMonitor()
+        updateHotspotInfo()
 
         view.findViewById<View>(R.id.hotspot_root_refresh).setOnClickListener {
             refreshRoot()
             refreshSystemState()
         }
 
-        // VPN 热点开关（开启时自动禁用硬件加速）
+        // VPN 热点开关（开启时自动禁用硬件加速；关闭时清转发并一并关热点）
         toggleSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressToggle) return@setOnCheckedChangeListener
-            if (!rootAvailable()) {
-                snack(getString(R.string.vpn_hotspot_need_root))
-                suppressToggle = true
-                toggleSwitch.isChecked = false
-                suppressToggle = false
-                return@setOnCheckedChangeListener
-            }
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     if (checked) setHwAccel(false)
@@ -442,29 +544,24 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             waited++
                         }
                         if (!shareIfaceExists() && !hok) {
-                            withContext(Dispatchers.Main) {
-                                snack("自动开启热点失败${if (hout.isNotBlank()) "：${hout.take(120)}" else ""}")
-                            }
+                            appendLog("自动开启热点未成功: ${hout.take(200)}")
                         }
                     }
                     val out = rootExec(vpnHotspotScript(checked))
                     appendLog("转发脚本输出:\n$out")
+                    if (!checked) {
+                        // 真关闭：转发已清理，热点一并关闭
+                        val (hok2, hout2) = setHotspot(false)
+                        appendLog("VPN热点关闭时热点关闭: ok=$hok2 ${hout2.take(200)}")
+                    }
                     withContext(Dispatchers.Main) {
                         when {
                             out == null -> {
-                                snack(getString(R.string.vpn_hotspot_cmd_fail))
                                 suppressToggle = true
                                 toggleSwitch.isChecked = !checked
                                 suppressToggle = false
                             }
-                            out.contains("TUN_MISS") -> {
-                                snack(getString(R.string.vpn_hotspot_tun_miss))
-                                suppressToggle = true
-                                toggleSwitch.isChecked = false
-                                suppressToggle = false
-                            }
-                            out.contains("IFACE_MISS") -> {
-                                snack(getString(R.string.vpn_hotspot_no_iface))
+                            out.contains("TUN_MISS") || out.contains("IFACE_MISS") -> {
                                 suppressToggle = true
                                 toggleSwitch.isChecked = false
                                 suppressToggle = false
@@ -477,11 +574,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 toggleState.text = getString(
                                     if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off
                                 )
-                                if (checked && out.isNotBlank()) {
-                                    snack(getString(R.string.vpn_hotspot_on) + "\n" + out.take(300))
-                                } else {
-                                    snack(getString(if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off))
-                                }
                             }
                         }
                     }
@@ -510,18 +602,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         delay(1200)
                         val now = hotspotEnabled()
                         withContext(Dispatchers.Main) {
-                            if (now) {
-                                snack(getString(R.string.vpn_hotspot_open))
-                            } else if (ok) {
-                                suppressToggle = true
-                                wifiSwitch.isChecked = true
-                                suppressToggle = false
-                                snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
-                            } else {
+                            if (!now) {
                                 suppressToggle = true
                                 wifiSwitch.isChecked = false
                                 suppressToggle = false
-                                snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                             }
                         }
                     } else {
@@ -531,18 +615,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         delay(1200)
                         val now = hotspotEnabled()
                         withContext(Dispatchers.Main) {
-                            if (!now) {
-                                snack(getString(R.string.vpn_hotspot_close))
-                            } else if (ok) {
+                            if (now) {
                                 suppressToggle = true
                                 wifiSwitch.isChecked = true
                                 suppressToggle = false
-                                snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
-                            } else {
-                                suppressToggle = true
-                                wifiSwitch.isChecked = false
-                                suppressToggle = false
-                                snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                             }
                         }
                     }
@@ -557,21 +633,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val (ok, out) = setUsb(checked)
+                    appendLog("USB开关: ok=$ok ${out.take(200)}")
                     delay(1500)
                     val now = usbEnabled()
                     withContext(Dispatchers.Main) {
-                        if (now == checked) {
-                            snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
-                        } else if (ok) {
+                        if (now != checked) {
                             suppressToggle = true
                             usbSwitch.isChecked = checked
                             suppressToggle = false
-                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
-                        } else {
-                            suppressToggle = true
-                            usbSwitch.isChecked = !checked
-                            suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
@@ -585,21 +654,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val (ok, out) = setBt(checked)
+                    appendLog("蓝牙开关: ok=$ok ${out.take(200)}")
                     delay(1500)
                     val now = btEnabled()
                     withContext(Dispatchers.Main) {
-                        if (now == checked) {
-                            snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
-                        } else if (ok) {
+                        if (now != checked) {
                             suppressToggle = true
                             btSwitch.isChecked = checked
                             suppressToggle = false
-                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
-                        } else {
-                            suppressToggle = true
-                            btSwitch.isChecked = !checked
-                            suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
@@ -613,21 +675,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val (ok, out) = setEthernet(checked)
+                    appendLog("以太网开关: ok=$ok ${out.take(200)}")
                     delay(1500)
                     val now = ethernetEnabled()
                     withContext(Dispatchers.Main) {
-                        if (now == checked) {
-                            snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
-                        } else if (ok) {
+                        if (now != checked) {
                             suppressToggle = true
                             ethernetSwitch.isChecked = checked
                             suppressToggle = false
-                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
-                        } else {
-                            suppressToggle = true
-                            ethernetSwitch.isChecked = !checked
-                            suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
