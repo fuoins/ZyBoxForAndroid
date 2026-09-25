@@ -554,12 +554,7 @@
     <string name="http_upgrade_path">HTTPUpgrade 路径</string>
     <string name="update_current_subscription">更新当前组订阅</string>
     <string name="toggle_auto_test">连接自动测速</string>
-    <string name="auto_test_delay_tip">等待时间越少越容易
-隧道未稳定测速导致超时
-实际节点可能可用
-可增加等待时间
-或自动测速后
-手动点击左下角延迟再次测速</string>
+    <string name="auto_test_delay_tip">等待时间越少越容易隧道未稳定测速导致超时，实际节点可能可用，可增加等待时间或自动测速后手动点击左下角延迟再次测速</string>
     <string name="auto_test_delay_title">自动测速等待时间</string>
     <string name="auto_test_delay_format">等待时间: %1$dms</string>
     <string name="toggle_sync_ping">测速延迟持久化同步</string>

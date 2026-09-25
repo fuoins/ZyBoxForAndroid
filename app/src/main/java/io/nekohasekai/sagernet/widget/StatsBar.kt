@@ -18,6 +18,9 @@ import io.nekohasekai.sagernet.database.ProfileManager
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.ui.MainActivity
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -29,6 +32,7 @@ class StatsBar @JvmOverloads constructor(
     private lateinit var statusText: TextView
     private lateinit var txText: TextView
     private lateinit var rxText: TextView
+    private lateinit var ipGeoText: TextView
     private lateinit var behavior: YourBehavior
 
     var allowShow = true
@@ -74,6 +78,7 @@ class StatsBar @JvmOverloads constructor(
         statusText = findViewById(R.id.status)
         txText = findViewById(R.id.tx)
         rxText = findViewById(R.id.rx)
+        ipGeoText = findViewById(R.id.ip_geo)
         super.setOnClickListener(l)
     }
 
@@ -97,10 +102,13 @@ class StatsBar @JvmOverloads constructor(
                 // 自动测速期间不显示"已连接"，直接显示"测速中…"
                 if (!suppressConnectedText) setStatus(app.getText(R.string.vpn_connected))
             }
+            // ZyBox: 连接成功后右下角显示出口 IP 与 geoip 国家
+            fetchIpGeo()
         } else {
             postWhenStarted {
                 performHide()
             }
+            ipGeoText.text = ""
             updateSpeed(0, 0)
             setStatus(
                 context.getText(
@@ -111,6 +119,32 @@ class StatsBar @JvmOverloads constructor(
                     }
                 )
             )
+        }
+    }
+
+    // ZyBox: 查询当前出口 IP 与 geoip 国家（走 VPN 隧道，显示在右下角）
+    private fun fetchIpGeo() {
+        val activity = context as? MainActivity ?: return
+        activity.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val conn = URL("https://api.ip.sb/geoip").openConnection() as HttpURLConnection
+                conn.connectTimeout = 6000
+                conn.readTimeout = 6000
+                conn.setRequestProperty("User-Agent", "ZyBox/2.0")
+                val json = conn.inputStream.bufferedReader().use { it.readText() }
+                val obj = JSONObject(json)
+                val ip = obj.optString("ip", "")
+                val cc = obj.optString("country_code", "")
+                val flag = if (cc.length == 2) {
+                    cc.uppercase().map { Character.toChars(0x1F1E6 + (it - 'A')).concatToString() }.joinToString("")
+                } else ""
+                val text = "$ip  $flag$cc"
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    ipGeoText.text = text
+                }
+            } catch (_: Exception) {
+                // 查询失败保持空白，不打扰用户
+            }
         }
     }
 

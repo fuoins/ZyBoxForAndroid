@@ -95,6 +95,17 @@
                     android:textStyle="bold"
                     tools:text="@string/connection_test_available" />
 
+                <!-- ZyBox: 右下角显示当前节点出口 IP 与 geoip 国家 -->
+                <TextView
+                    android:id="@+id/ip_geo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp" />
+
             </LinearLayout>
 
         </io.nekohasekai.sagernet.widget.StatsBar>
