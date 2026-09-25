@@ -178,6 +178,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private fun rootHelper(action: String): String? {
         return try {
             val apk = requireContext().applicationInfo.sourceDir
+            val logf = "/data/local/tmp/zybox_rh.log"
             val base = "setenforce 0; CLASSPATH=$apk exec "
             val cmds = listOf(
                 "$base app_process -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action",
@@ -185,8 +186,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 "$base app_process /system/bin io.nekohasekai.sagernet.RootHelper $action"
             )
             for (c in cmds) {
-                val o = rootExec(c)
-                appendLog("root: $action\n$o")
+                // 输出重定向到文件再读（app_process stdout 经 su 传递不可靠，见 v16 空输出问题）
+                val o = rootExec("$c > $logf 2>&1; cat $logf; rm -f $logf")
+                appendLog("root: $action\n${o ?: "(null)"}")
                 if (o != null && !o.contains("killed") && !cmdFailed(o)) return o
             }
             null
@@ -245,8 +247,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     tm.javaClass.getMethod("stopTethering", Int::class.java, String::class.java, java.util.concurrent.Executor::class.java, cbCls)
                         .invoke(tm, 0, requireContext().packageName, exe, cb)
                 }
-                appendLog("TetheringManager.stopTethering(wifi) 已调用")
-                return true to "stopTethering 已调用"
+                appendLog("TetheringManager.stopTethering(wifi) 已调用，等待系统处理…")
+                Thread.sleep(1200)
+                if (!hotspotEnabled()) return true to "stopTethering 已生效"
+                appendLog("普通进程关闭未生效 → root 会话兜底")
             }
         } catch (e: Exception) {
             appendLog("普通进程 startTethering 异常：${e.message}")
@@ -375,10 +379,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         // 防死循环：程序性设置 isChecked 时暂停 listener
         var suppressToggle = false
         fun refreshToggleState() {
-            DataStore.vpnHotspotEnabled = false
+            val on = DataStore.vpnHotspotEnabled
             suppressToggle = true
-            toggleSwitch.isChecked = false
-            toggleState.text = getString(R.string.vpn_hotspot_off)
+            toggleSwitch.isChecked = on
+            toggleState.text = getString(if (on) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off)
             suppressToggle = false
         }
 
