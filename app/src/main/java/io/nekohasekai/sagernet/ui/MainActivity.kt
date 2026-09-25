@@ -51,6 +51,7 @@ import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.parseProxies
 import io.nekohasekai.sagernet.ktx.readableMessage
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.matsuri.nb4a.utils.Util
@@ -68,6 +69,13 @@ class MainActivity : ThemedActivity(),
 
         binding = LayoutMainBinding.inflate(layoutInflater)
         binding.fab.initProgress(binding.fabProgress)
+        // ZyBox: VPN 热点每次打开软件默认关闭——启动时清理可能残留的转发规则并复位状态
+        if (DataStore.vpnHotspotEnabled) {
+            DataStore.vpnHotspotEnabled = false
+            lifecycleScope.launch(Dispatchers.IO) {
+                VpnHotspotFragment.cleanupAtStartup()
+            }
+        }
         if (themeResId !in intArrayOf(
                 R.style.Theme_SagerNet_Black
             )
