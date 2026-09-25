@@ -35,22 +35,31 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
         fun rootAvailable(): Boolean {
             return try {
-                val p = ProcessBuilder("/system/bin/su", "-c", "id").start()
-                val out = p.inputStream.bufferedReader().readText()
-                p.waitFor()
-                out.contains("uid=0")
+                val o = rootExec("id")
+                o?.contains("uid=0") == true
             } catch (_: Exception) {
                 false
             }
         }
 
+        // 对齐 librootkotlinx RootProcessLauncher.startRootShell：裸 su（无 -c），命令写 stdin。
+        // su -c 对含 ;/exec/重定向的长命令在 ColorOS 上不可靠（命令静默失效→输出全空，v16-v29 根因），
+        // stdin 写入是 libsu/librootkotlinx 验证过的兼容方式。
         fun rootExec(cmd: String): String? {
             return try {
-                val p = ProcessBuilder("/system/bin/su", "-c", cmd).start()
-                val out = p.inputStream.bufferedReader().readText() +
-                    p.errorStream.bufferedReader().readText()
+                val p = ProcessBuilder("/system/bin/su").start()
+                try {
+                    p.outputStream.write((cmd + "\nexit\n").toByteArray())
+                    p.outputStream.flush()
+                } catch (_: Exception) { }
+                // stdout/stderr 并发读，避免管道缓冲填满死锁
+                val err = StringBuilder()
+                val t = Thread { err.append(p.errorStream.bufferedReader().readText()) }
+                t.start()
+                val out = p.inputStream.bufferedReader().readText()
+                t.join(5000)
                 p.waitFor()
-                out.trim()
+                (out + err).trim()
             } catch (_: Exception) {
                 null
             }
@@ -438,13 +447,13 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 "$base /system/bin/app_process /system/bin io.nekohasekai.sagernet.RootHelper $action"
             )
             for (c in cmds) {
-                // 输出重定向到文件再读（app_process stdout 经 su 传递不可靠，见 v16 空输出问题）
-                val o = rootExec("$c > $logf 2>&1; echo EXIT=\$? >> $logf; cat $logf; rm -f $logf")
+                // stdin 模式下 app_process stdout 随 root shell 会话可靠回传（对齐 librootkotlinx stdio attached）
+                val o = rootExec(c)
                 appendLog("root: $action\n${o ?: "(null)"}")
                 if (o != null && o.contains("killed")) continue
                 val code = Regex("RH_RESULT=(\\d)").find(o ?: "")?.groupValues?.get(1)?.toIntOrNull()
                 if (code == 0) return o          // 系统回调确认成功
-                // 输出传回失败/为空（app_process stdout 经 su 不可靠）→ 查实际状态兜底：
+                // 输出传回失败/为空 → 查实际状态兜底：
                 // 开启=热点已建；关闭=热点已关（真成功也判成功，不因输出丢失误杀）
                 if (o == null || o.isBlank()) {
                     val stateOk = if (action.startsWith("tether wifi on")) {
