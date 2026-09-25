@@ -544,14 +544,20 @@ class MainActivity : ThemedActivity(),
     }
 
     // 连接成功后自动测速（等效点击"已连接，点击此处自动测速"）。
-    // 只在状态刚进入 Connected 时触发一次，连接成功立即执行。
+    // 只在状态刚进入 Connected 时触发一次；延迟 2 秒等 VPN 隧道稳定后再测，
+    // 避免刚建立隧道未就绪导致后台隧道测速超时（后台测速走真实线路，结果更真实）。
     private var lastStateForAutoTest: BaseService.State? = null
     private fun autoTestOnConnect(state: BaseService.State) {
         val last = lastStateForAutoTest
         lastStateForAutoTest = state
         if (state != BaseService.State.Connected || last == BaseService.State.Connected) return
         // ZyBox: 可在主页 ⋮ 菜单关闭"连接自动测速"
-        if (DataStore.autoTestOnConnect) binding.stats.testConnection()
+        if (DataStore.autoTestOnConnect) {
+            lifecycleScope.launch {
+                delay(2000)
+                binding.stats.testConnection()
+            }
+        }
     }
 
     val connection = SagerConnection(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_FOREGROUND, true)
