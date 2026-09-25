@@ -73,7 +73,6 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     // ④ NAT 出口指向 VPN
                     "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
                     "ndc ipfwd enable \$IFACE 2>/dev/null; " +
-                    "sysctl -w net.ipv4.ip_forward=1; " +
                     "iptables -t nat -C POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o \$TUN -j MASQUERADE; " +
                     // ⑤ 转发允许
                     "iptables -C FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$IFACE -o \$TUN -j ACCEPT; " +
@@ -84,19 +83,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     "echo RULE:; ip rule show | grep -E '20700|20701|20900'; echo ROUTE96:; ip route show table 96; " +
                     "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; echo CLEAN97_OK"
             } else {
+                // 全局清扫（等价 daemon CleanRouting）：不依赖接口/隧道是否还存在，遍历所有可能接口与优先级，见啥删啥
                 "while ip rule del priority 20700 2>/dev/null; do :; done; " +
                     "while ip rule del priority 20701 2>/dev/null; do :; done; " +
+                    "while ip rule del priority 20800 2>/dev/null; do :; done; " +
                     "while ip rule del priority 20900 2>/dev/null; do :; done; " +
                     "ip route flush table 96 2>/dev/null; " +
-                    "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
-                    "ndc nat disable \$IFACE 2>/dev/null; " +
-                    "ndc ipfwd disable \$IFACE 2>/dev/null; " +
-                    "sysctl -w net.ipv4.ip_forward=0; " +
-                    "iptables -t nat -D POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null; " +
-                    "iptables -t nat -D PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
-                    "iptables -t nat -D PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
-                    "iptables -D FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null; " +
-                    "iptables -D FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null"
+                    "ip route flush table 97 2>/dev/null; " +
+                    "for I in " + IFACE_PATTERN + "; do " +
+                    "ndc nat disable \$I 2>/dev/null; " +
+                    "ndc ipfwd disable \$I 2>/dev/null; " +
+                    "iptables -t nat -D PREROUTING -i \$I -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
+                    "iptables -t nat -D PREROUTING -i \$I -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
+                    "iptables -D FORWARD -i \$I -o tun0 -j ACCEPT 2>/dev/null; " +
+                    "iptables -D FORWARD -i tun0 -o \$I -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
+                    "iptables -D FORWARD -i \$I -o tun1 -j ACCEPT 2>/dev/null; " +
+                    "iptables -D FORWARD -i tun1 -o \$I -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
+                    "done; " +
+                    "for T in tun0 tun1 utun0 utun1; do " +
+                    "iptables -t nat -D POSTROUTING -o \$T -j MASQUERADE 2>/dev/null; " +
+                    "done; " +
+                    "echo CLEAN_ALL_DONE"
             }
             return if (on) {
                 "TUN=\$($tunFind); IFACE=\$($ifaceFind); " +
@@ -142,14 +149,39 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     // ===== 热点实时状态（SoftApCallback + TetheringEventCallback，学习 VPNHotspot 的状态识别）=====
     private var hotspotClientCount = 0
-    private var hotspotFreq = 0
-    private var hotspotBandwidth = 0
-    private var hotspotBssid = ""
-    private var hotspotStandard = 0
-    private var hotspotIdleMs = 0L
-    private var cfgBand = -1
-    private var cfgBandwidth = -1
-    private var cfgChannel = 0
+    private var hotspotInfo: Any? = null
+
+    // 对齐 VPNHotspot softApInfoSummary：SoftApInfo(bssid/apInstanceIdentifier/frequency/bandwidth/wifiStandard/autoShutdownTimeoutMillis)
+    // SoftApInfo.getBandwidth() 是 CHANNEL_WIDTH_ 常量（SoftApText.channelBandwidthLabel）：
+    // 0=auto -1=invalid 1=20(no HT) 2=20 3=40 4=80 5=160(80+80) 6=160 7=2160 8=4320 9=6480 10=8640 11=320
+    private fun channelWidthLabel(bw: Int): String = when (bw) {
+        1 -> "20 MHz (no HT)"
+        2 -> "20 MHz"
+        3 -> "40 MHz"
+        4 -> "80 MHz"
+        5 -> "160 MHz (80+80)"
+        6 -> "160 MHz"
+        7 -> "2160 MHz"
+        8 -> "4320 MHz"
+        9 -> "6480 MHz"
+        10 -> "8640 MHz"
+        11 -> "320 MHz"
+        else -> ""
+    }
+
+    // 对齐 VPNHotspot SoftApConfigurationCompat.frequencyToChannel
+    private fun frequencyToChannel(freq: Int): Int = when {
+        freq == 2484 -> 14
+        freq < 2484 -> (freq - 2407) / 5
+        freq in 4910..4980 -> (freq - 4000) / 5
+        freq < 5925 -> (freq - 5000) / 5
+        freq == 5935 -> 2
+        freq <= 45000 -> (freq - 5950) / 5
+        freq in 58320..70200 -> (freq - 56160) / 2160
+        else -> 0
+    }
+
+    private fun formatInt(n: Int): String = java.text.NumberFormat.getIntegerInstance().format(n.toLong())
 
     private fun updateHotspotInfo() {
         try {
@@ -159,65 +191,64 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             if (Build.VERSION.SDK_INT >= 30) try {
                 val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
                 val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm)
-                cfg?.let {
-                    val cls = it.javaClass
-                    try { ssid = cls.getMethod("getSsid").invoke(it) as? String ?: "" } catch (_: Exception) { }
-                    try { cfgBand = cls.getMethod("getBand").invoke(it) as? Int ?: -1 } catch (_: Exception) { }
-                    try { cfgBandwidth = cls.getMethod("getBandwidth").invoke(it) as? Int ?: -1 } catch (_: Exception) { }
-                    try { cfgChannel = cls.getMethod("getChannel").invoke(it) as? Int ?: 0 } catch (_: Exception) { }
-                }
+                cfg?.let { ssid = it.javaClass.getMethod("getSsid").invoke(it) as? String ?: "" }
             } catch (_: Exception) { }
             val on = hotspotEnabled()
             val sb = StringBuilder()
             sb.append(if (on) "● 已开启" else "○ 已关闭")
             if (ssid.isNotBlank()) sb.append(" · ").append(ssid)
-            ssidView.text = sb.toString().let { if (on) it else "○ 未开启 · " + ssid.ifBlank { "—" } }
+            ssidView.text = if (on) sb.toString() else "○ 未开启 · " + ssid.ifBlank { "—" }
             val det = StringBuilder()
             if (on) {
-                // MAC 兜底：回调没给 bssid 时主动读 ip link
-                var mac = hotspotBssid
-                if (mac.isBlank()) {
+                // SoftApInfo 各字段（API 31+；getBssid 返回 MacAddress，需 toString）
+                var bssid = ""
+                var apId = ""
+                var freq = 0
+                var bw = 0
+                var std = 0
+                var idleMs = 0L
+                hotspotInfo?.let { info ->
+                    val cls = info.javaClass
+                    try {
+                        val mac = cls.getMethod("getBssid").invoke(info)
+                        bssid = mac?.toString() ?: ""
+                    } catch (_: Exception) { }
+                    try { apId = cls.getMethod("getApInstanceIdentifier").invoke(info) as? String ?: "" } catch (_: Exception) { }
+                    try { freq = cls.getMethod("getFrequency").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                    try { bw = cls.getMethod("getBandwidth").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                    try { std = cls.getMethod("getWifiStandard").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                    try { idleMs = (cls.getMethod("getAutoShutdownTimeoutMillis").invoke(info) as? Long) ?: 0L } catch (_: Exception) { }
+                }
+                // 回调缺失时 MAC 兜底（ip link）
+                if (bssid.isBlank()) {
                     try {
                         val l = rootExec("ip link show ap0 2>/dev/null") ?: ""
-                        Regex("link/ether ([0-9a-fA-F:]{17})").find(l)?.groupValues?.get(1)?.let { mac = it }
+                        Regex("link/ether ([0-9a-fA-F:]{17})").find(l)?.groupValues?.get(1)?.let { bssid = it }
                     } catch (_: Exception) { }
                 }
-                if (mac.isNotBlank()) det.append(mac).append("%ap0: ")
-                var std = hotspotStandard
-                if (std == 0 && cfgBand == 2) std = 6
-                det.append(
-                    when (std) {
-                        4 -> "Wi-Fi 4"
-                        5 -> "Wi-Fi 5"
-                        6 -> "Wi-Fi 6"
-                        7 -> "Wi-Fi 7"
-                        else -> ""
-                    }
-                )
-                var freq = hotspotFreq
-                if (freq == 0 && cfgChannel > 0) {
-                    freq = when (cfgBand) {
-                        0 -> 2412 + (cfgChannel - 1) * 5
-                        1 -> 5000 + cfgChannel * 5
-                        2 -> 5925 + (cfgChannel - 1) * 5
-                        else -> 0
-                    }
+                if (apId.isBlank()) apId = "ap0"
+                val head = buildString {
+                    if (bssid.isNotBlank()) append(bssid).append("%").append(apId).append(": ")
+                    append(
+                        when (std) {
+                            4 -> "Wi-Fi 4"
+                            5 -> "Wi-Fi 5"
+                            6 -> "Wi-Fi 6"
+                            7 -> "Wi-Fi 7"
+                            else -> ""
+                        }
+                    )
                 }
+                det.append(head)
                 if (freq > 0) {
                     if (det.isNotEmpty() && !det.toString().endsWith(": ")) det.append(", ")
-                    det.append(freq).append(" MHz")
-                    var ch = cfgChannel
-                    if (ch == 0) ch = if (freq >= 4900) (freq - 5000) / 5 else (freq - 2412) / 5 + 1
-                    if (ch > 0) det.append(", 频道 ").append(ch)
+                    det.append(formatInt(freq)).append(" MHz")
+                    val ch = frequencyToChannel(freq)
+                    if (ch > 0) det.append(", 频道 ").append(formatInt(ch))
                 }
-                var bw = hotspotBandwidth
-                if (bw == 0 && cfgBandwidth >= 0) bw = cfgBandwidth + 1
-                if (bw > 0) det.append(", 频宽 ").append(
-                    when (bw) {
-                        1 -> "20"; 2 -> "40"; 3 -> "80"; 4 -> "160"; else -> "$bw"
-                    }
-                ).append(" MHz")
-                if (hotspotIdleMs > 0) det.append(", 关闭延迟 ").append(hotspotIdleMs / 60000).append("分钟")
+                val bwLabel = channelWidthLabel(bw)
+                if (bwLabel.isNotBlank()) det.append(", 频宽 ").append(bwLabel)
+                if (idleMs > 0) det.append(", 关闭延迟 ").append(idleMs / 60000).append("分钟")
                 if (det.isNotEmpty()) det.append("\n")
                 det.append(hotspotClientCount).append("/16 ").append(getString(R.string.vpn_hotspot_status_clients)).append("已连接")
             } else {
@@ -257,19 +288,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         }
                         "onInfoChanged" -> {
                             val info = args?.get(0) ?: return@newProxyInstance null
-                            try { hotspotFreq = info.javaClass.getMethod("getFrequency").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
-                            try { hotspotBandwidth = info.javaClass.getMethod("getBandwidth").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
-                            try { hotspotStandard = info.javaClass.getMethod("getWifiStandard").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
-                            try { hotspotIdleMs = (info.javaClass.getMethod("getIdleShutdownTimeoutMillis").invoke(info) as? Long) ?: 0L } catch (_: Exception) { }
-                            try { hotspotBssid = info.javaClass.getMethod("getBssid").invoke(info) as? String ?: "" } catch (_: Exception) { }
+                            hotspotInfo = info
                         }
                         "onStateChanged" -> {
                             hotspotClientCount = 0
-                            hotspotFreq = 0
-                            hotspotBandwidth = 0
-                            hotspotBssid = ""
-                            hotspotStandard = 0
-                            hotspotIdleMs = 0L
+                            hotspotInfo = null
                         }
                     }
                     updateHotspotInfo()
