@@ -133,25 +133,29 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
-    private fun rootTether(cmd: String, fallbacks: List<String> = emptyList()): Boolean {
-        val all = listOf(cmd) + fallbacks
-        for (c in all) {
-            try {
-                val out = rootExec(c)
-                if (out != null) return true
-            } catch (_: Exception) {
-            }
+    // 热点（返回 是否至少一条命令执行成功 与 最后输出）：开启多级——
+    // cmd wifi start-softap → 断 WiFi 再 start-softap（ColorOS 常要求 STA 关闭）→ cmd tethering start wifi
+    private fun setHotspot(on: Boolean): Pair<Boolean, String> {
+        var lastOut: String = ""
+        fun run(cmd: String): Boolean {
+            val o = rootExec(cmd)
+            if (o != null) lastOut = o
+            return o != null
         }
-        return false
-    }
-
-    // 热点：cmd wifi start-softap（shell 特权直开 SoftAP，不走 entitlement）→ cmd tethering start wifi → 反射 → setWifiApEnabled
-    private fun setHotspot(on: Boolean): Boolean {
-        val cmd = if (on) "cmd wifi start-softap" else "cmd wifi stop-softap"
-        if (rootAvailable() && rootExec(cmd) != null) return true
-        if (rootTether(if (on) "cmd tethering start wifi" else "cmd tethering stop wifi",
-                listOf(if (on) "cmd tethering start 0" else "cmd tethering stop 0"))) return true
-        // 无 root：反射 startTetheredHotspot / stopTetheredHotspot
+        if (on) {
+            if (run("cmd wifi start-softap")) return true to lastOut
+            // ColorOS/多数设备：开热点前需断开 WiFi STA
+            run("cmd wifi set-wifi-enabled disabled")
+            run("svc wifi disable")
+            if (run("cmd wifi start-softap")) return true to lastOut
+            if (run("cmd tethering start wifi")) return true to lastOut
+            if (run("cmd tethering start 0")) return true to lastOut
+        } else {
+            if (run("cmd wifi stop-softap")) return true to lastOut
+            if (run("cmd tethering stop wifi")) return true to lastOut
+            if (run("cmd tethering stop 0")) return true to lastOut
+        }
+        // 无 root 兜底：反射 startTetheredHotspot / stopTetheredHotspot
         try {
             val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
             if (on) {
@@ -164,7 +168,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 val m = WifiManager::class.java.getMethod("stopTetheredHotspot")
                 m.invoke(wm)
             }
-            return true
+            return true to "reflect"
         } catch (_: Exception) {
         }
         // API<33 setWifiApEnabled
@@ -176,41 +180,66 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 Boolean::class.javaPrimitiveType
             )
             m.invoke(wm, cfg, on)
-            true
+            true to "reflect"
         } catch (_: Exception) {
-            false
+            false to lastOut
         }
     }
 
+    // USB/蓝牙/以太网通用：多命令依次尝试，返回(至少一条成功, 最后输出)
+    private fun runTetherCmds(cmds: List<String>): Pair<Boolean, String> {
+        var lastOut: String = ""
+        for (c in cmds) {
+            val o = rootExec(c)
+            if (o != null) lastOut = o
+            if (o != null) return true to lastOut
+        }
+        return false to lastOut
+    }
+
+    // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
+    private fun shareIfaceExists(): Boolean {
+        val out = rootExec("ip -o link show") ?: return false
+        return IFACE_PATTERN.split(" ").any { out.contains(": $it:") }
+    }
+
     // USB：cmd tethering start usb → svc usb setFunctions rndis
-    private fun setUsb(on: Boolean): Boolean {
-        if (rootTether(if (on) "cmd tethering start usb" else "cmd tethering stop usb",
-                listOf(if (on) "cmd tethering start 1" else "cmd tethering stop 1"))) return true
+    private fun setUsb(on: Boolean): Pair<Boolean, String> {
+        val (ok, out) = runTetherCmds(listOf(
+            if (on) "cmd tethering start usb" else "cmd tethering stop usb",
+            if (on) "cmd tethering start 1" else "cmd tethering stop 1"
+        ))
+        if (ok) return true to out
         return try {
             rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
-            true
+            true to "svc usb"
         } catch (_: Exception) {
-            false
+            false to out
         }
     }
 
     // 以太网：cmd tethering start ethernet
-    private fun setEthernet(on: Boolean): Boolean {
-        return rootTether(if (on) "cmd tethering start ethernet" else "cmd tethering stop ethernet",
-            listOf(if (on) "cmd tethering start 5" else "cmd tethering stop 5"))
+    private fun setEthernet(on: Boolean): Pair<Boolean, String> {
+        return runTetherCmds(listOf(
+            if (on) "cmd tethering start ethernet" else "cmd tethering stop ethernet",
+            if (on) "cmd tethering start 5" else "cmd tethering stop 5"
+        ))
     }
 
     // 蓝牙：cmd tethering start bluetooth → svc bluetooth + PAN 反射
-    private fun setBt(on: Boolean): Boolean {
-        if (rootTether(if (on) "cmd tethering start bluetooth" else "cmd tethering stop bluetooth",
-                listOf(if (on) "cmd tethering start 2" else "cmd tethering stop 2"))) return true
+    private fun setBt(on: Boolean): Pair<Boolean, String> {
+        val (ok, out) = runTetherCmds(listOf(
+            if (on) "cmd tethering start bluetooth" else "cmd tethering stop bluetooth",
+            if (on) "cmd tethering start 2" else "cmd tethering stop 2"
+        ))
+        if (ok) return true to out
         try {
             rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
         } catch (_: Exception) {
         }
         return try {
             val adapter = requireContext().getSystemService(Context.BLUETOOTH_SERVICE)
-                as? android.bluetooth.BluetoothAdapter ?: return false
+                as? android.bluetooth.BluetoothAdapter ?: return false to out
             val pan = arrayOfNulls<android.bluetooth.BluetoothProfile>(1)
             val latch = CountDownLatch(1)
             val listener = object : android.bluetooth.BluetoothProfile.ServiceListener {
@@ -228,12 +257,12 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             )
             m.invoke(adapter, requireContext(), listener, 2) // BluetoothProfile.PAN = 2
             latch.await(3, TimeUnit.SECONDS)
-            val proxy = pan[0] ?: return false
+            val proxy = pan[0] ?: return false to out
             val setM = proxy.javaClass.getMethod("setBluetoothTethering", Boolean::class.javaPrimitiveType)
             setM.invoke(proxy, on)
-            true
+            true to "PAN"
         } catch (_: Exception) {
-            false
+            false to out
         }
     }
 
@@ -364,6 +393,20 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     if (checked) setHwAccel(false)
+                    // ZyBox: 开启 VPN 热点时若系统热点未开，自动开热点并等待共享接口出现
+                    if (checked && !shareIfaceExists()) {
+                        val (hok, hout) = setHotspot(true)
+                        var waited = 0
+                        while (!shareIfaceExists() && waited < 20) {
+                            delay(500)
+                            waited++
+                        }
+                        if (!shareIfaceExists() && !hok) {
+                            withContext(Dispatchers.Main) {
+                                snack("自动开启热点失败${if (hout.isNotBlank()) "：${hout.take(120)}" else ""}")
+                            }
+                        }
+                    }
                     val out = rootExec(vpnHotspotScript(checked))
                     withContext(Dispatchers.Main) {
                         when {
@@ -407,17 +450,23 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    setHotspot(checked)
+                    val (ok, out) = setHotspot(checked)
                     delay(1500)
                     val now = hotspotEnabled()
                     withContext(Dispatchers.Main) {
                         if (now == checked) {
                             snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
+                        } else if (ok) {
+                            // 命令已执行：保持开关状态，不自动弹回；输出可见便于排查
+                            suppressToggle = true
+                            wifiSwitch.isChecked = checked
+                            suppressToggle = false
+                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
                         } else {
                             suppressToggle = true
-                            wifiSwitch.isChecked = now
+                            wifiSwitch.isChecked = !checked
                             suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_sent))
+                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
@@ -430,17 +479,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    setUsb(checked)
+                    val (ok, out) = setUsb(checked)
                     delay(1500)
                     val now = usbEnabled()
                     withContext(Dispatchers.Main) {
                         if (now == checked) {
                             snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
+                        } else if (ok) {
+                            suppressToggle = true
+                            usbSwitch.isChecked = checked
+                            suppressToggle = false
+                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
                         } else {
                             suppressToggle = true
-                            usbSwitch.isChecked = now
+                            usbSwitch.isChecked = !checked
                             suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_sent))
+                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
@@ -453,17 +507,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    setBt(checked)
+                    val (ok, out) = setBt(checked)
                     delay(1500)
                     val now = btEnabled()
                     withContext(Dispatchers.Main) {
                         if (now == checked) {
                             snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
+                        } else if (ok) {
+                            suppressToggle = true
+                            btSwitch.isChecked = checked
+                            suppressToggle = false
+                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
                         } else {
                             suppressToggle = true
-                            btSwitch.isChecked = now
+                            btSwitch.isChecked = !checked
                             suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_sent))
+                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
@@ -476,17 +535,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    setEthernet(checked)
+                    val (ok, out) = setEthernet(checked)
                     delay(1500)
                     val now = ethernetEnabled()
                     withContext(Dispatchers.Main) {
                         if (now == checked) {
                             snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
+                        } else if (ok) {
+                            suppressToggle = true
+                            ethernetSwitch.isChecked = checked
+                            suppressToggle = false
+                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
                         } else {
                             suppressToggle = true
-                            ethernetSwitch.isChecked = now
+                            ethernetSwitch.isChecked = !checked
                             suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_sent))
+                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
                         }
                     }
                 } catch (_: Exception) {
