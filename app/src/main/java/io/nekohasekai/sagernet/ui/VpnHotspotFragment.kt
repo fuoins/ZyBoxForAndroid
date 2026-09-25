@@ -76,9 +76,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     "ndc ipfwd disable \$IFACE 2>/dev/null; " +
                     "sysctl -w net.ipv4.ip_forward=0"
             }
-            return "TUN=\$($tunFind); IFACE=\$($ifaceFind); " +
-                "[ -z \"\$TUN\" ] && echo TUN_MISS && exit 3; [ -z \"\$IFACE\" ] && echo IFACE_MISS && exit 4; " +
-                rules + "; echo DONE"
+            return if (on) {
+                "TUN=\$($tunFind); IFACE=\$($ifaceFind); " +
+                    "[ -z \"\$TUN\" ] && echo TUN_MISS && exit 3; [ -z \"\$IFACE\" ] && echo IFACE_MISS && exit 4; " +
+                    rules + "; echo DONE"
+            } else {
+                // 关闭：接口可能已消失，不清检查，逐条清理防残留
+                "TUN=\$($tunFind); IFACE=\$($ifaceFind); " + rules + "; echo DONE"
+            }
         }
 
         fun cleanupAtStartup() {
@@ -155,14 +160,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             // ColorOS/多数设备：开热点前需断开 WiFi STA
             run("cmd wifi set-wifi-enabled disabled")
             run("svc wifi disable")
-            // Android15/ColorOS: start-softap 需要 频段+信道 两个参数（信道 0=自动）
+            // AOSP 语法: start-softap <ssid> (open|wpa2|...) <passphrase> [-b 2|5|any]
             val startCmds = listOf(
-                "cmd wifi start-softap -1 0",
-                "cmd wifi start-softap ANY 0",
-                "cmd wifi start-softap 2G 0",
-                "cmd wifi start-softap 0 0",
-                "cmd wifi start-softap 5G 0",
-                "cmd wifi start-softap 1 0"
+                "cmd wifi start-softap ZyBox open -b any",
+                "cmd wifi start-softap ZyBox open",
+                "cmd wifi start-softap ZyBox wpa2 ZyBox12345 -b any",
+                "cmd wifi start-softap ZyBox wpa2 ZyBox12345",
+                "cmd wifi start-softap ZyBox 2G 0",
+                "cmd wifi start-softap ZyBox 0 0"
             )
             for (c in startCmds) if (run(c)) return true to lastOut
         } else {
@@ -434,28 +439,58 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             }
         }
 
-        // 热点开关
+        // 热点开关：开=开AP并配置转发（客户端可上网）；关=清转发并关AP
         wifiSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val (ok, out) = setHotspot(checked)
-                    delay(1500)
-                    val now = hotspotEnabled()
-                    withContext(Dispatchers.Main) {
-                        if (now == checked) {
-                            snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
-                        } else if (ok) {
-                            // 命令已执行：保持开关状态，不自动弹回；输出可见便于排查
-                            suppressToggle = true
-                            wifiSwitch.isChecked = checked
-                            suppressToggle = false
-                            snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
-                        } else {
-                            suppressToggle = true
-                            wifiSwitch.isChecked = !checked
-                            suppressToggle = false
-                            snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
+                    if (checked) {
+                        val (ok, out) = setHotspot(true)
+                        if (ok) {
+                            // AP 开起来后补转发规则（start-softap 不激活互联网共享）
+                            var waited = 0
+                            while (!shareIfaceExists() && waited < 20) {
+                                delay(500)
+                                waited++
+                            }
+                            rootExec(vpnHotspotScript(true))
+                        }
+                        delay(1200)
+                        val now = hotspotEnabled()
+                        withContext(Dispatchers.Main) {
+                            if (now) {
+                                snack(getString(R.string.vpn_hotspot_open))
+                            } else if (ok) {
+                                suppressToggle = true
+                                wifiSwitch.isChecked = true
+                                suppressToggle = false
+                                snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
+                            } else {
+                                suppressToggle = true
+                                wifiSwitch.isChecked = false
+                                suppressToggle = false
+                                snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
+                            }
+                        }
+                    } else {
+                        rootExec(vpnHotspotScript(false))
+                        val (ok, out) = setHotspot(false)
+                        delay(1200)
+                        val now = hotspotEnabled()
+                        withContext(Dispatchers.Main) {
+                            if (!now) {
+                                snack(getString(R.string.vpn_hotspot_close))
+                            } else if (ok) {
+                                suppressToggle = true
+                                wifiSwitch.isChecked = true
+                                suppressToggle = false
+                                snack("已发送命令${if (out.isNotBlank()) "：${out.take(120)}" else ""}")
+                            } else {
+                                suppressToggle = true
+                                wifiSwitch.isChecked = false
+                                suppressToggle = false
+                                snack(getString(R.string.vpn_hotspot_cmd_fail) + (if (out.isNotBlank()) "：${out.take(120)}" else ""))
+                            }
                         }
                     }
                 } catch (_: Exception) {
