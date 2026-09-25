@@ -21,20 +21,31 @@ public class RootHelper {
 
     static Context ctx;
 
+    static void log(String s) {
+        System.out.println(s);
+        System.out.flush();
+    }
+
     public static void main(String[] args) throws Exception {
-        System.out.println("RH_START pid=" + android.os.Process.myPid() + " args=" + java.util.Arrays.toString(args));
-        if (args.length < 1) { System.out.println("NO_ARGS"); System.exit(2); return; }
+        log("RH_START pid=" + android.os.Process.myPid() + " args=" + java.util.Arrays.toString(args));
+        if (args.length < 1) { log("NO_ARGS"); System.exit(2); return; }
+        // 对齐 librootkotlinx RootProcessBootstrap：systemMain 前必须先 prepareMainLooper，否则 ActivityThread 初始化失败/挂起
+        try {
+            android.os.Looper.prepareMainLooper();
+        } catch (Throwable ignored) { }
+        log("LOOPER_OK");
         ctx = rootContext(args.length >= 4 ? args[3] : "moe.nb4a");
+        log("CTX_OK" + (ctx == null ? "(null)" : " pkg=" + ctx.getPackageName()));
         switch (args[0]) {
             case "tether":
-                if (args.length < 3) { System.out.println("NO_ARGS"); System.exit(2); return; }
+                if (args.length < 3) { log("NO_ARGS"); System.exit(2); return; }
                 tether(args[1], args[2], args.length >= 4 ? args[3] : null);
                 break;
             case "info":
                 info();
                 break;
             default:
-                System.out.println("UNKNOWN " + args[0]);
+                log("UNKNOWN " + args[0]);
                 System.exit(2);
         }
     }
@@ -52,6 +63,7 @@ public class RootHelper {
         try {
             Class<?> at = Class.forName("android.app.ActivityThread");
             Object thread = at.getMethod("systemMain").invoke(null);
+            log("SYSTEMMAIN_OK");
             Context sys = (Context) at.getMethod("getSystemContext").invoke(thread);
             int userId = android.os.Process.myUid() / 100000;
             Class<?> uh = Class.forName("android.os.UserHandle");
@@ -60,13 +72,14 @@ public class RootHelper {
                 "createPackageContextAsUser", String.class, int.class, uh)
                 .invoke(sys, pkg, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY, userHandle);
         } catch (Throwable e) {
+            log("ROOTCTX_ERR " + e);
             try { return systemContext(); } catch (Throwable ignored) { return null; }
         }
     }
 
     static void fail(String msg) {
-        System.out.println(msg);
-        System.out.println("RH_RESULT=2");
+        log(msg);
+        log("RH_RESULT=2");
         System.exit(2);
     }
 
@@ -80,8 +93,10 @@ public class RootHelper {
             default: fail("UNKNOWN_TYPE"); return;
         }
         boolean on = onOff.equals("on");
+        log("TETHER_START type=" + type + " on=" + on + " pkg=" + opPackageName);
         Object tm = ctx.getSystemService("tethering");
         if (tm == null) { fail("NO_TETHERING_SERVICE"); return; }
+        log("TM_OK " + tm.getClass().getName());
         Class<?> cbCls = Class.forName("android.net.TetheringManager$StartTetheringCallback");
         Executor exe = Executors.newSingleThreadExecutor();
         if (on) {
@@ -90,8 +105,8 @@ public class RootHelper {
             final int[] result = {-1};
             Object cb = Proxy.newProxyInstance(cbCls.getClassLoader(), new Class[]{cbCls},
                 (p, m, a) -> {
-                    if (m.getName().equals("onTetheringStarted")) { result[0] = 0; System.out.println("STARTED"); latch.countDown(); }
-                    if (m.getName().equals("onTetheringFailed")) { result[0] = 1; System.out.println("FAILED"); latch.countDown(); }
+                    if (m.getName().equals("onTetheringStarted")) { result[0] = 0; log("STARTED"); latch.countDown(); }
+                    if (m.getName().equals("onTetheringFailed")) { result[0] = 1; log("FAILED" + (a != null && a.length > 0 ? " code=" + a[0] : "")); latch.countDown(); }
                     return null;
                 });
             Class<?> bCls = Class.forName("android.net.TetheringManager$TetheringRequest$Builder");
@@ -99,26 +114,28 @@ public class RootHelper {
             try { bCls.getMethod("setExemptFromEntitlementCheck", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
             try { bCls.getMethod("setShouldShowEntitlementUi", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
             Object req = bCls.getMethod("build").invoke(builder);
+            log("CALLING_START");
             try {
                 tm.getClass().getMethod("startTethering", req.getClass(), Executor.class, cbCls)
                     .invoke(tm, req, exe, cb);
             } catch (Throwable e) {
-                System.out.println("EXC " + e);
+                log("EXC " + e);
                 fail("START_EXC");
                 return;
             }
+            log("CALLED_START");
             if (!latch.await(2, TimeUnit.SECONDS)) {
                 // 回调未达（ColorOS 上 binder 回调不可靠）→ 查实际状态兜底
                 if (tetherActive(t)) {
-                    System.out.println("STATE_OK");
-                    System.out.println("RH_RESULT=0");
+                    log("STATE_OK");
+                    log("RH_RESULT=0");
                     System.exit(0);
                 }
-                System.out.println("TIMEOUT");
-                System.out.println("RH_RESULT=2");
+                log("TIMEOUT");
+                log("RH_RESULT=2");
                 System.exit(2);
             }
-            System.out.println("RH_RESULT=" + result[0]);
+            log("RH_RESULT=" + result[0]);
             System.exit(result[0] == 0 ? 0 : 1);
         } else {
             // ===== 关闭：ITetheringConnector.stopTethering + IIntResultListener 验证（对齐 TetheringManagerCompat.stopTethering）=====
@@ -176,12 +193,12 @@ public class RootHelper {
             }
             Thread.sleep(1500);
             if (res[0] == 0 || !tetherActive(t)) {
-                System.out.println("CONNECTOR_RESULT=" + res[0]);
-                System.out.println("RH_RESULT=0");
+                log("CONNECTOR_RESULT=" + res[0]);
+                log("RH_RESULT=0");
                 System.exit(0);
             }
-            System.out.println("CONNECTOR_RESULT=" + res[0]);
-            System.out.println("RH_RESULT=1");
+            log("CONNECTOR_RESULT=" + res[0]);
+            log("RH_RESULT=1");
             System.exit(1);
         } catch (Throwable e) {
             fail("CONNECTOR_EXC " + e);

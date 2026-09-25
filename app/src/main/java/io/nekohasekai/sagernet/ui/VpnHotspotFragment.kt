@@ -440,11 +440,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             // app_process 用绝对路径（对齐 librootkotlinx AppProcess.myExe=/proc/self/exe→app_process64）：
             // su 的 PATH 常不含 /system/bin，裸 app_process 会静默失败（v27 输出全空根因）；app_process64 优先，回退 app_process
             val ap64 = "/system/bin/app_process64"
+            // 2 个变体即可（4 个变体每个都是数秒级启动失败，开关响应太慢）：
+            // 主：app_process64；备：runcon（SELinux 域转换，防 killed）
             val cmds = listOf(
                 "$base $ap64 -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action",
-                "$base runcon u:r:su:s0 $ap64 -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action",
-                "$base /system/bin/app_process -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action",
-                "$base /system/bin/app_process /system/bin io.nekohasekai.sagernet.RootHelper $action"
+                "$base runcon u:r:su:s0 $ap64 -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action"
             )
             for (c in cmds) {
                 // stdin 模式下 app_process stdout 随 root shell 会话可靠回传（对齐 librootkotlinx stdio attached）
