@@ -60,19 +60,28 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             val tunFind = "ip -o link show | grep -oE '" + TUN_PATTERN + "' | head -1"
             val ifaceFind = "for i in " + IFACE_PATTERN + "; do ip link show \$i >/dev/null 2>&1 && echo \$i && break; done"
             val rules = if (on) {
-                // 系统 tethering 的 NAT 出口改为 VPN 接口（VPNHotspot 的 ndc nat 方式，拦截系统默认直连）
-                "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
+                // ① 强制 AP 转发流量走 VPN 接口（Android fwmark 路由不覆盖转发流量——根因修复）
+                "ip route replace 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
+                    "ip rule add iif \$IFACE priority 1 lookup 97 2>/dev/null || ip rule del iif \$IFACE priority 1 2>/dev/null; ip rule add iif \$IFACE priority 1 lookup 97 2>/dev/null; " +
+                    // ② NAT 出口指向 VPN
+                    "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
                     "ndc ipfwd enable \$IFACE 2>/dev/null; " +
                     "sysctl -w net.ipv4.ip_forward=1; " +
+                    "iptables -t nat -C POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o \$TUN -j MASQUERADE; " +
+                    // ③ 转发允许
                     "iptables -C FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$IFACE -o \$TUN -j ACCEPT; " +
                     "iptables -C FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; " +
+                    // ④ DNS 走隧道
                     "iptables -t nat -C PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
                     "iptables -t nat -C PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
-                    "echo NAT_STATUS:; ndc nat status 2>/dev/null | head -5"
+                    "echo ROUTE:; ip route show table 97; echo RULE:; ip rule show | head -5"
             } else {
-                "ndc nat disable \$IFACE 2>/dev/null; " +
+                "ip rule del iif \$IFACE priority 1 2>/dev/null; " +
+                    "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
+                    "ndc nat disable \$IFACE 2>/dev/null; " +
                     "ndc ipfwd disable \$IFACE 2>/dev/null; " +
                     "sysctl -w net.ipv4.ip_forward=0; " +
+                    "iptables -t nat -D POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null; " +
                     "iptables -t nat -D PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
                     "iptables -t nat -D PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
                     "iptables -D FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null; " +
@@ -140,6 +149,31 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
+    // 读系统已有热点配置（SSID/安全类型/密码），返回 start-softap 参数；无配置返回 null
+    private fun systemHotspotArgs(): String? {
+        return try {
+            if (Build.VERSION.SDK_INT < 30) return null
+            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm) ?: return null
+            val ssid = cfg.javaClass.getMethod("getSsid").invoke(cfg) as? String ?: return null
+            if (ssid.isBlank()) return null
+            val st = cfg.javaClass.getMethod("getSecurityType").invoke(cfg) as? Int ?: 0
+            val sec = when (st) {
+                1 -> "wpa2"
+                2 -> "wpa3"
+                3 -> "wpa3_transition"
+                4 -> "owe"
+                else -> "open"
+            }
+            val pass = if (st == 0) "" else {
+                " \"" + (cfg.javaClass.getMethod("getPassphrase").invoke(cfg) as? String ?: "") + "\""
+            }
+            "\"$ssid\" $sec$pass"
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     // RootHelper（app_process 以 root 反射系统 TetheringManager，效果同系统设置开关）
     private fun rootHelper(action: String): String? {
         return try {
@@ -149,7 +183,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     dex.outputStream().use { output -> input.copyTo(output) }
                 }
             }
-            rootExec("CLASSPATH=${dex.absolutePath} app_process /system/bin io.nekohasekai.sagernet.RootHelper $action")
+            rootExec("setenforce 0; CLASSPATH=${dex.absolutePath} app_process /system/bin io.nekohasekai.sagernet.RootHelper $action")
         } catch (_: Exception) {
             null
         }
@@ -164,11 +198,32 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             s.contains("error") || s.contains("usage:") || s.contains("fail")
     }
 
-    // 热点：系统级 tethering（RootHelper 反射 TetheringManager，用系统已有热点配置）
+    // 热点：start-softap + 系统已有配置（无系统配置不开，绝不创建 ZyBox）
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
-        val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
-        if (o != null && !cmdFailed(o)) return true to o
-        return false to (o ?: "roothelper 执行失败")
+        var lastOut: String = ""
+        fun run(cmd: String): Boolean {
+            val o = rootExec(cmd)
+            if (o != null) lastOut = o
+            return o != null && !cmdFailed(o)
+        }
+        if (on) {
+            val sysArgs = systemHotspotArgs()
+            if (sysArgs == null) {
+                return false to "未找到系统热点配置，请先在系统设置中创建热点"
+            }
+            // ColorOS/多数设备：开热点前需断开 WiFi STA
+            run("cmd wifi set-wifi-enabled disabled")
+            run("svc wifi disable")
+            val cmds = listOf(
+                "cmd wifi start-softap $sysArgs -b any",
+                "cmd wifi start-softap $sysArgs"
+            )
+            for (c in cmds) if (run(c)) return true to lastOut
+            return false to lastOut
+        } else {
+            if (run("cmd wifi stop-softap")) return true to lastOut
+            return false to lastOut
+        }
     }
 
     // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
