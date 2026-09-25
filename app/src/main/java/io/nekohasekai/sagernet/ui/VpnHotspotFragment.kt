@@ -438,11 +438,17 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 val o = rootExec("$c > $logf 2>&1; echo EXIT=\$? >> $logf; cat $logf; rm -f $logf")
                 appendLog("root: $action\n${o ?: "(null)"}")
                 if (o != null && o.contains("killed")) continue
-                if (o != null) {
-                    val code = Regex("RH_RESULT=(\\d)").find(o)?.groupValues?.get(1)?.toIntOrNull()
-                    if (code == 0) return o          // 系统回调确认成功
-                    if (code == 1) continue          // 明确失败 → 试下一个变体
-                    if (code == 2) continue          // 超时/异常 → 试下一个变体
+                val code = Regex("RH_RESULT=(\\d)").find(o ?: "")?.groupValues?.get(1)?.toIntOrNull()
+                if (code == 0) return o          // 系统回调确认成功
+                // 输出传回失败/为空（app_process stdout 经 su 不可靠）→ 查实际状态兜底：
+                // 开启=热点已建；关闭=热点已关（真成功也判成功，不因输出丢失误杀）
+                if (o == null || o.isBlank()) {
+                    val stateOk = if (action.startsWith("tether wifi on")) {
+                        hotspotEnabled() || shareIfaceExists()
+                    } else {
+                        !hotspotEnabled()
+                    }
+                    if (stateOk) return "STATE_OK $action"
                 }
             }
             null
