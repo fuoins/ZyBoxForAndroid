@@ -28,7 +28,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     companion object {
         const val TUN_PATTERN = "tun[0-9]+|utun[0-9]+"
-        const val IFACE_PATTERN = "usb0 rndis0 bnep0 eth0 wlan0 ap0"
+        const val IFACE_PATTERN = "usb0 rndis0 bnep0 eth0 wlan0 wlan1 ap0 softap0"
         const val TETHER_OFFLOAD = "tether_offload_disabled"
 
         fun rootAvailable(): Boolean {
@@ -79,10 +79,10 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             return if (on) {
                 "TUN=\$($tunFind); IFACE=\$($ifaceFind); " +
                     "[ -z \"\$TUN\" ] && echo TUN_MISS && exit 3; [ -z \"\$IFACE\" ] && echo IFACE_MISS && exit 4; " +
-                    rules + "; echo DONE"
+                    rules + "; echo IFACE=\$IFACE; echo DONE"
             } else {
                 // 关闭：接口可能已消失，不清检查，逐条清理防残留
-                "TUN=\$($tunFind); IFACE=\$($ifaceFind); " + rules + "; echo DONE"
+                "TUN=\$($tunFind); IFACE=\$($ifaceFind); " + rules + "; echo IFACE=\$IFACE; echo DONE"
             }
         }
 
@@ -138,6 +138,31 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
+    // 读系统已有热点配置（SSID/安全类型/密码），返回 start-softap 参数；无配置返回 null
+    private fun systemHotspotArgs(): String? {
+        return try {
+            if (Build.VERSION.SDK_INT < 30) return null
+            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm) ?: return null
+            val ssid = cfg.javaClass.getMethod("getSsid").invoke(cfg) as? String ?: return null
+            if (ssid.isBlank()) return null
+            val st = cfg.javaClass.getMethod("getSecurityType").invoke(cfg) as? Int ?: 0
+            val sec = when (st) {
+                1 -> "wpa2"
+                2 -> "wpa3"
+                3 -> "wpa3_transition"
+                4 -> "owe"
+                else -> "open"
+            }
+            val pass = if (st == 0) "" else {
+                " \"" + (cfg.javaClass.getMethod("getPassphrase").invoke(cfg) as? String ?: "") + "\""
+            }
+            "\"$ssid\" $sec$pass"
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     // 命令输出是否失败（ColorOS/Android15 报错文本不能当作成功）
     private fun cmdFailed(out: String): Boolean {
         val s = out.lowercase()
@@ -161,14 +186,16 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             run("cmd wifi set-wifi-enabled disabled")
             run("svc wifi disable")
             // AOSP 语法: start-softap <ssid> (open|wpa2|...) <passphrase> [-b 2|5|any]
-            val startCmds = listOf(
-                "cmd wifi start-softap ZyBox open -b any",
-                "cmd wifi start-softap ZyBox open",
-                "cmd wifi start-softap ZyBox wpa2 ZyBox12345 -b any",
-                "cmd wifi start-softap ZyBox wpa2 ZyBox12345",
-                "cmd wifi start-softap ZyBox 2G 0",
-                "cmd wifi start-softap ZyBox 0 0"
-            )
+            val sysArgs = systemHotspotArgs()
+            val startCmds = mutableListOf<String>()
+            if (sysArgs != null) {
+                startCmds.add("cmd wifi start-softap $sysArgs -b any")
+                startCmds.add("cmd wifi start-softap $sysArgs")
+            }
+            startCmds.add("cmd wifi start-softap ZyBox open -b any")
+            startCmds.add("cmd wifi start-softap ZyBox open")
+            startCmds.add("cmd wifi start-softap ZyBox wpa2 ZyBox12345 -b any")
+            startCmds.add("cmd wifi start-softap ZyBox wpa2 ZyBox12345")
             for (c in startCmds) if (run(c)) return true to lastOut
         } else {
             if (run("cmd wifi stop-softap")) return true to lastOut
@@ -231,7 +258,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         val btOk = svcOut != null && svcOut.contains("Success")
         return try {
             val adapter = requireContext().getSystemService(Context.BLUETOOTH_SERVICE)
-                as? android.bluetooth.BluetoothAdapter ?: return false to (svcOut ?: "")
+                as? android.bluetooth.BluetoothAdapter
+                ?: return if (btOk) true to "蓝牙已开启；网络共享请在系统蓝牙设置中开启（需已配对设备）"
+                else false to (svcOut ?: "")
             val pan = arrayOfNulls<android.bluetooth.BluetoothProfile>(1)
             val latch = CountDownLatch(1)
             val listener = object : android.bluetooth.BluetoothProfile.ServiceListener {
@@ -249,7 +278,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             )
             m.invoke(adapter, requireContext(), listener, 2) // BluetoothProfile.PAN = 2
             latch.await(3, TimeUnit.SECONDS)
-            val proxy = pan[0] ?: return false to (svcOut ?: "")
+            val proxy = pan[0]
+                ?: return if (btOk) true to "蓝牙已开启；网络共享请在系统蓝牙设置中开启（需已配对设备）"
+                else false to (svcOut ?: "")
             val setM = proxy.javaClass.getMethod("setBluetoothTethering", Boolean::class.javaPrimitiveType)
             setM.invoke(proxy, on)
             true to "PAN"
