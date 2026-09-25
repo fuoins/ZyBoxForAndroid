@@ -480,20 +480,25 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 null
             }
             if (on) {
-                val bCls = Class.forName("android.net.TetheringManager\$TetheringRequest\$Builder")
-                val builder = bCls.getConstructor(Int::class.java).newInstance(0) // TETHERING_WIFI
-                try {
-                    bCls.getMethod("setExemptFromEntitlementCheck", Boolean::class.java).invoke(builder, true)
-                } catch (_: Throwable) { }
-                try {
-                    bCls.getMethod("setShouldShowEntitlementUi", Boolean::class.java).invoke(builder, false)
-                } catch (_: Throwable) { }
-                val req = bCls.getMethod("build").invoke(builder)
-                tm.javaClass.getMethod("startTethering", req.javaClass, java.util.concurrent.Executor::class.java, cbCls)
-                    .invoke(tm, req, exe, cb)
-                appendLog("TetheringManager.startTethering(wifi) 已调用，等待系统回调 2s…")
-                latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
-                if (started) return true to "startTethering 成功（系统回调确认）"
+                // 对齐源码 startTethering(type, showProvisioningUi)：
+                // 1) 普通进程 exempt=true + showUi=true（VPNHotspot TetheringScreen 传 true）
+                val (ok1, msg1) = tryStartTethering(true)
+                if (ok1) return true to msg1
+                // 对齐源码：仅 NO_CHANGE_TETHERING_PERMISSION 才继续降级，其他错误码直接失败
+                val nc = Regex("code=(\\d+)").find(msg1)?.groupValues?.get(1)?.toIntOrNull()
+                if (nc != null && nc != noChangeTetheringPermission()) {
+                    appendLog("普通进程 startTethering 失败且错误码非 NO_CHANGE_TETHERING_PERMISSION（$msg1）→ 直接失败")
+                    return false to msg1
+                }
+                appendLog("普通进程 startTethering(exempt=true) 失败（$msg1）→ root 会话兜底")
+                // 2) root 兜底（exempt=true，root 进程 uid=0 可能被放行）
+                val o = rootHelper("tether wifi on ${requireContext().packageName}")
+                if (o != null && !cmdFailed(o)) return true to o
+                appendLog("root 兜底未生效 → 普通进程 startTethering(不豁免) 降级（对齐源码 224 行）")
+                // 3) 不豁免降级：走正常 entitlement 流程（ColorOS 无运营商限制时直接通过）
+                val (ok3, msg3) = tryStartTethering(false)
+                if (ok3) return true to msg3
+                return false to "全部开启路径失败（exempt=true→root→exempt=false）: $msg3"
             } else {
                 // 对齐源码 stopTethering：ITetheringConnector.stopTethering(type, opPackageName, resultListener)
                 // （不依赖 ColorOS 上不存在的 TetheringManager.stopTethering 签名）
@@ -506,7 +511,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
         if (failed || !started) {
             appendLog("普通进程路径未成功（started=$started failed=$failed）→ root 会话兜底（entitlement 豁免需 TETHER_PRIVILEGED）")
-            val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
+            val o = rootHelper("tether wifi ${if (on) "on" else "off"} ${requireContext().packageName}")
             if (o != null && !cmdFailed(o)) return true to o
             // 最后降级：legacy ConnectivityManager.stopTethering(0)（对齐源码 stopTetheringLegacy）
             if (!on) {
@@ -525,6 +530,55 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             return false to (o ?: "roothelper 执行失败")
         }
         return false to "未收到系统回调"
+    }
+
+    // TetheringManager.TETHER_ERROR_NO_CHANGE_TETHERING_PERMISSION（运行时反射，避免硬编码）
+    private fun noChangeTetheringPermission(): Int = try {
+        Class.forName("android.net.TetheringManager")
+            .getField("TETHER_ERROR_NO_CHANGE_TETHERING_PERMISSION").getInt(null)
+    } catch (_: Throwable) { -1 }
+
+    // 单次尝试 startTethering（对齐源码 startTethering(type, exempt, showProvisioningUi=true)）
+    private fun tryStartTethering(exempt: Boolean): Pair<Boolean, String> {
+        var started = false
+        var failed = false
+        var failedCode = -1
+        val latch = java.util.concurrent.CountDownLatch(1)
+        return try {
+            val tm = requireContext().getSystemService("tethering") ?: throw RuntimeException("no tether svc")
+            val cbCls = Class.forName("android.net.TetheringManager\$StartTetheringCallback")
+            val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
+            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, a ->
+                when (m.name) {
+                    "onTetheringStarted" -> { started = true; appendLog("TetheringManager: 热点已启动 (onTetheringStarted)") }
+                    "onTetheringFailed" -> {
+                        failed = true
+                        failedCode = a?.get(0) as? Int ?: -1
+                        appendLog("TetheringManager: 热点启动失败 (onTetheringFailed code=$failedCode)")
+                    }
+                }
+                try { latch.countDown() } catch (_: Throwable) { }
+                null
+            }
+            val bCls = Class.forName("android.net.TetheringManager\$TetheringRequest\$Builder")
+            val builder = bCls.getConstructor(Int::class.java).newInstance(0) // TETHERING_WIFI
+            try {
+                bCls.getMethod("setExemptFromEntitlementCheck", Boolean::class.java).invoke(builder, exempt)
+            } catch (_: Throwable) { }
+            try {
+                bCls.getMethod("setShouldShowEntitlementUi", Boolean::class.java).invoke(builder, true)
+            } catch (_: Throwable) { }
+            val req = bCls.getMethod("build").invoke(builder)
+            tm.javaClass.getMethod("startTethering", req.javaClass, java.util.concurrent.Executor::class.java, cbCls)
+                .invoke(tm, req, exe, cb)
+            appendLog("TetheringManager.startTethering(wifi, exempt=$exempt, showUi=true) 已调用，等待系统回调 2s…")
+            latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+            if (started) true to "startTethering 成功（系统回调确认）"
+            else false to (if (failed) "onTetheringFailed code=$failedCode" else "未收到系统回调")
+        } catch (e: Exception) {
+            appendLog("普通进程 startTethering 异常：${e.message}")
+            false to "startTethering 异常 ${e.message}"
+        }
     }
 
     // 普通进程关闭热点：getConnector → ITetheringConnector.stopTethering(type, opPackageName[, attributionTag], listener)

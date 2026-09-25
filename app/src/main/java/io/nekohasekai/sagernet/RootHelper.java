@@ -27,7 +27,7 @@ public class RootHelper {
         switch (args[0]) {
             case "tether":
                 if (args.length < 3) { System.out.println("NO_ARGS"); System.exit(2); return; }
-                tether(args[1], args[2]);
+                tether(args[1], args[2], args.length >= 4 ? args[3] : null);
                 break;
             case "info":
                 info();
@@ -50,7 +50,7 @@ public class RootHelper {
         System.exit(2);
     }
 
-    static void tether(String type, String onOff) throws Exception {
+    static void tether(String type, String onOff, String opPackageName) throws Exception {
         int t;
         switch (type) {
             case "wifi": t = 0; break;          // TETHERING_WIFI
@@ -77,7 +77,7 @@ public class RootHelper {
             Class<?> bCls = Class.forName("android.net.TetheringManager$TetheringRequest$Builder");
             Object builder = bCls.getConstructor(int.class).newInstance(t);
             try { bCls.getMethod("setExemptFromEntitlementCheck", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
-            try { bCls.getMethod("setShouldShowEntitlementUi", boolean.class).invoke(builder, false); } catch (Throwable ignored) { }
+            try { bCls.getMethod("setShouldShowEntitlementUi", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
             Object req = bCls.getMethod("build").invoke(builder);
             try {
                 tm.getClass().getMethod("startTethering", req.getClass(), Executor.class, cbCls)
@@ -88,6 +88,12 @@ public class RootHelper {
                 return;
             }
             if (!latch.await(2, TimeUnit.SECONDS)) {
+                // 回调未达（ColorOS 上 binder 回调不可靠）→ 查实际状态兜底
+                if (tetherActive(t)) {
+                    System.out.println("STATE_OK");
+                    System.out.println("RH_RESULT=0");
+                    System.exit(0);
+                }
                 System.out.println("TIMEOUT");
                 System.out.println("RH_RESULT=2");
                 System.exit(2);
@@ -96,13 +102,13 @@ public class RootHelper {
             System.exit(result[0] == 0 ? 0 : 1);
         } else {
             // ===== 关闭：ITetheringConnector.stopTethering + IIntResultListener 验证（对齐 TetheringManagerCompat.stopTethering）=====
-            stopViaConnector(tm, t);
+            stopViaConnector(tm, t, opPackageName != null ? opPackageName : ctx.getPackageName());
         }
     }
 
     // 关闭：getConnector → ITetheringConnector.stopTethering(type, opPackageName[, attributionTag], resultListener)
     // onResult(0)=成功（同 VPNHotspot 源码，不依赖不存在的 TetheringManager.stopTethering 签名）
-    static void stopViaConnector(Object tm, int t) throws Exception {
+    static void stopViaConnector(Object tm, int t, String pkg) throws Exception {
         try {
             Class<?> itcCls = Class.forName("android.net.ITetheringConnector");
             // 找 TetheringManager 内部 IConnectorConsumer（getConnector 的参数）
@@ -136,7 +142,6 @@ public class RootHelper {
                     if (m.getName().equals("onResult")) res[0] = (Integer) a[0];
                     return null;
                 });
-            String pkg = ctx.getPackageName();
             Method stop = null;
             try {
                 stop = itcCls.getMethod("stopTethering", int.class, String.class, String.class, irlCls);
@@ -150,12 +155,28 @@ public class RootHelper {
                 stop.invoke(connector, t, pkg, listener);
             }
             Thread.sleep(1500);
-            int r = res[0] == 0 ? 0 : 1;
+            if (res[0] == 0 || !tetherActive(t)) {
+                System.out.println("CONNECTOR_RESULT=" + res[0]);
+                System.out.println("RH_RESULT=0");
+                System.exit(0);
+            }
             System.out.println("CONNECTOR_RESULT=" + res[0]);
-            System.out.println("RH_RESULT=" + r);
-            System.exit(r == 0 ? 0 : 1);
+            System.out.println("RH_RESULT=1");
+            System.exit(1);
         } catch (Throwable e) {
             fail("CONNECTOR_EXC " + e);
+        }
+    }
+
+    // 是否有活动的 tether 接口（热点/usb/蓝牙/以太网任一已建立）—— 回调不可靠时的状态兜底
+    static boolean tetherActive(int t) {
+        try {
+            Object cm = ctx.getSystemService("connectivity");
+            Method m = cm.getClass().getMethod("getTetheredIfaces");
+            String[] ifaces = (String[]) m.invoke(cm);
+            return ifaces != null && ifaces.length > 0;
+        } catch (Throwable e) {
+            return false;
         }
     }
 
