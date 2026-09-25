@@ -644,7 +644,7 @@
     <string name="vpn_hotspot_toggle_desc">When enabled, tethered hotspot / USB / Bluetooth traffic will go through the current VPN; disable to restore direct</string>
     <string name="vpn_hotspot_on">VPN hotspot enabled</string>
     <string name="vpn_hotspot_off">VPN hotspot disabled</string>
-    <string name="vpn_hotspot_wifi">Turn on hotspot</string>
+    <string name="vpn_hotspot_wifi">Hotspot</string>
     <string name="vpn_hotspot_usb">USB tethering</string>
     <string name="vpn_hotspot_bt">Bluetooth tethering</string>
     <string name="vpn_hotspot_hw">Tethering hardware acceleration</string>
@@ -653,6 +653,13 @@
     <string name="vpn_hotspot_no_iface">No tether interface or VPN tunnel interface found. Enable hotspot/USB/Bluetooth tethering and connect VPN first</string>
     <string name="vpn_hotspot_cmd_fail">Command failed</string>
     <string name="vpn_hotspot_hw_read_fail">Read failed</string>
+    <string name="vpn_hotspot_manage">Manage system tethering</string>
+    <string name="vpn_hotspot_manage_desc">Open system tethering settings (hotspot / USB / Bluetooth)</string>
+    <string name="vpn_hotspot_open">On</string>
+    <string name="vpn_hotspot_close">Off</string>
+    <string name="vpn_hotspot_tun_miss">VPN tunnel interface not found. Connect VPN first</string>
+    <string name="vpn_hotspot_hw_tip">If VPN sharing fails, turn off "Tethering hardware acceleration" and retry</string>
+    <string name="vpn_hotspot_open_settings">Opened system tethering settings</string>
     <string name="toggle_sync_ping">Persist sync speed-test latency</string>
     <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
     <string name="action_import_clipboard_ping">Import from clipboard +ping to current group</string>
