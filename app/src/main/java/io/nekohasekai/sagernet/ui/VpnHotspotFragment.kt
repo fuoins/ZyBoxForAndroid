@@ -60,21 +60,23 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             val tunFind = "ip -o link show | grep -oE '" + TUN_PATTERN + "' | head -1"
             val ifaceFind = "for i in " + IFACE_PATTERN + "; do ip link show \$i >/dev/null 2>&1 && echo \$i && break; done"
             val rules = if (on) {
-                "iptables -t nat -C POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o \$TUN -j MASQUERADE; " +
+                // 系统 tethering 的 NAT 出口改为 VPN 接口（VPNHotspot 的 ndc nat 方式，拦截系统默认直连）
+                "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
+                    "ndc ipfwd enable \$IFACE 2>/dev/null; " +
+                    "sysctl -w net.ipv4.ip_forward=1; " +
                     "iptables -C FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$IFACE -o \$TUN -j ACCEPT; " +
                     "iptables -C FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; " +
                     "iptables -t nat -C PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
                     "iptables -t nat -C PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
-                    "ndc ipfwd enable \$IFACE 2>/dev/null; " +
-                    "sysctl -w net.ipv4.ip_forward=1"
+                    "echo NAT_STATUS:; ndc nat status 2>/dev/null | head -5"
             } else {
-                "iptables -t nat -D PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
-                    "iptables -t nat -D PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
-                    "iptables -t nat -D POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null; " +
-                    "iptables -D FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null; " +
-                    "iptables -D FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
+                "ndc nat disable \$IFACE 2>/dev/null; " +
                     "ndc ipfwd disable \$IFACE 2>/dev/null; " +
-                    "sysctl -w net.ipv4.ip_forward=0"
+                    "sysctl -w net.ipv4.ip_forward=0; " +
+                    "iptables -t nat -D PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
+                    "iptables -t nat -D PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null; " +
+                    "iptables -D FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null; " +
+                    "iptables -D FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null"
             }
             return if (on) {
                 "TUN=\$($tunFind); IFACE=\$($ifaceFind); " +
@@ -138,26 +140,16 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
-    // 读系统已有热点配置（SSID/安全类型/密码），返回 start-softap 参数；无配置返回 null
-    private fun systemHotspotArgs(): String? {
+    // RootHelper（app_process 以 root 反射系统 TetheringManager，效果同系统设置开关）
+    private fun rootHelper(action: String): String? {
         return try {
-            if (Build.VERSION.SDK_INT < 30) return null
-            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm) ?: return null
-            val ssid = cfg.javaClass.getMethod("getSsid").invoke(cfg) as? String ?: return null
-            if (ssid.isBlank()) return null
-            val st = cfg.javaClass.getMethod("getSecurityType").invoke(cfg) as? Int ?: 0
-            val sec = when (st) {
-                1 -> "wpa2"
-                2 -> "wpa3"
-                3 -> "wpa3_transition"
-                4 -> "owe"
-                else -> "open"
+            val dex = java.io.File(requireContext().filesDir, "roothelper.dex")
+            if (!dex.exists()) {
+                requireContext().assets.open("roothelper.dex").use { input ->
+                    dex.outputStream().use { output -> input.copyTo(output) }
+                }
             }
-            val pass = if (st == 0) "" else {
-                " \"" + (cfg.javaClass.getMethod("getPassphrase").invoke(cfg) as? String ?: "") + "\""
-            }
-            "\"$ssid\" $sec$pass"
+            rootExec("CLASSPATH=${dex.absolutePath} app_process /system/bin io.nekohasekai.sagernet.RootHelper $action")
         } catch (_: Exception) {
             null
         }
@@ -172,63 +164,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             s.contains("error") || s.contains("usage:") || s.contains("fail")
     }
 
-    // 热点（返回 是否真正执行成功 与 最后输出）：Android 15 的 start-softap 必须带频段参数
-    // 先断 WiFi（ColorOS 常要求 STA 关闭），再依次尝试 -1(任意)/0(2.4G)/ANY/2G/1(5G)/5G
+    // 热点：系统级 tethering（RootHelper 反射 TetheringManager，用系统已有热点配置）
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
-        var lastOut: String = ""
-        fun run(cmd: String): Boolean {
-            val o = rootExec(cmd)
-            if (o != null) lastOut = o
-            return o != null && !cmdFailed(o)
-        }
-        if (on) {
-            // ColorOS/多数设备：开热点前需断开 WiFi STA
-            run("cmd wifi set-wifi-enabled disabled")
-            run("svc wifi disable")
-            // AOSP 语法: start-softap <ssid> (open|wpa2|...) <passphrase> [-b 2|5|any]
-            val sysArgs = systemHotspotArgs()
-            val startCmds = mutableListOf<String>()
-            if (sysArgs != null) {
-                startCmds.add("cmd wifi start-softap $sysArgs -b any")
-                startCmds.add("cmd wifi start-softap $sysArgs")
-            }
-            startCmds.add("cmd wifi start-softap ZyBox open -b any")
-            startCmds.add("cmd wifi start-softap ZyBox open")
-            startCmds.add("cmd wifi start-softap ZyBox wpa2 ZyBox12345 -b any")
-            startCmds.add("cmd wifi start-softap ZyBox wpa2 ZyBox12345")
-            for (c in startCmds) if (run(c)) return true to lastOut
-        } else {
-            if (run("cmd wifi stop-softap")) return true to lastOut
-        }
-        // 无 root 兜底：反射 startTetheredHotspot / stopTetheredHotspot
-        try {
-            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
-            if (on) {
-                val m = WifiManager::class.java.getMethod(
-                    "startTetheredHotspot", java.util.concurrent.Executor::class.java,
-                    Class.forName("android.net.wifi.WifiManager\$SoftApCallback")
-                )
-                m.invoke(wm, java.util.concurrent.Executors.newSingleThreadExecutor(), null)
-            } else {
-                val m = WifiManager::class.java.getMethod("stopTetheredHotspot")
-                m.invoke(wm)
-            }
-            return true to "reflect"
-        } catch (_: Exception) {
-        }
-        // API<33 setWifiApEnabled
-        return try {
-            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val cfg = android.net.wifi.WifiConfiguration::class.java.getDeclaredConstructor().newInstance()
-            val m = WifiManager::class.java.getMethod(
-                "setWifiApEnabled", android.net.wifi.WifiConfiguration::class.java,
-                Boolean::class.javaPrimitiveType
-            )
-            m.invoke(wm, cfg, on)
-            true to "reflect"
-        } catch (_: Exception) {
-            false to lastOut
-        }
+        val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
+        if (o != null && !cmdFailed(o)) return true to o
+        return false to (o ?: "roothelper 执行失败")
     }
 
     // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
@@ -237,58 +177,25 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         return IFACE_PATTERN.split(" ").any { out.contains(": $it:") }
     }
 
-    // USB：svc usb setFunctions rndis（ColorOS 上 cmd tethering 不存在，直接走 svc）
+    // USB：系统级 tethering（RootHelper）
     private fun setUsb(on: Boolean): Pair<Boolean, String> {
-        val o = rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
+        val o = rootHelper("tether usb ${if (on) "on" else "off"}")
         if (o != null && !cmdFailed(o)) return true to o
-        return false to (o ?: "")
+        return false to (o ?: "roothelper 执行失败")
     }
 
-    // 以太网：无 root shell 途径（cmd tethering 在 ColorOS 不存在）→ 诚实提示
+    // 以太网：系统级 tethering（RootHelper）
     private fun setEthernet(on: Boolean): Pair<Boolean, String> {
-        val o = rootExec(if (on) "cmd tethering start ethernet" else "cmd tethering stop ethernet")
+        val o = rootHelper("tether ethernet ${if (on) "on" else "off"}")
         if (o != null && !cmdFailed(o)) return true to o
-        return false to (o ?: "cmd tethering 不存在")
+        return false to (o ?: "roothelper 执行失败")
     }
 
-    // 蓝牙：svc bluetooth 开关 + PAN 反射（ColorOS 无 cmd tethering）
+    // 蓝牙：系统级 tethering（RootHelper 反射 TetheringManager 蓝牙共享）
     private fun setBt(on: Boolean): Pair<Boolean, String> {
-        val svcOut = rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
-        if (svcOut != null && cmdFailed(svcOut)) return false to svcOut
-        val btOk = svcOut != null && svcOut.contains("Success")
-        return try {
-            val adapter = requireContext().getSystemService(Context.BLUETOOTH_SERVICE)
-                as? android.bluetooth.BluetoothAdapter
-                ?: return if (btOk) true to "蓝牙已开启；网络共享请在系统蓝牙设置中开启（需已配对设备）"
-                else false to (svcOut ?: "")
-            val pan = arrayOfNulls<android.bluetooth.BluetoothProfile>(1)
-            val latch = CountDownLatch(1)
-            val listener = object : android.bluetooth.BluetoothProfile.ServiceListener {
-                override fun onServiceConnected(profile: Int, proxy: android.bluetooth.BluetoothProfile) {
-                    pan[0] = proxy
-                    latch.countDown()
-                }
-
-                override fun onServiceDisconnected(profile: Int) {}
-            }
-            val m = android.bluetooth.BluetoothAdapter::class.java.getMethod(
-                "getProfileProxy", Context::class.java,
-                android.bluetooth.BluetoothProfile.ServiceListener::class.java,
-                Int::class.javaPrimitiveType
-            )
-            m.invoke(adapter, requireContext(), listener, 2) // BluetoothProfile.PAN = 2
-            latch.await(3, TimeUnit.SECONDS)
-            val proxy = pan[0]
-                ?: return if (btOk) true to "蓝牙已开启；网络共享请在系统蓝牙设置中开启（需已配对设备）"
-                else false to (svcOut ?: "")
-            val setM = proxy.javaClass.getMethod("setBluetoothTethering", Boolean::class.javaPrimitiveType)
-            setM.invoke(proxy, on)
-            true to "PAN"
-        } catch (_: Exception) {
-            // 蓝牙已开但 PAN 反射无权限：提示系统设置
-            if (btOk) true to "蓝牙已开启；网络共享请在系统蓝牙设置中开启（需已配对设备）"
-            else false to (svcOut ?: "")
-        }
+        val o = rootHelper("tether bluetooth ${if (on) "on" else "off"}")
+        if (o != null && !cmdFailed(o)) return true to o
+        return false to (o ?: "roothelper 执行失败")
     }
 
     private fun hwAccelOn(): Boolean {
@@ -461,7 +368,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 toggleState.text = getString(
                                     if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off
                                 )
-                                snack(getString(if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off))
+                                if (checked && out.isNotBlank()) {
+                                    snack(getString(R.string.vpn_hotspot_on) + "\n" + out.take(300))
+                                } else {
+                                    snack(getString(if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off))
+                                }
                             }
                         }
                     }
