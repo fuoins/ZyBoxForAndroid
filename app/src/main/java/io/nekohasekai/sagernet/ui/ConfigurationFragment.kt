@@ -1766,9 +1766,19 @@ class ConfigurationFragment @JvmOverloads constructor(
                 val runFunc = if (now) activity?.let { it::runOnUiThread } else groupPager::post
                 if (runFunc != null) {
                     runFunc {
+                        val oldCount = groupList.size
                         groupList = newGroupList
+                        // ZyBox: 防 ViewPager2 一致性崩溃——分组数量变小/选中页越界时先把 ViewPager2 跳回有效页再 notify
+                        val target = if (groupList.isEmpty()) 0 else selectedGroupIndex.coerceIn(0, groupList.size - 1)
+                        if (groupList.size < oldCount || target != groupPager.currentItem) {
+                            if (groupPager.currentItem < groupList.size) {
+                                groupPager.setCurrentItem(target, false)
+                            } else {
+                                groupPager.setCurrentItem(0, false)
+                            }
+                        }
                         notifyDataSetChanged()
-                        if (set) groupPager.setCurrentItem(selectedGroupIndex, false)
+                        if (set) groupPager.setCurrentItem(target, false)
                         val hideTab = groupList.size < 2
                         tabLayout.isGone = hideTab
                         toolbar.elevation = if (hideTab) 0F else dp2px(4).toFloat()

@@ -223,6 +223,15 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
         val groupList = ArrayList<ProxyGroup>()
 
         suspend fun reload() {
+            try {
+                reloadInner()
+            } catch (_: Exception) {
+                // ZyBox: 防御——并发订阅/分组操作时列表可能瞬变，失败不崩溃，仅保底刷新
+                groupListView.post { notifyDataSetChanged() }
+            }
+        }
+
+        private suspend fun reloadInner() {
             val groups = SagerDatabase.groupDao.allGroups().toMutableList()
             // ZyBox: 未分组自动迁移到"宇神神了"并删除；空未分组一律移除（不再依赖 size>1）
             val ungrouped = groups.find { it.ungrouped }

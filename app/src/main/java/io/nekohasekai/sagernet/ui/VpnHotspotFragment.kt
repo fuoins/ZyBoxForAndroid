@@ -105,40 +105,105 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     private fun usbEnabled(): Boolean = tetheredIfaces().any { it.contains("usb") || it.contains("rndis") }
     private fun btEnabled(): Boolean = tetheredIfaces().any { it.contains("bnep") }
-
-    // 热点：API<33 反射 setWifiApEnabled（普通权限即可）；API>=33 root cmd wifi start-softap
-    private fun setHotspot(on: Boolean): Boolean {
-        return try {
-            if (Build.VERSION.SDK_INT >= 33) {
-                rootExec(if (on) "cmd wifi start-softap" else "cmd wifi stop-softap")
-                true
-            } else {
-                val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
-                val cfg = WifiConfiguration::class.java.getDeclaredConstructor().newInstance()
-                val m = WifiManager::class.java.getMethod(
-                    "setWifiApEnabled", WifiConfiguration::class.java,
-                    Boolean::class.javaPrimitiveType
-                )
-                m.invoke(wm, cfg, on)
-                true
-            }
-        } catch (_: Exception) {
-            false
-        }
+    private fun ethernetEnabled(): Boolean = tetheredIfaces().any {
+        it.contains("eth") || it.contains("rndis") || it.contains("ncm")
     }
 
-    // USB：root svc usb setFunctions rndis/none
-    private fun setUsb(on: Boolean): Boolean {
+    // 热点：API33+ 反射 startTetheredHotspot（需 NEARBY_WIFI_DEVICES）→ root cmd wifi → API<33 setWifiApEnabled
+    private fun setHotspot(on: Boolean): Boolean {
+        // 1) API33+ 反射 startTetheredHotspot / stopTetheredHotspot
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
+                if (on) {
+                    val m = WifiManager::class.java.getMethod(
+                        "startTetheredHotspot", java.util.concurrent.Executor::class.java,
+                        Class.forName("android.net.wifi.WifiManager\$SoftApCallback")
+                    )
+                    val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
+                    m.invoke(wm, exe, null)
+                } else {
+                    val m = WifiManager::class.java.getMethod("stopTetheredHotspot")
+                    m.invoke(wm)
+                }
+                return true
+            } catch (_: Exception) {
+            }
+        }
+        // 2) root cmd wifi start-softap
+        if (rootAvailable()) {
+            try {
+                rootExec(if (on) "cmd wifi start-softap" else "cmd wifi stop-softap")
+                return true
+            } catch (_: Exception) {
+            }
+        }
+        // 3) API<33 反射 setWifiApEnabled
         return try {
-            val out = rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
+            val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val cfg = WifiConfiguration::class.java.getDeclaredConstructor().newInstance()
+            val m = WifiManager::class.java.getMethod(
+                "setWifiApEnabled", WifiConfiguration::class.java,
+                Boolean::class.javaPrimitiveType
+            )
+            m.invoke(wm, cfg, on)
             true
         } catch (_: Exception) {
             false
         }
     }
 
-    // 蓝牙：root 开/关蓝牙 + 反射 BluetoothPan.setBluetoothTethering
+    // USB：TetheringManager 反射（root 不可行时）+ svc usb
+    private fun setUsb(on: Boolean): Boolean {
+        if (setTetheringSystem(1, on)) return true
+        return try {
+            rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // 以太网：TetheringManager TETHERING_ETHERNET=5（root 下尝试）
+    private fun setEthernet(on: Boolean): Boolean {
+        if (setTetheringSystem(5, on)) return true
+        return try {
+            val out = rootExec(if (on) "cmd tethering start ethernet" else "cmd tethering stop ethernet")
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // API 30+ TetheringManager.startTethering/stopTethering（root 下反射系统服务）
+    private fun setTetheringSystem(type: Int, on: Boolean): Boolean {
+        return try {
+            val tm = requireContext().getSystemService("tethering") ?: return false
+            val cls = tm.javaClass
+            val cbClass = Class.forName("android.net.TetheringManager\$StartTetheringCallback")
+            val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
+            if (on) {
+                val reqClass = Class.forName("android.net.TetheringManager\$TetheringRequest")
+                val bClass = Class.forName("android.net.TetheringManager\$TetheringRequest\$Builder")
+                val b = bClass.getDeclaredConstructor(Int::class.javaPrimitiveType).newInstance(type)
+                val req = bClass.getMethod("build").invoke(b)
+                val m = cls.getMethod("startTethering", reqClass,
+                    java.util.concurrent.Executor::class.java, cbClass)
+                m.invoke(tm, req, exe, null)
+            } else {
+                val m = cls.getMethod("stopTethering", Int::class.javaPrimitiveType,
+                    java.util.concurrent.Executor::class.java, cbClass)
+                m.invoke(tm, type, exe, null)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // 蓝牙：TetheringManager 反射 → root 开/关蓝牙 + 反射 BluetoothPan.setBluetoothTethering
     private fun setBt(on: Boolean): Boolean {
+        if (setTetheringSystem(2, on)) return true
         try {
             rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
         } catch (_: Exception) {
@@ -195,6 +260,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         val wifiSwitch = view.findViewById<Switch>(R.id.hotspot_wifi_switch)
         val usbSwitch = view.findViewById<Switch>(R.id.hotspot_usb_switch)
         val btSwitch = view.findViewById<Switch>(R.id.hotspot_bt_switch)
+        val ethernetSwitch = view.findViewById<Switch>(R.id.hotspot_ethernet_switch)
         val hwSwitch = view.findViewById<Switch>(R.id.hotspot_hw)
 
         fun snack(msg: String) {
@@ -228,10 +294,12 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 val h = hotspotEnabled()
                 val u = usbEnabled()
                 val b = btEnabled()
+                val e = ethernetEnabled()
                 withContext(Dispatchers.Main) {
                     wifiSwitch.isChecked = h
                     usbSwitch.isChecked = u
                     btSwitch.isChecked = b
+                    ethernetSwitch.isChecked = e
                 }
             }
         }
@@ -319,7 +387,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         suppressToggle = true
                         wifiSwitch.isChecked = now
                         suppressToggle = false
-                        snack(getString(R.string.vpn_hotspot_wifi_fail))
+                        snack(getString(R.string.vpn_hotspot_cmd_sent))
                     }
                 }
             }
@@ -339,7 +407,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         suppressToggle = true
                         usbSwitch.isChecked = now
                         suppressToggle = false
-                        snack(getString(R.string.vpn_hotspot_usb_fail))
+                        snack(getString(R.string.vpn_hotspot_cmd_sent))
                     }
                 }
             }
@@ -359,7 +427,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         suppressToggle = true
                         btSwitch.isChecked = now
                         suppressToggle = false
-                        snack(getString(R.string.vpn_hotspot_bt_fail))
+                        snack(getString(R.string.vpn_hotspot_cmd_sent))
+                    }
+                }
+            }
+        }
+
+        // 以太网开关
+        ethernetSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressToggle) return@setOnCheckedChangeListener
+            lifecycleScope.launch(Dispatchers.IO) {
+                setEthernet(checked)
+                delay(1500)
+                val now = ethernetEnabled()
+                withContext(Dispatchers.Main) {
+                    if (now == checked) {
+                        snack(getString(if (checked) R.string.vpn_hotspot_open else R.string.vpn_hotspot_close))
+                    } else {
+                        suppressToggle = true
+                        ethernetSwitch.isChecked = now
+                        suppressToggle = false
+                        snack(getString(R.string.vpn_hotspot_cmd_sent))
                     }
                 }
             }
@@ -385,10 +473,12 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 val h = hotspotEnabled()
                 val u = usbEnabled()
                 val b = btEnabled()
+                val e = ethernetEnabled()
                 withContext(Dispatchers.Main) {
                     it.findViewById<Switch>(R.id.hotspot_wifi_switch).isChecked = h
                     it.findViewById<Switch>(R.id.hotspot_usb_switch).isChecked = u
                     it.findViewById<Switch>(R.id.hotspot_bt_switch).isChecked = b
+                    it.findViewById<Switch>(R.id.hotspot_ethernet_switch).isChecked = e
                 }
             }
         }
@@ -399,6 +489,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         val actions = listOf(
             "android.settings.WIFI_TETHER_SETTINGS",
             "android.settings.TETHERING_SETTINGS",
+            "android.settings.WIRELESS_SETTINGS",
             "android.settings.SETTINGS"
         )
         for (a in actions) {

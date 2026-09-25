@@ -586,6 +586,9 @@
     <string name="vpn_hotspot_wifi_fail">热点开关失败，请在系统设置中手动开启</string>
     <string name="vpn_hotspot_usb_fail">USB 共享开关失败，请在系统设置中手动开启</string>
     <string name="vpn_hotspot_bt_fail">蓝牙共享开关失败，请在系统设置中手动开启</string>
+    <string name="vpn_hotspot_ethernet">以太网网络共享</string>
+    <string name="vpn_hotspot_ethernet_fail">以太网共享开关失败，请在系统设置中手动开启</string>
+    <string name="vpn_hotspot_cmd_sent">命令已发送，请查看系统状态</string>
     <string name="toggle_sync_ping">测速延迟持久化同步</string>
     <string name="toggle_sync_ping_fail">同↑+红色保留</string>
     <string name="action_import_clipboard_ping">从剪切板导入+ping到当前分组</string>
