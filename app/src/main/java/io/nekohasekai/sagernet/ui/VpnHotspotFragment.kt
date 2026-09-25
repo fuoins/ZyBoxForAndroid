@@ -133,27 +133,39 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
-    // 热点（返回 是否至少一条命令执行成功 与 最后输出）：开启多级——
-    // cmd wifi start-softap → 断 WiFi 再 start-softap（ColorOS 常要求 STA 关闭）→ cmd tethering start wifi
+    // 命令输出是否失败（ColorOS/Android15 报错文本不能当作成功）
+    private fun cmdFailed(out: String): Boolean {
+        val s = out.lowercase()
+        return s.contains("no shell command") || s.contains("invalid args") ||
+            s.contains("unknown command") || s.contains("not found") ||
+            s.contains("permission denied") || s.contains("exception") ||
+            s.contains("error") || s.contains("usage:") || s.contains("fail")
+    }
+
+    // 热点（返回 是否真正执行成功 与 最后输出）：Android 15 的 start-softap 必须带频段参数
+    // 先断 WiFi（ColorOS 常要求 STA 关闭），再依次尝试 -1(任意)/0(2.4G)/ANY/2G/1(5G)/5G
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
         var lastOut: String = ""
         fun run(cmd: String): Boolean {
             val o = rootExec(cmd)
             if (o != null) lastOut = o
-            return o != null
+            return o != null && !cmdFailed(o)
         }
         if (on) {
-            if (run("cmd wifi start-softap")) return true to lastOut
             // ColorOS/多数设备：开热点前需断开 WiFi STA
             run("cmd wifi set-wifi-enabled disabled")
             run("svc wifi disable")
-            if (run("cmd wifi start-softap")) return true to lastOut
-            if (run("cmd tethering start wifi")) return true to lastOut
-            if (run("cmd tethering start 0")) return true to lastOut
+            val startCmds = listOf(
+                "cmd wifi start-softap -1",
+                "cmd wifi start-softap 0",
+                "cmd wifi start-softap ANY",
+                "cmd wifi start-softap 2G",
+                "cmd wifi start-softap 1",
+                "cmd wifi start-softap 5G"
+            )
+            for (c in startCmds) if (run(c)) return true to lastOut
         } else {
             if (run("cmd wifi stop-softap")) return true to lastOut
-            if (run("cmd tethering stop wifi")) return true to lastOut
-            if (run("cmd tethering stop 0")) return true to lastOut
         }
         // 无 root 兜底：反射 startTetheredHotspot / stopTetheredHotspot
         try {
@@ -186,60 +198,33 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
-    // USB/蓝牙/以太网通用：多命令依次尝试，返回(至少一条成功, 最后输出)
-    private fun runTetherCmds(cmds: List<String>): Pair<Boolean, String> {
-        var lastOut: String = ""
-        for (c in cmds) {
-            val o = rootExec(c)
-            if (o != null) lastOut = o
-            if (o != null) return true to lastOut
-        }
-        return false to lastOut
-    }
-
     // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
     private fun shareIfaceExists(): Boolean {
         val out = rootExec("ip -o link show") ?: return false
         return IFACE_PATTERN.split(" ").any { out.contains(": $it:") }
     }
 
-    // USB：cmd tethering start usb → svc usb setFunctions rndis
+    // USB：svc usb setFunctions rndis（ColorOS 上 cmd tethering 不存在，直接走 svc）
     private fun setUsb(on: Boolean): Pair<Boolean, String> {
-        val (ok, out) = runTetherCmds(listOf(
-            if (on) "cmd tethering start usb" else "cmd tethering stop usb",
-            if (on) "cmd tethering start 1" else "cmd tethering stop 1"
-        ))
-        if (ok) return true to out
-        return try {
-            rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
-            true to "svc usb"
-        } catch (_: Exception) {
-            false to out
-        }
+        val o = rootExec(if (on) "svc usb setFunctions rndis" else "svc usb setFunctions none")
+        if (o != null && !cmdFailed(o)) return true to o
+        return false to (o ?: "")
     }
 
-    // 以太网：cmd tethering start ethernet
+    // 以太网：无 root shell 途径（cmd tethering 在 ColorOS 不存在）→ 诚实提示
     private fun setEthernet(on: Boolean): Pair<Boolean, String> {
-        return runTetherCmds(listOf(
-            if (on) "cmd tethering start ethernet" else "cmd tethering stop ethernet",
-            if (on) "cmd tethering start 5" else "cmd tethering stop 5"
-        ))
+        val o = rootExec(if (on) "cmd tethering start ethernet" else "cmd tethering stop ethernet")
+        if (o != null && !cmdFailed(o)) return true to o
+        return false to (o ?: "cmd tethering 不存在")
     }
 
-    // 蓝牙：cmd tethering start bluetooth → svc bluetooth + PAN 反射
+    // 蓝牙：svc bluetooth 开关 + PAN 反射（ColorOS 无 cmd tethering）
     private fun setBt(on: Boolean): Pair<Boolean, String> {
-        val (ok, out) = runTetherCmds(listOf(
-            if (on) "cmd tethering start bluetooth" else "cmd tethering stop bluetooth",
-            if (on) "cmd tethering start 2" else "cmd tethering stop 2"
-        ))
-        if (ok) return true to out
-        try {
-            rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
-        } catch (_: Exception) {
-        }
+        val svcOut = rootExec(if (on) "svc bluetooth enable" else "svc bluetooth disable")
+        if (svcOut != null && cmdFailed(svcOut)) return false to svcOut
         return try {
             val adapter = requireContext().getSystemService(Context.BLUETOOTH_SERVICE)
-                as? android.bluetooth.BluetoothAdapter ?: return false to out
+                as? android.bluetooth.BluetoothAdapter ?: return false to (svcOut ?: "")
             val pan = arrayOfNulls<android.bluetooth.BluetoothProfile>(1)
             val latch = CountDownLatch(1)
             val listener = object : android.bluetooth.BluetoothProfile.ServiceListener {
@@ -257,12 +242,12 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             )
             m.invoke(adapter, requireContext(), listener, 2) // BluetoothProfile.PAN = 2
             latch.await(3, TimeUnit.SECONDS)
-            val proxy = pan[0] ?: return false to out
+            val proxy = pan[0] ?: return false to (svcOut ?: "")
             val setM = proxy.javaClass.getMethod("setBluetoothTethering", Boolean::class.javaPrimitiveType)
             setM.invoke(proxy, on)
             true to "PAN"
         } catch (_: Exception) {
-            false to out
+            false to (svcOut ?: "")
         }
     }
 
