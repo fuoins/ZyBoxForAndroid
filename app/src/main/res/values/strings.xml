@@ -653,8 +653,8 @@
     <string name="vpn_hotspot_no_iface">No tether interface or VPN tunnel interface found. Enable hotspot/USB/Bluetooth tethering and connect VPN first</string>
     <string name="vpn_hotspot_cmd_fail">Command failed</string>
     <string name="vpn_hotspot_hw_read_fail">Read failed</string>
-    <string name="vpn_hotspot_manage">Bluetooth / USB / Ethernet network sharing</string>
-    <string name="vpn_hotspot_manage_desc">Open system tethering settings to manage Bluetooth / USB / Ethernet sharing</string>
+    <string name="vpn_hotspot_manage">Hotspot / USB / Bluetooth / Ethernet network sharing</string>
+    <string name="vpn_hotspot_manage_desc">Open system tethering settings to manage hotspot / USB / Bluetooth / Ethernet sharing</string>
     <string name="vpn_hotspot_open">On</string>
     <string name="vpn_hotspot_close">Off</string>
     <string name="vpn_hotspot_tun_miss">VPN tunnel interface not found. Connect VPN first</string>

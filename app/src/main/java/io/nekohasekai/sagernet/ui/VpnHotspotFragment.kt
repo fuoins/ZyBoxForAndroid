@@ -14,6 +14,8 @@ import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CountDownLatch
@@ -111,6 +113,33 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
+    // ===== VPN 隧道等待轮询（没开VPN也能开VPN共享，隧道出现后自动补转发）=====
+    private var vpnRetryJob: Job? = null
+
+    private fun startVpnRetry() {
+        stopVpnRetry()
+        vpnRetryJob = lifecycleScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                try {
+                    val tun = rootExec("ip -o link show | grep -oE '$TUN_PATTERN' | head -1") ?: ""
+                    if (tun.isNotBlank()) {
+                        val out = rootExec(vpnHotspotScript(true))
+                        appendLog("VPN隧道 $tun 已出现，补配转发:\n$out")
+                        break
+                    }
+                    delay(3000)
+                } catch (_: Exception) {
+                    delay(3000)
+                }
+            }
+        }
+    }
+
+    private fun stopVpnRetry() {
+        vpnRetryJob?.cancel()
+        vpnRetryJob = null
+    }
+
     // ===== 热点实时状态（SoftApCallback + TetheringEventCallback，学习 VPNHotspot 的状态识别）=====
     private var hotspotClientCount = 0
     private var hotspotFreq = 0
@@ -118,6 +147,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private var hotspotBssid = ""
     private var hotspotStandard = 0
     private var hotspotIdleMs = 0L
+    private var cfgBand = -1
+    private var cfgBandwidth = -1
+    private var cfgChannel = 0
 
     private fun updateHotspotInfo() {
         try {
@@ -127,18 +159,34 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             if (Build.VERSION.SDK_INT >= 30) try {
                 val wm = requireContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
                 val cfg = WifiManager::class.java.getMethod("getSoftApConfiguration").invoke(wm)
-                cfg?.let { ssid = it.javaClass.getMethod("getSsid").invoke(it) as? String ?: "" }
+                cfg?.let {
+                    val cls = it.javaClass
+                    try { ssid = cls.getMethod("getSsid").invoke(it) as? String ?: "" } catch (_: Exception) { }
+                    try { cfgBand = cls.getMethod("getBand").invoke(it) as? Int ?: -1 } catch (_: Exception) { }
+                    try { cfgBandwidth = cls.getMethod("getBandwidth").invoke(it) as? Int ?: -1 } catch (_: Exception) { }
+                    try { cfgChannel = cls.getMethod("getChannel").invoke(it) as? Int ?: 0 } catch (_: Exception) { }
+                }
             } catch (_: Exception) { }
             val on = hotspotEnabled()
             val sb = StringBuilder()
             sb.append(if (on) "● 已开启" else "○ 已关闭")
             if (ssid.isNotBlank()) sb.append(" · ").append(ssid)
-            ssidView.text = sb.toString()
+            ssidView.text = sb.toString().let { if (on) it else "○ 未开启 · " + ssid.ifBlank { "—" } }
             val det = StringBuilder()
             if (on) {
-                if (hotspotBssid.isNotBlank()) det.append(hotspotBssid).append("%ap0: ")
+                // MAC 兜底：回调没给 bssid 时主动读 ip link
+                var mac = hotspotBssid
+                if (mac.isBlank()) {
+                    try {
+                        val l = rootExec("ip link show ap0 2>/dev/null") ?: ""
+                        Regex("link/ether ([0-9a-fA-F:]{17})").find(l)?.groupValues?.get(1)?.let { mac = it }
+                    } catch (_: Exception) { }
+                }
+                if (mac.isNotBlank()) det.append(mac).append("%ap0: ")
+                var std = hotspotStandard
+                if (std == 0 && cfgBand == 2) std = 6
                 det.append(
-                    when (hotspotStandard) {
+                    when (std) {
                         4 -> "Wi-Fi 4"
                         5 -> "Wi-Fi 5"
                         6 -> "Wi-Fi 6"
@@ -146,15 +194,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         else -> ""
                     }
                 )
-                if (hotspotFreq > 0) {
+                var freq = hotspotFreq
+                if (freq == 0 && cfgChannel > 0) {
+                    freq = when (cfgBand) {
+                        0 -> 2412 + (cfgChannel - 1) * 5
+                        1 -> 5000 + cfgChannel * 5
+                        2 -> 5925 + (cfgChannel - 1) * 5
+                        else -> 0
+                    }
+                }
+                if (freq > 0) {
                     if (det.isNotEmpty() && !det.toString().endsWith(": ")) det.append(", ")
-                    det.append(hotspotFreq).append(" MHz")
-                    val ch = if (hotspotFreq >= 4900) (hotspotFreq - 5000) / 5 else (hotspotFreq - 2412) / 5 + 1
+                    det.append(freq).append(" MHz")
+                    var ch = cfgChannel
+                    if (ch == 0) ch = if (freq >= 4900) (freq - 5000) / 5 else (freq - 2412) / 5 + 1
                     if (ch > 0) det.append(", 频道 ").append(ch)
                 }
-                if (hotspotBandwidth > 0) det.append(", 频宽 ").append(
-                    when (hotspotBandwidth) {
-                        1 -> "20"; 2 -> "40"; 3 -> "80"; 4 -> "160"; else -> "$hotspotBandwidth"
+                var bw = hotspotBandwidth
+                if (bw == 0 && cfgBandwidth >= 0) bw = cfgBandwidth + 1
+                if (bw > 0) det.append(", 频宽 ").append(
+                    when (bw) {
+                        1 -> "20"; 2 -> "40"; 3 -> "80"; 4 -> "160"; else -> "$bw"
                     }
                 ).append(" MHz")
                 if (hotspotIdleMs > 0) det.append(", 关闭延迟 ").append(hotspotIdleMs / 60000).append("分钟")
@@ -240,6 +300,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             tm.javaClass.getMethod("registerTetheringEventCallback", java.util.concurrent.Executor::class.java, cbCls)
                 .invoke(tm, java.util.concurrent.Executors.newSingleThreadExecutor(), cb)
         } catch (_: Exception) { }
+    }
+
+    override fun onDestroyView() {
+        stopVpnRetry()
+        super.onDestroyView()
     }
 
     private fun refreshSystemStateSafe() {
@@ -533,7 +598,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 toggleSwitch.isChecked = !checked
                                 suppressToggle = false
                             }
-                            out.contains("TUN_MISS") || out.contains("IFACE_MISS") -> {
+                            out.contains("IFACE_MISS") -> {
                                 suppressToggle = true
                                 toggleSwitch.isChecked = false
                                 suppressToggle = false
@@ -548,6 +613,12 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 )
                             }
                         }
+                    }
+                    if (checked && out != null && out.contains("TUN_MISS")) {
+                        appendLog("VPN共享已开启，等待VPN隧道出现后自动补配转发…")
+                        startVpnRetry()
+                    } else {
+                        stopVpnRetry()
                     }
                 } catch (_: Exception) {
                 }

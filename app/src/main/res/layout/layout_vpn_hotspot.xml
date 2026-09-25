@@ -79,45 +79,41 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 热点实时状态（SoftApCallback / TetheringEventCallback 识别，完整信息） -->
+            <!-- 热点状态卡：套用 VPN 热点卡样式（主题色大卡），内容为热点完整信息 -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/hotspot_status_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="4dp"
                 android:layout_marginTop="12dp"
-                app:cardElevation="1dp">
+                app:cardBackgroundColor="?colorPrimary"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/vpn_hotspot_status"
-                        android:textAppearance="?android:attr/textAppearanceMedium"
-                        android:textStyle="bold" />
+                    android:padding="16dp">
 
                     <TextView
                         android:id="@+id/hotspot_status_ssid"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
                         android:text="—"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
+                        android:textColor="@android:color/white"
+                        android:textSize="18sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/hotspot_status_detail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:text="—"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
+                        android:textColor="#CCFFFFFF"
+                        android:fontFamily="monospace"
+                        android:textSize="12sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
