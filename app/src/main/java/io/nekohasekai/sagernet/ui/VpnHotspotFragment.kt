@@ -28,7 +28,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     companion object {
         const val TUN_PATTERN = "tun[0-9]+|utun[0-9]+"
-        const val IFACE_PATTERN = "usb0 rndis0 bnep0 eth0 wlan0 wlan1 ap0 softap0"
+        const val IFACE_PATTERN = "ap0 softap0 wlan1 usb0 rndis0 bnep0 eth0 wlan0"
         const val TETHER_OFFLOAD = "tether_offload_disabled"
 
         fun rootAvailable(): Boolean {
@@ -64,8 +64,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 "IFIDX=\$(cat /sys/class/net/\$TUN/ifindex 2>/dev/null); " +
                     "ip rule add iif \$IFACE priority 20700 lookup \$((1000+IFIDX)) 2>/dev/null; " +
                     // ② 兜底：自定义表 97 默认走 tun（netd 未建接口表时）
-                    "ip route replace 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
-                    "ip rule add iif \$IFACE priority 20701 lookup 97 2>/dev/null; " +
+                    "ip route replace 0.0.0.0/0 dev \$TUN table 96 2>/dev/null; " +
+                    "ip rule add iif \$IFACE priority 20701 lookup 96 2>/dev/null; " +
                     // ③ 防泄漏：VPN 路由缺失时 unreachable（绝不走蜂窝直连）
                     "ip rule add iif \$IFACE priority 20900 unreachable 2>/dev/null; " +
                     // ④ NAT 出口指向 VPN
@@ -79,11 +79,13 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     // ⑥ DNS 走隧道
                     "iptables -t nat -C PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
                     "iptables -t nat -C PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
-                    "echo RULE:; ip rule show | grep -E '20700|20701|20900'; echo ROUTE97:; ip route show table 97"
+                    "echo RULE:; ip rule show | grep -E '20700|20701|20900'; echo ROUTE96:; ip route show table 96; " +
+                    "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; echo CLEAN97_OK"
             } else {
                 "ip rule del iif \$IFACE priority 20700 2>/dev/null; " +
                     "ip rule del iif \$IFACE priority 20701 2>/dev/null; " +
                     "ip rule del iif \$IFACE priority 20900 2>/dev/null; " +
+                    "ip route flush table 96 2>/dev/null; " +
                     "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
                     "ndc nat disable \$IFACE 2>/dev/null; " +
                     "ndc ipfwd disable \$IFACE 2>/dev/null; " +
@@ -202,18 +204,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             s.contains("error") || s.contains("usage:") || s.contains("fail")
     }
 
-    // 热点：普通进程 TetheringManager.startTethering（同 VPNHotspot——系统日志 caller=本应用，无需 root）；
-    // SecurityException/失败时回退 rootHelper
+    // 热点：先普通进程 startTethering 并等待系统回调；
+    // entitlement 豁免需 TETHER_PRIVILEGED（普通进程拿不到），onTetheringFailed/异常 → 自动 root 会话兜底（同 VPNHotspot）
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
+        var started = false
+        var failed = false
+        val latch = java.util.concurrent.CountDownLatch(1)
         try {
             val tm = requireContext().getSystemService("tethering") ?: throw RuntimeException("no tether svc")
             val cbCls = Class.forName("android.net.TetheringManager\$StartTetheringCallback")
             val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
             val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, _ ->
                 when (m.name) {
-                    "onTetheringStarted" -> appendLog("TetheringManager: 热点已启动 (onTetheringStarted)")
-                    "onTetheringFailed" -> appendLog("TetheringManager: 热点启动失败 (onTetheringFailed)")
+                    "onTetheringStarted" -> { started = true; appendLog("TetheringManager: 热点已启动 (onTetheringStarted)") }
+                    "onTetheringFailed" -> { failed = true; appendLog("TetheringManager: 热点启动失败 (onTetheringFailed)") }
                 }
+                try { latch.countDown() } catch (_: Throwable) { }
                 null
             }
             if (on) {
@@ -228,26 +234,30 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 val req = bCls.getMethod("build").invoke(builder)
                 tm.javaClass.getMethod("startTethering", req.javaClass, java.util.concurrent.Executor::class.java, cbCls)
                     .invoke(tm, req, exe, cb)
-                appendLog("TetheringManager.startTethering(wifi) 已调用（普通进程，同 VPNHotspot）")
-                return true to "startTethering 已调用"
+                appendLog("TetheringManager.startTethering(wifi) 已调用，等待系统回调 2s…")
+                latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+                if (started) return true to "startTethering 成功（系统回调确认）"
             } else {
                 try {
                     tm.javaClass.getMethod("stopTethering", Int::class.java, java.util.concurrent.Executor::class.java, cbCls)
                         .invoke(tm, 0, exe, cb)
                 } catch (e: NoSuchMethodException) {
-                    val op = requireContext().packageName
                     tm.javaClass.getMethod("stopTethering", Int::class.java, String::class.java, java.util.concurrent.Executor::class.java, cbCls)
-                        .invoke(tm, 0, op, exe, cb)
+                        .invoke(tm, 0, requireContext().packageName, exe, cb)
                 }
                 appendLog("TetheringManager.stopTethering(wifi) 已调用")
                 return true to "stopTethering 已调用"
             }
         } catch (e: Exception) {
-            appendLog("普通进程 startTethering 失败：${e.message} → 回退 rootHelper")
+            appendLog("普通进程 startTethering 异常：${e.message}")
         }
-        val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
-        if (o != null && !cmdFailed(o)) return true to o
-        return false to (o ?: "roothelper 执行失败")
+        if (failed || !started) {
+            appendLog("普通进程路径未成功（started=$started failed=$failed）→ root 会话兜底（entitlement 豁免需 TETHER_PRIVILEGED）")
+            val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
+            if (o != null && !cmdFailed(o)) return true to o
+            return false to (o ?: "roothelper 执行失败")
+        }
+        return false to "未收到系统回调"
     }
 
     // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
