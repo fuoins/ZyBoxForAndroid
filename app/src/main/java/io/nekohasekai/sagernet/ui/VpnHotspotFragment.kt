@@ -60,23 +60,30 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             val tunFind = "ip -o link show | grep -oE '" + TUN_PATTERN + "' | head -1"
             val ifaceFind = "for i in " + IFACE_PATTERN + "; do ip link show \$i >/dev/null 2>&1 && echo \$i && break; done"
             val rules = if (on) {
-                // ① 强制 AP 转发流量走 VPN 接口（Android fwmark 路由不覆盖转发流量——根因修复）
-                "ip route replace 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
-                    "ip rule add iif \$IFACE priority 1 lookup 97 2>/dev/null || ip rule del iif \$IFACE priority 1 2>/dev/null; ip rule add iif \$IFACE priority 1 lookup 97 2>/dev/null; " +
-                    // ② NAT 出口指向 VPN
+                // ① 对齐 VPNHotspot：downstream 流量 lookup netd 的 tun 接口表（1000+ifindex），优先级插系统 tethering 规则间
+                "IFIDX=\$(cat /sys/class/net/\$TUN/ifindex 2>/dev/null); " +
+                    "ip rule add iif \$IFACE priority 20700 lookup \$((1000+IFIDX)) 2>/dev/null; " +
+                    // ② 兜底：自定义表 97 默认走 tun（netd 未建接口表时）
+                    "ip route replace 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
+                    "ip rule add iif \$IFACE priority 20701 lookup 97 2>/dev/null; " +
+                    // ③ 防泄漏：VPN 路由缺失时 unreachable（绝不走蜂窝直连）
+                    "ip rule add iif \$IFACE priority 20900 unreachable 2>/dev/null; " +
+                    // ④ NAT 出口指向 VPN
                     "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
                     "ndc ipfwd enable \$IFACE 2>/dev/null; " +
                     "sysctl -w net.ipv4.ip_forward=1; " +
                     "iptables -t nat -C POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o \$TUN -j MASQUERADE; " +
-                    // ③ 转发允许
+                    // ⑤ 转发允许
                     "iptables -C FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$IFACE -o \$TUN -j ACCEPT; " +
                     "iptables -C FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; " +
-                    // ④ DNS 走隧道
+                    // ⑥ DNS 走隧道
                     "iptables -t nat -C PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p udp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
                     "iptables -t nat -C PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53 2>/dev/null || iptables -t nat -I PREROUTING -i \$IFACE -p tcp --dport 53 -j DNAT --to-destination 8.8.8.8:53; " +
-                    "echo ROUTE:; ip route show table 97; echo RULE:; ip rule show | head -5"
+                    "echo RULE:; ip rule show | grep -E '20700|20701|20900'; echo ROUTE97:; ip route show table 97"
             } else {
-                "ip rule del iif \$IFACE priority 1 2>/dev/null; " +
+                "ip rule del iif \$IFACE priority 20700 2>/dev/null; " +
+                    "ip rule del iif \$IFACE priority 20701 2>/dev/null; " +
+                    "ip rule del iif \$IFACE priority 20900 2>/dev/null; " +
                     "ip route del 0.0.0.0/0 dev \$TUN table 97 2>/dev/null; " +
                     "ndc nat disable \$IFACE 2>/dev/null; " +
                     "ndc ipfwd disable \$IFACE 2>/dev/null; " +
@@ -100,6 +107,21 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         fun cleanupAtStartup() {
             rootExec(vpnHotspotScript(false))
         }
+    }
+
+    // ===== 页面日志（完整输出，防 snack 截断）=====
+    private val logBuf = StringBuilder()
+    private var logView: TextView? = null
+    private fun appendLog(msg: String) {
+        try {
+            if (logBuf.length > 20000) logBuf.setLength(0)
+            logBuf.append(msg).append("\n")
+            val v = logView ?: return
+            activity?.runOnUiThread {
+                v.text = logBuf.toString()
+                v.post { v.scrollTo(0, v.layout?.height ?: 0) }
+            }
+        } catch (_: Exception) { }
     }
 
     // ===== 状态读取（多源兜底，全部 try-catch）=====
@@ -149,16 +171,23 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     }
 
     // ===== 开关（一律 root shell 命令，多级尝试）=====
-    // RootHelper（app_process 以 root 反射系统 TetheringManager，效果同系统设置开关）
+    // RootHelper（root 进程反射系统服务；启动方式对齐 librootkotlinx：
+    // CLASSPATH=APK exec app_process -Xnoimage-dex2oat /system/bin --nice-name；runcon 处理 SELinux 域防 killed）
     private fun rootHelper(action: String): String? {
         return try {
-            val dex = java.io.File(requireContext().filesDir, "roothelper.dex")
-            if (!dex.exists()) {
-                requireContext().assets.open("roothelper.dex").use { input ->
-                    dex.outputStream().use { output -> input.copyTo(output) }
-                }
+            val apk = requireContext().applicationInfo.sourceDir
+            val base = "setenforce 0; CLASSPATH=$apk exec "
+            val cmds = listOf(
+                "$base app_process -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action",
+                "$base runcon u:r:su:s0 app_process -Xnoimage-dex2oat /system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper $action",
+                "$base app_process /system/bin io.nekohasekai.sagernet.RootHelper $action"
+            )
+            for (c in cmds) {
+                val o = rootExec(c)
+                appendLog("root: $action\n$o")
+                if (o != null && !o.contains("killed") && !cmdFailed(o)) return o
             }
-            rootExec("setenforce 0; CLASSPATH=${dex.absolutePath} app_process /system/bin io.nekohasekai.sagernet.RootHelper $action")
+            null
         } catch (_: Exception) {
             null
         }
@@ -173,8 +202,49 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             s.contains("error") || s.contains("usage:") || s.contains("fail")
     }
 
-    // 热点：系统级 tethering（TetheringManager.startTethering，同 VPNHotspot/系统设置开关）
+    // 热点：普通进程 TetheringManager.startTethering（同 VPNHotspot——系统日志 caller=本应用，无需 root）；
+    // SecurityException/失败时回退 rootHelper
     private fun setHotspot(on: Boolean): Pair<Boolean, String> {
+        try {
+            val tm = requireContext().getSystemService("tethering") ?: throw RuntimeException("no tether svc")
+            val cbCls = Class.forName("android.net.TetheringManager\$StartTetheringCallback")
+            val exe = java.util.concurrent.Executors.newSingleThreadExecutor()
+            val cb = java.lang.reflect.Proxy.newProxyInstance(cbCls.classLoader, arrayOf(cbCls)) { _, m, _ ->
+                when (m.name) {
+                    "onTetheringStarted" -> appendLog("TetheringManager: 热点已启动 (onTetheringStarted)")
+                    "onTetheringFailed" -> appendLog("TetheringManager: 热点启动失败 (onTetheringFailed)")
+                }
+                null
+            }
+            if (on) {
+                val bCls = Class.forName("android.net.TetheringManager\$TetheringRequest\$Builder")
+                val builder = bCls.getConstructor(Int::class.java).newInstance(0) // TETHERING_WIFI
+                try {
+                    bCls.getMethod("setExemptFromEntitlementCheck", Boolean::class.java).invoke(builder, true)
+                } catch (_: Throwable) { }
+                try {
+                    bCls.getMethod("setShouldShowEntitlementUi", Boolean::class.java).invoke(builder, false)
+                } catch (_: Throwable) { }
+                val req = bCls.getMethod("build").invoke(builder)
+                tm.javaClass.getMethod("startTethering", req.javaClass, java.util.concurrent.Executor::class.java, cbCls)
+                    .invoke(tm, req, exe, cb)
+                appendLog("TetheringManager.startTethering(wifi) 已调用（普通进程，同 VPNHotspot）")
+                return true to "startTethering 已调用"
+            } else {
+                try {
+                    tm.javaClass.getMethod("stopTethering", Int::class.java, java.util.concurrent.Executor::class.java, cbCls)
+                        .invoke(tm, 0, exe, cb)
+                } catch (e: NoSuchMethodException) {
+                    val op = requireContext().packageName
+                    tm.javaClass.getMethod("stopTethering", Int::class.java, String::class.java, java.util.concurrent.Executor::class.java, cbCls)
+                        .invoke(tm, 0, op, exe, cb)
+                }
+                appendLog("TetheringManager.stopTethering(wifi) 已调用")
+                return true to "stopTethering 已调用"
+            }
+        } catch (e: Exception) {
+            appendLog("普通进程 startTethering 失败：${e.message} → 回退 rootHelper")
+        }
         val o = rootHelper("tether wifi ${if (on) "on" else "off"}")
         if (o != null && !cmdFailed(o)) return true to o
         return false to (o ?: "roothelper 执行失败")
@@ -257,6 +327,21 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         val btSwitch = view.findViewById<Switch>(R.id.hotspot_bt_switch)
         val ethernetSwitch = view.findViewById<Switch>(R.id.hotspot_ethernet_switch)
         val hwSwitch = view.findViewById<Switch>(R.id.hotspot_hw)
+        logView = view.findViewById<TextView>(R.id.hotspot_log)
+
+        // 附近设备权限（Android 13+，VPNHotspot 开热点前也请求）
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                requireActivity().requestPermissions(
+                    arrayOf("android.permission.NEARBY_WIFI_DEVICES"), 0x5A17
+                )
+            } catch (_: Exception) { }
+        }
+
+        view.findViewById<View>(R.id.hotspot_log_clear)?.setOnClickListener {
+            logBuf.setLength(0)
+            logView?.text = ""
+        }
 
         fun snack(msg: String) {
             try {
@@ -349,6 +434,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         }
                     }
                     val out = rootExec(vpnHotspotScript(checked))
+                    appendLog("转发脚本输出:\n$out")
                     withContext(Dispatchers.Main) {
                         when {
                             out == null -> {
@@ -397,6 +483,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 try {
                     if (checked) {
                         val (ok, out) = setHotspot(true)
+                        appendLog("热点开启: ok=$ok ${out.take(200)}")
                         if (ok) {
                             // AP 开起来后补转发规则（start-softap 不激活互联网共享）
                             var waited = 0
@@ -404,7 +491,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 delay(500)
                                 waited++
                             }
-                            rootExec(vpnHotspotScript(true))
+                            rootExec(vpnHotspotScript(true))?.let { appendLog("热点转发脚本:\n$it") }
                         }
                         delay(1200)
                         val now = hotspotEnabled()
@@ -424,8 +511,9 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             }
                         }
                     } else {
-                        rootExec(vpnHotspotScript(false))
+                        rootExec(vpnHotspotScript(false))?.let { appendLog("热点清理脚本:\n$it") }
                         val (ok, out) = setHotspot(false)
+                        appendLog("热点关闭: ok=$ok ${out.take(200)}")
                         delay(1200)
                         val now = hotspotEnabled()
                         withContext(Dispatchers.Main) {
