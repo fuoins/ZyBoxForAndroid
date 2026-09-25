@@ -309,12 +309,22 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             } catch (_: Exception) { }
                         }
                     }
-                    updateHotspotInfo()
+                    try {
+                        val act = activity
+                        if (act != null) act.runOnUiThread { updateHotspotInfo() } else updateHotspotInfo()
+                    } catch (_: Exception) { }
                 } catch (_: Exception) { }
                 null
             }
-            wm.javaClass.getMethod("registerSoftApCallback", cbCls, android.os.Handler::class.java)
-                .invoke(wm, cb, android.os.Handler(android.os.Looper.getMainLooper()))
+            try {
+                // API 30+：registerSoftApCallback(Executor, callback)（对齐 VPNHotspot）
+                wm.javaClass.getMethod("registerSoftApCallback", java.util.concurrent.Executor::class.java, cbCls)
+                    .invoke(wm, java.util.concurrent.Executors.newSingleThreadExecutor(), cb)
+            } catch (_: NoSuchMethodException) {
+                // API 29 兜底：registerSoftApCallback(callback, Handler)
+                wm.javaClass.getMethod("registerSoftApCallback", cbCls, android.os.Handler::class.java)
+                    .invoke(wm, cb, android.os.Handler(android.os.Looper.getMainLooper()))
+            }
         } catch (_: Exception) { }
     }
 
@@ -427,7 +437,13 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 // 输出重定向到文件再读（app_process stdout 经 su 传递不可靠，见 v16 空输出问题）
                 val o = rootExec("$c > $logf 2>&1; cat $logf; rm -f $logf")
                 appendLog("root: $action\n${o ?: "(null)"}")
-                if (o != null && !o.contains("killed") && !cmdFailed(o)) return o
+                if (o != null && o.contains("killed")) continue
+                if (o != null) {
+                    val code = Regex("RH_RESULT=(\\d)").find(o)?.groupValues?.get(1)?.toIntOrNull()
+                    if (code == 0) return o          // 系统回调确认成功
+                    if (code == 1) continue          // 明确失败 → 试下一个变体
+                    if (code == 2) continue          // 超时/异常 → 试下一个变体
+                }
             }
             null
         } catch (_: Exception) {
@@ -479,20 +495,11 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
                 if (started) return true to "startTethering 成功（系统回调确认）"
             } else {
-                // 对齐源码 stopTethering：TetheringManager.stopTethering(type, executor, callback)
-                // （API 30+ 公共 API），onTetheringStopped 回调确认
-                try {
-                    tm.javaClass.getMethod("stopTethering", Int::class.java, java.util.concurrent.Executor::class.java, cbCls)
-                        .invoke(tm, 0, exe, cb)
-                } catch (e: NoSuchMethodException) {
-                    tm.javaClass.getMethod("stopTethering", Int::class.java, String::class.java, java.util.concurrent.Executor::class.java, cbCls)
-                        .invoke(tm, 0, requireContext().packageName, exe, cb)
-                }
-                appendLog("TetheringManager.stopTethering(wifi) 已调用，等待 onTetheringStopped 回调…")
-                latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
-                if (started) return true to "stopTethering 已生效（系统回调确认）"
-                if (!hotspotEnabled()) return true to "stopTethering 已生效（状态确认）"
-                appendLog("普通进程关闭未生效 → root 会话兜底")
+                // 对齐源码 stopTethering：ITetheringConnector.stopTethering(type, opPackageName, resultListener)
+                // （不依赖 ColorOS 上不存在的 TetheringManager.stopTethering 签名）
+                val (cok, cout) = stopViaConnector()
+                if (cok) return true to cout
+                appendLog("普通进程 connector 关闭未生效（$cout）→ root 会话兜底")
             }
         } catch (e: Exception) {
             appendLog("普通进程 startTethering 异常：${e.message}")
@@ -518,6 +525,61 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             return false to (o ?: "roothelper 执行失败")
         }
         return false to "未收到系统回调"
+    }
+
+    // 普通进程关闭热点：getConnector → ITetheringConnector.stopTethering(type, opPackageName[, attributionTag], listener)
+    // onResult(0)=成功（同 VPNHotspot 源码 stopTethering(type, context)）
+    private fun stopViaConnector(): Pair<Boolean, String> {
+        return try {
+            val tm = requireContext().getSystemService("tethering") ?: throw RuntimeException("no tether svc")
+            val itcCls = Class.forName("android.net.ITetheringConnector")
+            var consumerCls: Class<*>? = null
+            for (c in tm.javaClass.declaredClasses) {
+                if (c.simpleName.contains("ConnectorConsumer")) { consumerCls = c; break }
+            }
+            consumerCls ?: throw RuntimeException("no IConnectorConsumer")
+            val connectorRef = arrayOfNulls<Any>(1)
+            val connLatch = java.util.concurrent.CountDownLatch(1)
+            val consumer = java.lang.reflect.Proxy.newProxyInstance(
+                consumerCls.classLoader, arrayOf(consumerCls)
+            ) { _, m, a ->
+                if (m.name == "onConnectorAvailable") { connectorRef[0] = a?.get(0); connLatch.countDown() }
+                null
+            }
+            val getConn = tm.javaClass.declaredMethods.firstOrNull { it.name == "getConnector" }
+                ?: throw RuntimeException("no getConnector")
+            getConn.isAccessible = true
+            getConn.invoke(tm, consumer)
+            if (!connLatch.await(2, java.util.concurrent.TimeUnit.SECONDS)) throw RuntimeException("getConnector timeout")
+            val connector = connectorRef[0] ?: throw RuntimeException("connector null")
+            val irlCls = Class.forName("android.net.IIntResultListener")
+            val res = intArrayOf(-1)
+            val listener = java.lang.reflect.Proxy.newProxyInstance(
+                irlCls.classLoader, arrayOf(irlCls)
+            ) { _, m, a ->
+                if (m.name == "onResult") res[0] = a?.get(0) as? Int ?: -1
+                null
+            }
+            val pkg = requireContext().packageName
+            var stop: java.lang.reflect.Method? = null
+            try {
+                stop = itcCls.getMethod("stopTethering", Int::class.java, String::class.java, String::class.java, irlCls)
+            } catch (_: NoSuchMethodException) { }
+            if (stop == null) stop = itcCls.getMethod("stopTethering", Int::class.java, String::class.java, irlCls)
+            if (stop.parameterCount == 4) {
+                var attr: String? = null
+                try { attr = requireContext().attributionTag } catch (_: Throwable) { }
+                stop.invoke(connector, 0, pkg, attr, listener)
+            } else {
+                stop.invoke(connector, 0, pkg, listener)
+            }
+            Thread.sleep(1500)
+            appendLog("connector.stopTethering → onResult=${res[0]}")
+            if (res[0] == 0) true to "connector stopTethering 已生效" else false to "onResult=${res[0]}"
+        } catch (e: Exception) {
+            appendLog("普通进程 connector 关闭异常：${e.message}")
+            false to "connector 异常 ${e.message}"
+        }
     }
 
     // 是否有共享接口（热点/usb/蓝牙/以太网任一已建立）
@@ -642,9 +704,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     val out = rootExec(vpnHotspotScript(checked))
                     appendLog("转发脚本输出:\n$out")
                     if (!checked) {
-                        // 真关闭：转发已清理，热点一并关闭
-                        val (hok2, hout2) = setHotspot(false)
-                        appendLog("VPN热点关闭时热点关闭: ok=$hok2 ${hout2.take(200)}")
+                        // 真关闭：只清转发；热点保持开着（关 VPN 热点后继续当普通热点用）
+                        appendLog("VPN共享已关闭：转发已清理，热点保持开启")
                     }
                     withContext(Dispatchers.Main) {
                         when {
