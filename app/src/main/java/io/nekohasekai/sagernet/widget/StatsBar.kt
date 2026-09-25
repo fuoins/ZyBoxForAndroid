@@ -13,6 +13,7 @@ import androidx.lifecycle.whenStarted
 import com.google.android.material.bottomappbar.BottomAppBar
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.bg.BaseService
+import io.nekohasekai.sagernet.bg.proto.UrlTest
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProfileManager
 import io.nekohasekai.sagernet.database.SagerDatabase
@@ -135,7 +136,11 @@ class StatsBar @JvmOverloads constructor(
         setStatus(app.getText(R.string.connection_test_testing))
         runOnDefaultDispatcher {
             try {
-                val elapsed = activity.urlTest()
+                // ZyBox: 与整组 URL Test 同款前台 UrlTest 测速（不再走刚建立 VPN 隧道的 service.urlTest，
+                // 避免连接后立即自动测速因隧道未稳定而超时，再点一次才有延迟）
+                val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
+                    ?: error("no proxy")
+                val elapsed = UrlTest().doTest(profile)
                 // ZyBox: 同步测速结果到节点列表的延迟显示（当前连接节点）
                 // 可在主页 ⋮ 菜单关闭"连接延迟同步节点"
                 if (DataStore.syncPingOnTest) {
