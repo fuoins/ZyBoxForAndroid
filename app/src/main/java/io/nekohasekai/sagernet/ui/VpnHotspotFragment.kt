@@ -63,54 +63,96 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             }
         }
 
-        // VPN 转发脚本（参考 VPNHotspot routing 思路的可落地子集）：
-        // 转发 + NAT + 双向 FORWARD（对齐 routing.rs desired_mutations）
+        // VPN 转发脚本 v37：照抄 VPNHotspot daemon（vpnhotspotd routing.rs / desired.rs / ndc.rs / firewall_cleanup.rs）
+        //  开：ndc ipfwd enable vpnhotspot_$IF（失败→写 proc）→ 建 vpnhotspot_acl/stats/masquerade 链 →
+        //      FORWARD -j acl / POSTROUTING -j masquerade → acl(-i D ! -o D REJECT / -o D ESTABLISHED ACCEPT / -i D ACCEPT) →
+        //      masquerade(-s 热点网段 -o T) → IPv6 block 链（源码默认 Block）→
+        //      ip rule 20900 unreachable + 20700 lookup 1000+ifindex(T)
+        //  关：照抄 clean()：删规则 20600/20700/20800/20900 → ndc ipfwd disable vpnhotspot_* → iptables jump 删除+链 flush/delete → 表900
+        //  兼容清理：删旧版 20701/表96/97/全局 FORWARD 规则（防升级残留）
         fun vpnHotspotScript(on: Boolean): String {
             val tunFind = "ip -o link show | grep -oE '" + TUN_PATTERN + "' | head -1"
-            val ifaceFind = "for i in " + IFACE_PATTERN + "; do ip link show \$i >/dev/null 2>&1 && echo \$i && break; done"
+            val ifaceFind = "ip -o link show | grep -oE '^(ap0|softap0|wlan1|usb0|rndis0|bnep0|eth0|wlan0):' | awk -F: '{print \$1}' | head -1"
+            val netCalc = "net_of(){ ip=\$1; p=\$2; IFS=. read a b c d <<<\"\$ip\"; " +
+                "m=\$(( (0xFFFFFFFF << (32-p)) & 0xFFFFFFFF )); " +
+                "printf '%d.%d.%d.%d/%d\\n' \$(( a & ((m>>24)&255) )) \$(( b & ((m>>16)&255) )) \$(( c & ((m>>8)&255) )) \$(( d & (m&255) )) \$p; }; " +
+                "IP_PF=\$(ip -o -4 addr show dev \$IF 2>/dev/null | awk '{print \$4}' | head -1); " +
+                "NET=\$(ip route show table main 2>/dev/null | grep -oE '([0-9.]+/[0-9]+) dev \$IF proto static' | awk '{print \$1}' | head -1); " +
+                "if [ -z \"\$NET\" ] && [ -n \"\$IP_PF\" ]; then NET=\$(net_of \${IP_PF%%/*} \${IP_PF##*/}); fi"
             val rules = if (on) {
-                // 对齐 routing.rs：upstream 规则 lookup netd 为 tun 建的接口表（1000+ifindex），
-                // 优先级 20700（API>=12 系统 tethering 规则 20000/21000 之间）+ 20900 防泄漏 unreachable；
-                // NAT 出口 = ndc nat enable（NetdNat）、ndc ipfwd enable（IpForward），不碰全局 sysctl
-                "IFIDX=\$(cat /sys/class/net/\$TUN/ifindex 2>/dev/null); " +
-                    "ip rule add iif \$IFACE priority 20700 lookup \$((1000+IFIDX)) 2>/dev/null; " +
-                    "ip rule add iif \$IFACE priority 20900 unreachable 2>/dev/null; " +
-                    "ndc nat enable \$IFACE \$TUN 0 2>/dev/null; " +
-                    "ndc ipfwd enable \$IFACE 2>/dev/null; " +
-                    "iptables -t nat -C POSTROUTING -o \$TUN -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o \$TUN -j MASQUERADE; " +
-                    "iptables -C FORWARD -i \$IFACE -o \$TUN -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$IFACE -o \$TUN -j ACCEPT; " +
-                    "iptables -C FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -I FORWARD -i \$TUN -o \$IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; " +
-                    "echo RULE:; ip rule show | grep -E '20700|20900'; echo DONE"
+                // 动态探测
+                "IF=\$($ifaceFind); T=\$($tunFind); " +
+                    "echo IFACE=\$IF; echo TUN=\$T; " +
+                    "[ -z \"\$IF\" ] || [ -z \"\$T\" ] && echo MISS_IFACE_OR_TUN && exit 1; " +
+                    // 1. ip_forward（对齐 ndc.rs add_ip_forward：ndc ipfwd enable vpnhotspot_$IF，失败写 proc）
+                    "ndc ipfwd enable vpnhotspot_\$IF 2>/dev/null || echo 1 > /proc/sys/net/ipv4/ip_forward; " +
+                    // 2. 建链（对齐 desired.rs EnsureIptablesChain；无 daemon DNS 服务→省略 dns_nat/dns_input）
+                    "iptables -t nat -N vpnhotspot_masquerade 2>/dev/null; " +
+                    "iptables -N vpnhotspot_acl 2>/dev/null; " +
+                    "iptables -N vpnhotspot_stats 2>/dev/null; " +
+                    // 3. jump（对齐 masquerade_chain_rule / forward_rules）
+                    "iptables -t nat -A POSTROUTING -j vpnhotspot_masquerade 2>/dev/null; " +
+                    "iptables -A FORWARD -j vpnhotspot_acl 2>/dev/null; " +
+                    // 4. acl（对齐 forward_rules + 客户端放行裁剪：整接口放行，前置 REJECT 保护）
+                    "iptables -A vpnhotspot_acl -i \$IF ! -o \$IF -j REJECT 2>/dev/null; " +
+                    "iptables -A vpnhotspot_acl -o \$IF -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
+                    "iptables -A vpnhotspot_acl -i \$IF -j ACCEPT 2>/dev/null; " +
+                    // 5. masquerade（对齐 upstream_masquerade_rule：-s 热点网段 -o 上游 -j MASQUERADE）
+                    "$netCalc " +
+                    "iptables -t nat -A vpnhotspot_masquerade -s \$NET -o \$T -j MASQUERADE 2>/dev/null; " +
+                    // 6. IPv6 block（对齐 ipv6_block_rules，源码默认 Block）
+                    "ip6tables -N vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -A INPUT -j vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -A FORWARD -j vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -A OUTPUT -j vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -A vpnhotspot_filter -i \$IF -j REJECT 2>/dev/null; " +
+                    "ip6tables -A vpnhotspot_filter -o \$IF -j REJECT 2>/dev/null; " +
+                    // 7. 规则（对齐 desired.rs：20900 unreachable + 20700 lookup 1000+ifindex）
+                    "IFIDX=\$(cat /sys/class/net/\$T/ifindex 2>/dev/null); " +
+                    "ip rule add iif \$IF priority 20900 unreachable 2>/dev/null; " +
+                    "ip rule add iif \$IF priority 20700 lookup \$((1000+IFIDX)) 2>/dev/null; " +
+                    // 8. 验证
+                    "echo RULE:; ip rule show | grep -E '20700|20900'; " +
+                    "echo CHAIN:; iptables -L FORWARD -n | grep vpnhotspot_acl; echo DONE"
             } else {
-                // 全局清扫（等价 daemon CleanRouting）：不依赖接口/隧道是否还存在，遍历所有可能接口与优先级，见啥删啥。
-                // 20701/表96/97 仅做兼容清理（旧版本曾添加），新版本不再创建
-                "while ip rule del priority 20700 2>/dev/null; do :; done; " +
-                    "while ip rule del priority 20701 2>/dev/null; do :; done; " +
+                // 全局清扫（对齐 routing.rs clean() + firewall_cleanup.rs）+ 兼容旧版残留
+                "while ip rule del priority 20900 2>/dev/null; do :; done; " +
                     "while ip rule del priority 20800 2>/dev/null; do :; done; " +
-                    "while ip rule del priority 20900 2>/dev/null; do :; done; " +
+                    "while ip rule del priority 20700 2>/dev/null; do :; done; " +
+                    "while ip rule del priority 20600 2>/dev/null; do :; done; " +
+                    "while ip rule del priority 20701 2>/dev/null; do :; done; " +
+                    "for I in " + IFACE_PATTERN + "; do " +
+                    "ndc ipfwd disable vpnhotspot_\$I 2>/dev/null; " +
+                    "done; " +
+                    // iptables jump 删除（对齐 firewall_cleanup）
+                    "iptables -D FORWARD -j vpnhotspot_acl 2>/dev/null; " +
+                    "iptables -D INPUT -j vpnhotspot_dns_input 2>/dev/null; " +
+                    "iptables -t nat -D PREROUTING -j vpnhotspot_dns_nat 2>/dev/null; " +
+                    "iptables -t nat -D POSTROUTING -j vpnhotspot_masquerade 2>/dev/null; " +
+                    // 链 flush+delete（v4）
+                    "iptables -t nat -F vpnhotspot_masquerade 2>/dev/null; iptables -t nat -X vpnhotspot_masquerade 2>/dev/null; " +
+                    "iptables -F vpnhotspot_acl 2>/dev/null; iptables -X vpnhotspot_acl 2>/dev/null; " +
+                    "iptables -F vpnhotspot_stats 2>/dev/null; iptables -X vpnhotspot_stats 2>/dev/null; " +
+                    "iptables -F vpnhotspot_dns_input 2>/dev/null; iptables -X vpnhotspot_dns_input 2>/dev/null; " +
+                    "iptables -t nat -F vpnhotspot_dns_nat 2>/dev/null; iptables -t nat -X vpnhotspot_dns_nat 2>/dev/null; " +
+                    // 链清理（v6）+ 表900（对齐 clean_ip）
+                    "ip6tables -D INPUT -j vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -D FORWARD -j vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -D OUTPUT -j vpnhotspot_filter 2>/dev/null; " +
+                    "ip6tables -F vpnhotspot_filter 2>/dev/null; ip6tables -X vpnhotspot_filter 2>/dev/null; " +
+                    "ip -6 route flush table 900 2>/dev/null; " +
+                    // 兼容清理旧版：表96/97、全局 FORWARD 规则
                     "ip route flush table 96 2>/dev/null; " +
                     "ip route flush table 97 2>/dev/null; " +
                     "for I in " + IFACE_PATTERN + "; do " +
-                    "ndc nat disable \$I 2>/dev/null; " +
-                    "ndc ipfwd disable \$I 2>/dev/null; " +
                     "iptables -D FORWARD -i \$I -o tun0 -j ACCEPT 2>/dev/null; " +
                     "iptables -D FORWARD -i tun0 -o \$I -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
                     "iptables -D FORWARD -i \$I -o tun1 -j ACCEPT 2>/dev/null; " +
                     "iptables -D FORWARD -i tun1 -o \$I -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; " +
                     "done; " +
-                    "for T in tun0 tun1 utun0 utun1; do " +
-                    "iptables -t nat -D POSTROUTING -o \$T -j MASQUERADE 2>/dev/null; " +
-                    "done; " +
                     "echo CLEAN_ALL_DONE"
             }
-            return if (on) {
-                "TUN=\$($tunFind); IFACE=\$($ifaceFind); " +
-                    "[ -z \"\$TUN\" ] && echo TUN_MISS && exit 3; [ -z \"\$IFACE\" ] && echo IFACE_MISS && exit 4; " +
-                    rules + "; echo IFACE=\$IFACE; echo DONE"
-            } else {
-                // 关闭：接口可能已消失，不清检查，逐条清理防残留
-                "TUN=\$($tunFind); IFACE=\$($ifaceFind); " + rules + "; echo IFACE=\$IFACE; echo DONE"
-            }
+            return rules
         }
 
         fun cleanupAtStartup() {
@@ -322,6 +364,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             } catch (_: Exception) { }
                             // 系统热点状态变化 → 同步 wifiSwitch 按钮（系统手动开关热点时按钮跟随）
                             try { if (state == 13 || state == 11) refreshSystemStateSafe() } catch (_: Exception) { }
+                            // 系统热点已关闭 → VPN 热点自动关（对齐源码生命周期：热点关 VPN 共享跟着停）
+                            try { if (state == 11) autoShutdownVpnHotspot() } catch (_: Exception) { }
                         }
                     }
                     try {
@@ -370,10 +414,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                             } catch (_: Exception) { 0 }
                             updateHotspotInfo()
                         }
+                        // 热点接口出现/消失 → 按钮/互斥实时同步；接口消失=热点关了 → VPN 热点自动关
+                        "onTetheredInterfacesChanged", "onLocalOnlyInterfacesChanged" -> {
+                            refreshSystemStateSafe()
+                            updateHotspotInfo()
+                            try {
+                                val ifaces = a?.get(0)
+                                val names = when (ifaces) {
+                                    is Collection<*> -> ifaces.mapNotNull { it?.toString() }
+                                    else -> emptyList()
+                                }
+                                if (names.none { it.contains("wlan") || it.contains("ap") || it == "usb0" || it == "rndis0" || it == "bnep0" }) {
+                                    autoShutdownVpnHotspot()
+                                }
+                            } catch (_: Exception) { }
+                        }
                         "onTetheringStarted", "onTetheringStopped", "onError", "onUpstreamChanged", "onInterfaceStateChanged" -> {
                             refreshSystemStateSafe()
                             updateHotspotInfo()
+                            if (m.name == "onTetheringStopped") autoShutdownVpnHotspot()
                         }
+                        "onOffloadStatusChanged" -> refreshOffload()
                     }
                 } catch (_: Exception) { }
                 null
@@ -400,8 +461,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         try {
             lifecycleScope.launch(Dispatchers.IO) {
                 val h = hotspotEnabled()
+                // 状态一致性：DataStore 开着但转发规则已不在（进程被杀残留/被外部清理）→ 复位
+                if (DataStore.vpnHotspotEnabled) {
+                    val rules = rootExec("ip rule show | grep -c 20700")
+                    if ((rules?.trim()?.toIntOrNull() ?: 0) < 1) {
+                        DataStore.vpnHotspotEnabled = false
+                    }
+                }
                 withContext(Dispatchers.Main) {
                     view?.findViewById<Switch>(R.id.hotspot_wifi_switch)?.isChecked = h
+                    // 互斥：系统热点未开启时，VPN 热点不允许打开（置灰 + 提示）
+                    view?.findViewById<Switch>(R.id.hotspot_toggle_switch)?.isEnabled = h
+                    view?.findViewById<Switch>(R.id.hotspot_toggle_switch)?.isChecked = DataStore.vpnHotspotEnabled
+                    try {
+                        view?.findViewById<View>(R.id.hotspot_toggle_hint)?.visibility =
+                            if (h) View.GONE else View.VISIBLE
+                    } catch (_: Exception) { }
+                    try {
+                        view?.findViewById<TextView>(R.id.hotspot_toggle_state)?.text = getString(
+                            if (DataStore.vpnHotspotEnabled) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off
+                        )
+                    } catch (_: Exception) { }
                 }
             }
         } catch (_: Exception) { }
@@ -766,7 +846,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         stopSoftApDaemon()
     }
 
-    // 网络共享硬件加速：只显示系统当前状态（不做处理，对齐用户要求）
+    // 网络共享硬件加速：进入只读显示系统当前状态（不改动）；开关切换才写入（对齐用户要求）
     private fun refreshOffload() {
         lifecycleScope.launch(Dispatchers.IO) {
             val out = rootExec("settings get global $TETHER_OFFLOAD")
@@ -777,6 +857,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                         out.isNullOrBlank() -> getString(R.string.vpn_hotspot_offload_unknown)
                         disabled -> getString(R.string.vpn_hotspot_offload_off)
                         else -> getString(R.string.vpn_hotspot_offload_on)
+                    }
+                    view?.findViewById<Switch>(R.id.hotspot_offload_switch)?.setOnCheckedChangeListener(null)
+                    view?.findViewById<Switch>(R.id.hotspot_offload_switch)?.isChecked = !disabled && !out.isNullOrBlank()
+                    view?.findViewById<Switch>(R.id.hotspot_offload_switch)?.setOnCheckedChangeListener { _, checked ->
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            rootExec("settings put global $TETHER_OFFLOAD " + if (checked) "0" else "1")
+                            refreshOffload()
+                        }
                     }
                 } catch (_: Exception) { }
             }
@@ -936,14 +1024,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
 
         fun refreshSystemState() {
-            lifecycleScope.launch(Dispatchers.IO) {
-                val h = hotspotEnabled()
-                withContext(Dispatchers.Main) {
-                    wifiSwitch.isChecked = h
-                    // 互斥：系统热点未开启时，VPN 热点不允许打开
-                    toggleSwitch.isEnabled = h
-                }
-            }
+            refreshSystemStateSafe()
         }
 
         refreshRoot()
@@ -980,22 +1061,24 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
             refreshSystemState()
         }
 
-        // VPN 热点开关（开启时自动禁用硬件加速；关闭时清转发并一并关热点）
+        // VPN 热点开关（开启时禁用硬件加速；关闭时清转发；互斥：系统热点未开时不允许开启）
         toggleSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressToggle) return@setOnCheckedChangeListener
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    // ZyBox: 开启 VPN 热点时若系统热点未开，自动开热点并等待共享接口出现
-                    if (checked && !shareIfaceExists()) {
-                        val (hok, hout) = setHotspot(true)
-                        var waited = 0
-                        while (!shareIfaceExists() && waited < 20) {
-                            delay(500)
-                            waited++
+                    // 互斥：系统热点未开时不允许开启 VPN 热点（对齐 VPNHotspot：需先有热点）
+                    if (checked && !hotspotEnabled()) {
+                        withContext(Dispatchers.Main) {
+                            suppressToggle = true
+                            toggleSwitch.isChecked = false
+                            suppressToggle = false
+                            toggleState.text = getString(R.string.vpn_hotspot_off)
+                            try {
+                                view?.findViewById<View>(R.id.hotspot_toggle_hint)?.visibility = View.VISIBLE
+                            } catch (_: Exception) { }
                         }
-                        if (!shareIfaceExists() && !hok) {
-                            appendLog("自动开启热点未成功: ${hout.take(200)}")
-                        }
+                        appendLog("系统热点未开启，VPN 热点无法打开（请先开启热点）")
+                        return@launch
                     }
                     val out = rootExec(vpnHotspotScript(checked))
                     appendLog("转发脚本输出:\n$out")
@@ -1011,9 +1094,18 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 toggleSwitch.isChecked = !checked
                                 suppressToggle = false
                             }
-                            out.contains("IFACE_MISS") -> {
-                                // 转发接口未就绪：不误关开关（热点可能已开，等接口出现后重试转发）
-                                appendLog("转发接口未就绪，等待接口出现后重试…")
+                            out.contains("MISS_IFACE_OR_TUN") -> {
+                                // 区分：热点接口缺失 vs VPN 隧道缺失 → 给出明确提示
+                                val tunLine = out.lines().firstOrNull { it.startsWith("TUN=") }
+                                val tunMissing = tunLine == null || tunLine.substringAfter("=").isBlank()
+                                val hint = if (tunMissing) R.string.vpn_hotspot_need_vpn
+                                else R.string.vpn_hotspot_no_iface
+                                try {
+                                    android.widget.Toast.makeText(
+                                        requireContext(), getString(hint),
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                } catch (_: Exception) { }
                                 if (checked) startVpnRetry() else stopVpnRetry()
                             }
                             else -> {
@@ -1024,15 +1116,24 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                                 toggleState.text = getString(
                                     if (checked) R.string.vpn_hotspot_on else R.string.vpn_hotspot_off
                                 )
+                                if (!checked) {
+                                    try {
+                                        android.widget.Toast.makeText(
+                                            requireContext(),
+                                            getString(R.string.vpn_hotspot_shared_off_hotspot_on),
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    } catch (_: Exception) { }
+                                }
                             }
                         }
                     }
                     // 结束后统一按实际热点状态刷新系统开关（防止"热点已开但按钮显示关"）
                     refreshSystemStateSafe()
                     activity?.runOnUiThread { updateHotspotInfo() }
-                    if (checked && out != null && out.contains("TUN_MISS")) {
-                        appendLog("VPN共享已开启，等待VPN隧道出现后自动补配转发…")
-                        startVpnRetry()
+                    if (checked && out != null && out.contains("MISS_IFACE_OR_TUN")) {
+                        // 接口未就绪：上面分支已启动 vpnRetry（隧道出现后自动补配转发），这里不取消
+                        appendLog("等待接口/隧道出现后自动补配转发…")
                     } else {
                         stopVpnRetry()
                     }

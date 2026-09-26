@@ -255,6 +255,16 @@
                             android:text="@string/vpn_hotspot_toggle_desc"
                             android:textColor="#CCFFFFFF"
                             android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/hotspot_toggle_hint"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/vpn_hotspot_need_hotspot"
+                            android:textColor="#FFE0E0"
+                            android:textSize="12sp"
+                            android:visibility="gone" />
                     </LinearLayout>
 
                     <Switch
@@ -364,7 +374,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 网络共享硬件加速（默认显示系统当前状态，不做处理） -->
+            <!-- 网络共享硬件加速（进入不改状态，提供开关可切换系统值） -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -378,12 +388,25 @@
                     android:orientation="vertical"
                     android:padding="12dp">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/vpn_hotspot_offload"
-                        android:textAppearance="?android:attr/textAppearanceMedium"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/vpn_hotspot_offload"
+                            android:textAppearance="?android:attr/textAppearanceMedium"
+                            android:textStyle="bold" />
+
+                        <Switch
+                            android:id="@+id/hotspot_offload_switch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
 
                     <TextView
                         android:layout_width="match_parent"

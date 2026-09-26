@@ -39,7 +39,9 @@ public class RootHelper {
         switch (args[0]) {
             case "tether":
                 if (args.length < 3) { log("NO_ARGS"); System.exit(2); return; }
-                tether(args[1], args[2], args.length >= 4 ? args[3] : null);
+                // args[3]=pkg, args[4]=exempt(true/false, 默认 true)
+                tether(args[1], args[2], args.length >= 4 ? args[3] : null,
+                    args.length >= 5 && args[4].equals("false") ? false : true);
                 break;
             case "info":
                 info();
@@ -89,7 +91,7 @@ public class RootHelper {
         System.exit(2);
     }
 
-    static void tether(String type, String onOff, String opPackageName) throws Exception {
+    static void tether(String type, String onOff, String opPackageName, boolean exempt) throws Exception {
         int t;
         switch (type) {
             case "wifi": t = 0; break;          // TETHERING_WIFI
@@ -99,7 +101,7 @@ public class RootHelper {
             default: fail("UNKNOWN_TYPE"); return;
         }
         boolean on = onOff.equals("on");
-        log("TETHER_START type=" + type + " on=" + on + " pkg=" + opPackageName);
+        log("TETHER_START type=" + type + " on=" + on + " pkg=" + opPackageName + " exempt=" + exempt);
         Object tm = ctx.getSystemService("tethering");
         if (tm == null) { fail("NO_TETHERING_SERVICE"); return; }
         log("TM_OK " + tm.getClass().getName());
@@ -117,7 +119,9 @@ public class RootHelper {
                 });
             Class<?> bCls = Class.forName("android.net.TetheringManager$TetheringRequest$Builder");
             Object builder = bCls.getConstructor(int.class).newInstance(t);
-            try { bCls.getMethod("setExemptFromEntitlementCheck", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
+            try {
+                if (exempt) bCls.getMethod("setExemptFromEntitlementCheck", boolean.class).invoke(builder, true);
+            } catch (Throwable ignored) { }
             try { bCls.getMethod("setShouldShowEntitlementUi", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
             Object req = bCls.getMethod("build").invoke(builder);
             log("CALLING_START");
