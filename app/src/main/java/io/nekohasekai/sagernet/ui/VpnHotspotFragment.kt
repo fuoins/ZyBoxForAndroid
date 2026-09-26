@@ -152,7 +152,15 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
     private var hotspotInfo: Any? = null
     private var cachedApMac: String? = null
     private var rootCached: Boolean? = null
-    private var statePoller: Runnable? = null
+    // root softap_daemon 事件解析后的 SoftApInfo 字段缓存（主数据源，避免主进程反射/轮询）
+    private var hotspotInfoBssid = ""
+    private var hotspotInfoApId = ""
+    private var hotspotInfoFreq = 0
+    private var hotspotInfoBw = 0
+    private var hotspotInfoStd = 0
+    private var hotspotInfoIdleMs = 0L
+    private var softApDaemonProcess: Process? = null
+    private var softApDaemonReader: Thread? = null
 
     // 对齐 VPNHotspot softApInfoSummary：SoftApInfo(bssid/apInstanceIdentifier/frequency/bandwidth/wifiStandard/autoShutdownTimeoutMillis)
     // SoftApInfo.getBandwidth() 是 CHANNEL_WIDTH_ 常量（SoftApText.channelBandwidthLabel）：
@@ -197,44 +205,27 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 cfg?.let { ssid = it.javaClass.getMethod("getSsid").invoke(it) as? String ?: "" }
             } catch (_: Exception) { }
             val on = hotspotEnabled()
-            // 状态文本：过渡态用回调文本（正在开启/正在关闭），稳定态直接用实际开关状态
-            val st = view?.findViewById<TextView>(R.id.hotspot_wifi_state)
-            val transition = hotspotStateText == "正在开启…" || hotspotStateText == "正在关闭…" ||
-                hotspotStateText == "开启失败"
-            try {
-                st?.text = when {
-                    transition -> hotspotStateText
-                    on -> "已开启"
-                    else -> "已关闭"
-                }
-            } catch (_: Exception) { }
-            ssidView.text = if (on) {
-                if (ssid.isNotBlank()) "● 已开启 · $ssid" else "● 已开启"
-            } else {
-                "未开启"
-            }
-            val det = StringBuilder()
+            // 源码样式：不显示"已开启/已关闭"字样
+            try { view?.findViewById<TextView>(R.id.hotspot_wifi_state)?.text = "" } catch (_: Exception) { }
+            val max = if (hotspotMaxClients > 0) hotspotMaxClients else 16
             if (on) {
-                // SoftApInfo 各字段（API 31+；getBssid 返回 MacAddress，需 toString）
-                var bssid = ""
-                var apId = ""
-                var freq = 0
-                var bw = 0
-                var std = 0
-                var idleMs = 0L
-                hotspotInfo?.let { info ->
+                // 开启：AP 信息头 + 客户端数行
+                var bssid = hotspotInfoBssid
+                var apId = hotspotInfoApId
+                var freq = hotspotInfoFreq
+                var bw = hotspotInfoBw
+                var std = hotspotInfoStd
+                var idleMs = hotspotInfoIdleMs
+                // 主进程反射 SoftApInfo 兜底（daemon 未解析到时）
+                if (bssid.isBlank() || freq == 0) hotspotInfo?.let { info ->
                     val cls = info.javaClass
-                    try {
-                        val mac = cls.getMethod("getBssid").invoke(info)
-                        bssid = mac?.toString() ?: ""
-                    } catch (_: Exception) { }
-                    try { apId = cls.getMethod("getApInstanceIdentifier").invoke(info) as? String ?: "" } catch (_: Exception) { }
-                    try { freq = cls.getMethod("getFrequency").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
-                    try { bw = cls.getMethod("getBandwidth").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
-                    try { std = cls.getMethod("getWifiStandard").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
-                    try { idleMs = (cls.getMethod("getAutoShutdownTimeoutMillis").invoke(info) as? Long) ?: 0L } catch (_: Exception) { }
+                    try { if (bssid.isBlank()) { val mac = cls.getMethod("getBssid").invoke(info); bssid = mac?.toString() ?: "" } } catch (_: Exception) { }
+                    try { if (apId.isBlank()) apId = cls.getMethod("getApInstanceIdentifier").invoke(info) as? String ?: "" } catch (_: Exception) { }
+                    try { if (freq == 0) freq = cls.getMethod("getFrequency").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                    try { if (bw == 0) bw = cls.getMethod("getBandwidth").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                    try { if (std == 0) std = cls.getMethod("getWifiStandard").invoke(info) as? Int ?: 0 } catch (_: Exception) { }
+                    try { if (idleMs == 0L) idleMs = (cls.getMethod("getAutoShutdownTimeoutMillis").invoke(info) as? Long) ?: 0L } catch (_: Exception) { }
                 }
-                // bssid 兜底走后台（rootExec 阻塞不能上主线程，v31 同步慢元凶）
                 if (bssid.isBlank()) {
                     val cached = cachedApMac
                     if (cached != null) bssid = cached
@@ -247,36 +238,29 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                     }
                 }
                 if (apId.isBlank()) apId = "ap0"
-                val head = buildString {
-                    if (bssid.isNotBlank()) append(bssid).append("%").append(apId).append(": ")
-                    append(
-                        when (std) {
-                            4 -> "Wi-Fi 4"
-                            5 -> "Wi-Fi 5"
-                            6 -> "Wi-Fi 6"
-                            7 -> "Wi-Fi 7"
-                            else -> ""
-                        }
-                    )
+                val head = StringBuilder()
+                if (bssid.isNotBlank()) head.append(bssid).append("%").append(apId).append(": ")
+                when (std) {
+                    4 -> head.append("Wi-Fi 4")
+                    5 -> head.append("Wi-Fi 5")
+                    6 -> head.append("Wi-Fi 6")
+                    7 -> head.append("Wi-Fi 7")
                 }
-                det.append(head)
                 if (freq > 0) {
-                    if (det.isNotEmpty() && !det.toString().endsWith(": ")) det.append(", ")
-                    det.append(formatInt(freq)).append(" MHz")
+                    head.append(", ").append(formatInt(freq)).append(" MHz")
                     val ch = frequencyToChannel(freq)
-                    if (ch > 0) det.append(", 频道 ").append(formatInt(ch))
+                    if (ch > 0) head.append(", 频道 ").append(formatInt(ch))
                 }
                 val bwLabel = channelWidthLabel(bw)
-                if (bwLabel.isNotBlank()) det.append(", 频宽 ").append(bwLabel)
-                if (idleMs > 0) det.append(", 关闭延迟 ").append(idleMs / 60000).append("分钟")
-                if (det.isNotEmpty()) det.append("\n")
-                det.append(if (hotspotClientCount >= 0) hotspotClientCount.toString() else "—")
-                    .append("/").append(if (hotspotMaxClients > 0) hotspotMaxClients else 16)
-                    .append(" ").append(getString(R.string.vpn_hotspot_status_clients)).append("已连接")
+                if (bwLabel.isNotBlank()) head.append(", 频宽 ").append(bwLabel)
+                if (idleMs > 0) head.append(", 关闭延迟 ").append(idleMs / 60000).append("分钟")
+                ssidView.text = head.toString().ifBlank { ssid.ifBlank { "—" } }
+                detailView.text = "${hotspotClientCount}/${max} ${getString(R.string.vpn_hotspot_status_clients)}已连接"
             } else {
-                det.append("—")
+                // 关闭：源码样式只显示客户端计数（0/16 个客户端已连接）
+                ssidView.text = ""
+                detailView.text = "${hotspotClientCount}/${max} ${getString(R.string.vpn_hotspot_status_clients)}已连接"
             }
-            detailView.text = det.toString()
         } catch (_: Exception) { }
     }
 
@@ -401,6 +385,14 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     override fun onDestroyView() {
         stopVpnRetry()
+        // 生命周期对齐源码（非持久）：进程销毁时清转发并停 root daemon
+        try {
+            if (DataStore.vpnHotspotEnabled) {
+                DataStore.vpnHotspotEnabled = false
+                lifecycleScope.launch(Dispatchers.IO) { rootExec(vpnHotspotScript(false)) }
+            }
+        } catch (_: Exception) { }
+        stopSoftApDaemon()
         super.onDestroyView()
     }
 
@@ -749,8 +741,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         refreshSystemStateSafe()
         updateHotspotInfo()
         refreshOffload()
-        // 页面可见期间轻量轮询（2s）：兜底回调不触发/状态变化来源多样的场景（系统设置、外部开关等）
-        startStatePoller()
+        // 页面可见期间：root softap_daemon 实时推送状态/客户端数（事件驱动，非轮询）
+        startSoftApDaemon()
         try {
             val icon = view?.findViewById<TextView>(R.id.hotspot_root_status)
             val hint = view?.findViewById<TextView>(R.id.hotspot_root_hint)
@@ -771,20 +763,7 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
 
     override fun onPause() {
         super.onPause()
-        stopStatePoller()
-    }
-
-    // root 快照：root 进程 IWifiManager 注册 SoftAp 回调，收集状态/客户端数（对齐 VPNHotspot binder 路径）
-    private fun rootSoftApSnapshot(): String? {
-        return try {
-            val apk = requireContext().applicationInfo.sourceDir
-            val cmd = "setenforce 0; CLASSPATH=$apk exec /system/bin/app_process64 -Xnoimage-dex2oat " +
-                "/system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper softap_status " +
-                requireContext().packageName
-            rootExec(cmd)
-        } catch (_: Exception) {
-            null
-        }
+        stopSoftApDaemon()
     }
 
     // 网络共享硬件加速：只显示系统当前状态（不做处理，对齐用户要求）
@@ -804,52 +783,108 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
         }
     }
 
-    private fun startStatePoller() {
-        stopStatePoller()
-        val h = view?.handler ?: return
-        statePoller = object : Runnable {
-            override fun run() {
-                lifecycleScope.launch(Dispatchers.IO) {
-                    try {
-                        val out = rootSoftApSnapshot()
-                        out?.let { o ->
-                            // 状态 → 按钮 + 状态文本（系统设置/外部开关变化都能同步）
-                            Regex("SOFTAP_STATE=(\\d+)").find(o)?.groupValues?.get(1)?.toIntOrNull()?.let { st ->
-                                hotspotStateText = when (st) {
-                                    10 -> "正在关闭…"
-                                    11 -> "已关闭"
-                                    12 -> "正在开启…"
-                                    13 -> "已开启"
-                                    14 -> "开启失败"
-                                    else -> "未知状态"
-                                }
-                                if (st == 13 || st == 11) {
-                                    val hOn = st == 13
-                                    activity?.runOnUiThread {
-                                        view?.findViewById<Switch>(R.id.hotspot_wifi_switch)?.isChecked = hOn
-                                    }
-                                }
-                            }
-                            // 客户端数（onConnectedClientsChanged 列表或 onNumClientsChanged int）
-                            val c = Regex("SOFTAP_CONNECTED=(\\d+)").find(o)
-                                ?: Regex("SOFTAP_NUMCLIENTS=(\\d+)").find(o)
-                            c?.groupValues?.get(1)?.toIntOrNull()?.let { hotspotClientCount = it }
-                        }
-                    } catch (_: Exception) { }
-                    activity?.runOnUiThread { updateHotspotInfo() }
-                }
-                val h2 = view?.handler ?: return
-                h2.postDelayed(this, 2000)
-            }
-        }
-        h.postDelayed(statePoller!!, 2000)
+    // ===== root softap_daemon：常驻进程实时推送 SoftAp 回调事件（对齐 VPNHotspot root binder 回调）=====
+    // root 进程 IWifiManager.registerSoftApCallback 直连注册，回调事件实时打印 stdout，
+    // 主进程后台线程流式解析 → 状态/客户端数/AP 信息实时更新（不再依赖轮询快照）。
+    private fun startSoftApDaemon() {
+        stopSoftApDaemon()
+        try {
+            if (!rootAvailableCached()) return
+            val apk = requireContext().applicationInfo.sourceDir
+            val p = ProcessBuilder("/system/bin/su").start()
+            val cmd = "setenforce 0; CLASSPATH=$apk exec /system/bin/app_process64 -Xnoimage-dex2oat " +
+                "/system/bin --nice-name=zybox-helper io.nekohasekai.sagernet.RootHelper softap_daemon " +
+                requireContext().packageName + "\n"
+            p.outputStream.write(cmd.toByteArray())
+            p.outputStream.flush()
+            softApDaemonProcess = p
+            softApDaemonReader = Thread {
+                try {
+                    val br = p.inputStream.bufferedReader()
+                    var line = br.readLine()
+                    while (line != null) {
+                        parseSoftApEvent(line)
+                        line = br.readLine()
+                    }
+                } catch (_: Exception) { }
+            }.apply { isDaemon = true; start() }
+        } catch (_: Exception) { }
     }
 
-    private fun stopStatePoller() {
-        statePoller?.let {
-            try { view?.handler?.removeCallbacks(it) } catch (_: Exception) { }
+    private fun stopSoftApDaemon() {
+        try { softApDaemonProcess?.destroy() } catch (_: Exception) { }
+        softApDaemonProcess = null
+        softApDaemonReader = null
+    }
+
+    // 解析 root softap_daemon 事件行 → 更新状态/客户端数/AP 信息（实时，主线程）
+    private fun parseSoftApEvent(line: String) {
+        try {
+            when {
+                line.startsWith("SOFTAP_STATE=") -> {
+                    val st = line.substringAfter("=").trim().toIntOrNull() ?: return
+                    hotspotStateText = when (st) {
+                        10 -> "正在关闭…"
+                        11 -> "已关闭"
+                        12 -> "正在开启…"
+                        13 -> "已开启"
+                        14 -> "开启失败"
+                        else -> "未知状态"
+                    }
+                    if (st == 13 || st == 11) {
+                        val hOn = st == 13
+                        activity?.runOnUiThread {
+                            view?.findViewById<Switch>(R.id.hotspot_wifi_switch)?.isChecked = hOn
+                            // 互斥：系统热点关闭时禁用 VPN 热点开关；开启时恢复
+                            view?.findViewById<Switch>(R.id.hotspot_toggle_switch)?.isEnabled = hOn
+                            if (!hOn) {
+                                // 系统热点关闭 → VPN 热点同步关闭（对齐源码生命周期：热点关 VPN 共享跟着停）
+                                autoShutdownVpnHotspot()
+                            }
+                            updateHotspotInfo()
+                        }
+                    }
+                }
+                line.startsWith("SOFTAP_NUMCLIENTS=") -> {
+                    val n = line.substringAfter("=").trim().toIntOrNull() ?: return
+                    hotspotClientCount = n
+                    activity?.runOnUiThread { updateHotspotInfo() }
+                }
+                line.startsWith("SOFTAP_CONNECTED=") -> {
+                    val n = line.substringAfter("=").trim().toIntOrNull() ?: return
+                    hotspotClientCount = n
+                    activity?.runOnUiThread { updateHotspotInfo() }
+                }
+                line.startsWith("SOFTAP_MAXCLIENTS=") -> {
+                    val n = line.substringAfter("=").trim().toIntOrNull() ?: return
+                    hotspotMaxClients = n
+                    activity?.runOnUiThread { updateHotspotInfo() }
+                }
+                line.startsWith("SOFTAP_INFO") -> {
+                    Regex("BSSID=([^ ]+)").find(line)?.groupValues?.get(1)?.let { hotspotInfoBssid = it }
+                    Regex("APID=([^ ]+)").find(line)?.groupValues?.get(1)?.let { hotspotInfoApId = it }
+                    Regex("FREQ=(\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull()?.let { hotspotInfoFreq = it }
+                    Regex("BW=(-?\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull()?.let { hotspotInfoBw = it }
+                    Regex("STD=(\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull()?.let { hotspotInfoStd = it }
+                    Regex("IDLE=(\\d+)").find(line)?.groupValues?.get(1)?.toLongOrNull()?.let { hotspotInfoIdleMs = it }
+                    activity?.runOnUiThread { updateHotspotInfo() }
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
+    // 系统热点关闭 → 自动关 VPN 热点（清转发 + 状态复位；对齐源码：热点关 VPN 共享跟着停）
+    private fun autoShutdownVpnHotspot() {
+        if (!DataStore.vpnHotspotEnabled) return
+        DataStore.vpnHotspotEnabled = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            rootExec(vpnHotspotScript(false))
         }
-        statePoller = null
+        view?.findViewById<Switch>(R.id.hotspot_toggle_switch)?.let {
+            it.isChecked = false
+            view?.findViewById<TextView>(R.id.hotspot_toggle_state)?.text =
+                getString(R.string.vpn_hotspot_off)
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -905,6 +940,8 @@ class VpnHotspotFragment : ToolbarFragment(R.layout.layout_vpn_hotspot) {
                 val h = hotspotEnabled()
                 withContext(Dispatchers.Main) {
                     wifiSwitch.isChecked = h
+                    // 互斥：系统热点未开启时，VPN 热点不允许打开
+                    toggleSwitch.isEnabled = h
                 }
             }
         }

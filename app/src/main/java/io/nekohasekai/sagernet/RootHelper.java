@@ -47,6 +47,9 @@ public class RootHelper {
             case "softap_status":
                 softApStatus();
                 break;
+            case "softap_daemon":
+                softApDaemon();
+                break;
             default:
                 log("UNKNOWN " + args[0]);
                 System.exit(2);
@@ -240,74 +243,124 @@ public class RootHelper {
         p.waitFor();
     }
 
-    // ===== softap_status：root 进程注册 IWifiManager SoftAp 回调，收集状态/客户端数快照 =====
-    // 对齐 VPNHotspot WifiApManager.registerSoftApCallbackBinder：
-    // 普通进程 WifiManager.registerSoftApCallback 在 ColorOS 上回调不触发 → root 进程反射
-    // IWifiManager.registerSoftApCallback(ISoftApCallback) 直连注册（uid=0 无权限拦截），
-    // 注册后立即回调当前状态/客户端数，等待 1.5s 收集后打印退出。
+    // ===== softap 回调注册（公共）：root 进程反射 IWifiManager.registerSoftApCallback 直连注册 =====
+    // 对齐 VPNHotspot WifiApManager.registerSoftApCallbackBinder：普通进程 WifiManager.registerSoftApCallback
+    // 在 ColorOS 上回调不触发 → root uid=0 无权限拦截。回调事件实时打印到 stdout（主进程流式读取）。
+    static Object registerSoftApCb() throws Exception {
+        Object wm = ctx.getSystemService("wifi");
+        if (wm == null) { log("SOFTAP_ERR NO_WIFI_SERVICE"); System.exit(2); return null; }
+        Object iWm = null;
+        try {
+            java.lang.reflect.Field f = wm.getClass().getDeclaredField("mService");
+            f.setAccessible(true);
+            iWm = f.get(wm);
+        } catch (Throwable ignored) { }
+        if (iWm == null) try {
+            Method gs = wm.getClass().getDeclaredMethod("getService");
+            gs.setAccessible(true);
+            iWm = gs.invoke(wm);
+        } catch (Throwable ignored) { }
+        if (iWm == null) { log("SOFTAP_ERR NO_IWIFI_MANAGER"); System.exit(2); return null; }
+        Class<?> iscCls = Class.forName("android.net.wifi.ISoftApCallback");
+        Object cb = Proxy.newProxyInstance(iscCls.getClassLoader(), new Class[]{iscCls}, (p, m, a) -> {
+            try {
+                switch (m.getName()) {
+                    case "onStateChanged":
+                        log("SOFTAP_STATE=" + (a != null && a.length > 0 ? a[0] : "?"));
+                        break;
+                    case "onNumClientsChanged":
+                        log("SOFTAP_NUMCLIENTS=" + (a != null && a.length > 0 ? a[0] : "?"));
+                        break;
+                    case "onConnectedClientsChanged":
+                        int n = 0;
+                        try { if (a != null && a.length > 0 && a[0] instanceof java.util.Collection)
+                            n = ((java.util.Collection<?>) a[0]).size(); } catch (Throwable ignored2) { }
+                        log("SOFTAP_CONNECTED=" + n);
+                        break;
+                    case "onInfoChanged":
+                        if (a != null && a.length > 0) {
+                            Object info = a[0];
+                            StringBuilder sb = new StringBuilder("SOFTAP_INFO");
+                            try {
+                                Object v = info.getClass().getMethod("getBssid").invoke(info);
+                                if (v != null) sb.append(" BSSID=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getFrequency").invoke(info);
+                                if (v != null) sb.append(" FREQ=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getBandwidth").invoke(info);
+                                if (v != null) sb.append(" BW=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getWifiStandard").invoke(info);
+                                if (v != null) sb.append(" STD=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getApInstanceIdentifier").invoke(info);
+                                if (v != null) sb.append(" APID=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getAutoShutdownTimeoutMillis").invoke(info);
+                                if (v != null) sb.append(" IDLE=").append(v);
+                            } catch (Throwable ignored3) { }
+                            log(sb.toString());
+                        }
+                        break;
+                    case "onCapabilityChanged":
+                        if (a != null && a.length > 0) {
+                            try {
+                                Object v = a[0].getClass().getMethod("getMaxSupportedClients").invoke(a[0]);
+                                log("SOFTAP_MAXCLIENTS=" + v);
+                            } catch (Throwable ignored3) { }
+                        }
+                        break;
+                }
+            } catch (Throwable ignored4) { }
+            return null;
+        });
+        // 双签名 fallback（对齐源码 registerSoftApCallbackBinder lazy）
+        try {
+            iWm.getClass().getMethod("registerSoftApCallback", iscCls).invoke(iWm, cb);
+        } catch (NoSuchMethodException e1) {
+            try {
+                Method reg2 = iWm.getClass().getMethod("registerSoftApCallback",
+                    android.os.IBinder.class, iscCls, Integer.TYPE);
+                int id = System.identityHashCode(cb);
+                reg2.invoke(iWm, cb, cb, id);
+            } catch (NoSuchMethodException e2) {
+                log("SOFTAP_ERR NO_REG_METHOD");
+                System.exit(2);
+                return null;
+            }
+        }
+        log("SOFTAP_REGISTERED");
+        return cb;
+    }
+
+    // ===== softap_status：一次性快照（注册后等 1.5s 收集即时回调后退出）=====
     static void softApStatus() {
         try {
-            Object wm = ctx.getSystemService("wifi");
-            if (wm == null) { log("SOFTAP_ERR NO_WIFI_SERVICE"); System.exit(2); return; }
-            // IWifiManager（WifiManager.mService 隐藏字段；API 33+ getService 变体也试）
-            Object iWm = null;
-            try {
-                java.lang.reflect.Field f = wm.getClass().getDeclaredField("mService");
-                f.setAccessible(true);
-                iWm = f.get(wm);
-            } catch (Throwable ignored) { }
-            if (iWm == null) try {
-                Method gs = wm.getClass().getDeclaredMethod("getService");
-                gs.setAccessible(true);
-                iWm = gs.invoke(wm);
-            } catch (Throwable ignored) { }
-            if (iWm == null) { log("SOFTAP_ERR NO_IWIFI_MANAGER"); System.exit(2); return; }
-            Class<?> iscCls = Class.forName("android.net.wifi.ISoftApCallback");
-            Object cb = Proxy.newProxyInstance(iscCls.getClassLoader(), new Class[]{iscCls}, (p, m, a) -> {
-                try {
-                    switch (m.getName()) {
-                        case "onStateChanged":
-                            log("SOFTAP_STATE=" + (a != null && a.length > 0 ? a[0] : "?"));
-                            break;
-                        case "onNumClientsChanged":
-                            log("SOFTAP_NUMCLIENTS=" + (a != null && a.length > 0 ? a[0] : "?"));
-                            break;
-                        case "onConnectedClientsChanged":
-                            int n = 0;
-                            try { if (a != null && a.length > 0 && a[0] instanceof java.util.Collection)
-                                n = ((java.util.Collection<?>) a[0]).size(); } catch (Throwable ignored2) { }
-                            log("SOFTAP_CONNECTED=" + n);
-                            break;
-                        case "onInfoChanged":
-                            if (a != null && a.length > 0) log("SOFTAP_INFO=" + a[0]);
-                            break;
-                        case "onCapabilityChanged":
-                            if (a != null && a.length > 0) log("SOFTAP_CAP=" + a[0]);
-                            break;
-                    }
-                } catch (Throwable ignored3) { }
-                return null;
-            });
-            // 双签名 fallback（对齐源码 registerSoftApCallbackBinder lazy）
-            Method reg = null;
-            try {
-                reg = iWm.getClass().getMethod("registerSoftApCallback", iscCls);
-                reg.invoke(iWm, cb);
-            } catch (NoSuchMethodException e1) {
-                try {
-                    Method reg2 = iWm.getClass().getMethod("registerSoftApCallback",
-                        android.os.IBinder.class, iscCls, Integer.TYPE);
-                    int id = System.identityHashCode(cb);
-                    reg2.invoke(iWm, cb, cb, id);
-                } catch (NoSuchMethodException e2) {
-                    log("SOFTAP_ERR NO_REG_METHOD");
-                    System.exit(2);
-                    return;
-                }
-            }
-            log("SOFTAP_REGISTERED");
-            Thread.sleep(1500);   // 收集注册后即时回调（状态/客户端数/info/capability）
+            registerSoftApCb();
+            Thread.sleep(1500);
             log("SOFTAP_DONE");
+            System.exit(0);
+        } catch (Throwable e) {
+            log("SOFTAP_ERR " + e);
+            System.exit(2);
+        }
+    }
+
+    // ===== softap_daemon：常驻注册，回调事件实时打印（主进程流式读取解析），进程被杀即自动注销 =====
+    static void softApDaemon() {
+        try {
+            registerSoftApCb();
+            System.out.flush();
+            // 常驻：回调线程负责实时输出；主线程保持进程存活
+            for (;;) {
+                try { Thread.sleep(60000); } catch (InterruptedException e) { break; }
+            }
             System.exit(0);
         } catch (Throwable e) {
             log("SOFTAP_ERR " + e);
