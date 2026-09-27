@@ -37,9 +37,11 @@ jobs:
           java-version: 17
       - name: Setup SDK
         run: |
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-googletv-license"
           SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1)
-          echo "sdkmanager: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses
           "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
       - name: Build release APK
