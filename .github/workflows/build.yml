@@ -44,7 +44,7 @@ jobs:
           echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-googletv-license"
           curl -sL -o /tmp/p37.zip "https://dl.google.com/android/repository/platform-37.2_r01.zip" || echo "37 zip 下载失败"
           if [ -s /tmp/p37.zip ]; then
-            unzip -q /tmp/p37.zip -d "$ANDROID_HOME/platforms" || true
+            unzip -qo /tmp/p37.zip -d "$ANDROID_HOME/platforms" || true
             [ -d "$ANDROID_HOME/platforms/android-37.2" ] && mv "$ANDROID_HOME/platforms/android-37.2" "$ANDROID_HOME/platforms/android-37"
             bash scripts/patch_android37.sh "$ANDROID_HOME/platforms" || echo "patch 失败"
           fi
