@@ -49,7 +49,8 @@ jobs:
             for v in 37.2 37.1 37.0; do
               if [ -d "$ANDROID_HOME/platforms/android-$v" ]; then
                 cp -r "$ANDROID_HOME/platforms/android-$v" "$ANDROID_HOME/platforms/android-37"
-                sed -i -E 's/(Platform.Version=)[0-9.]+/\137/; s/(Pkg.Revision=)[0-9.]+/\11/' "$ANDROID_HOME/platforms/android-37/source.properties"
+                sed -i -E 's/(Platform.Version=)[0-9.]+/\137/; s/(Pkg.Revision=)[0-9.]+/\11/; s/(AndroidVersion.ApiLevel=).*/\137/' "$ANDROID_HOME/platforms/android-37/source.properties"
+                echo "--- source.properties:"; grep -E "Platform.Version|Pkg.Revision|ApiLevel" "$ANDROID_HOME/platforms/android-37/source.properties"
                 echo "copied android-37 <- android-$v"
                 break
               fi
