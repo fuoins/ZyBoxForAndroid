@@ -69,13 +69,6 @@ class MainActivity : ThemedActivity(),
 
         binding = LayoutMainBinding.inflate(layoutInflater)
         binding.fab.initProgress(binding.fabProgress)
-        // ZyBox: VPN 热点每次打开软件默认关闭——启动时清理可能残留的转发规则并复位状态
-        if (DataStore.vpnHotspotEnabled) {
-            DataStore.vpnHotspotEnabled = false
-            lifecycleScope.launch(Dispatchers.IO) {
-                VpnHotspotFragment.cleanupAtStartup()
-            }
-        }
         if (themeResId !in intArrayOf(
                 R.style.Theme_SagerNet_Black
             )
@@ -514,7 +507,10 @@ class MainActivity : ThemedActivity(),
             R.id.nav_zybox_about -> displayFragment(ZyBoxAboutFragment())
             R.id.nav_zybox_permission -> displayFragment(ZyBoxPermissionFragment())
             R.id.nav_zybox_optimization -> displayFragment(ZyBoxOptimizationFragment())
-            R.id.nav_vpn_hotspot -> displayFragment(VpnHotspotFragment())
+            R.id.nav_vpn_hotspot -> {
+                startActivity(Intent(this, zy.hotspot.app.MainActivity::class.java))
+                return false
+            }
             R.id.nav_tuiguang -> {
                 launchCustomTab("https://neko-box.pages.dev/喵")
                 return false

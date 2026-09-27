@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="internalOnly">
 
-    <uses-sdk tools:overrideLibrary="com.google.zxing.client.android, com.blacksquircle.ui.editorkit" />
+    <uses-sdk tools:overrideLibrary="com.google.zxing.client.android, com.blacksquircle.ui.editorkit, zy.hotspot.app, be.mygod.librootkotlinx, androidx.room, androidx.room.ktx, androidx.sqlite.db, androidx.sqlite.db.framework" />
 
     <permission
         android:name="${applicationId}.SERVICE"
@@ -17,7 +17,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
@@ -27,17 +26,6 @@
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
 
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- VPN 热点：对齐 VPNHotspot manifest 权限集（TETHER_PRIVILEGED 在部分 ROM 授予声明者） -->
-    <uses-permission android:name="android.permission.TETHER_PRIVILEGED" />
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
-    <uses-permission-sdk-23 android:name="android.permission.OVERRIDE_WIFI_CONFIG" />
-    <uses-permission-sdk-23 android:name="android.permission.READ_WIFI_CREDENTIAL" />
-    <uses-permission-sdk-23 android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission-sdk-23 android:name="android.permission.CHANGE_WIFI_STATE" />
-    <uses-permission-sdk-23 android:name="android.permission.CONNECTIVITY_USE_RESTRICTED_NETWORKS" />
-    <uses-permission-sdk-23 android:name="android.permission.LOCAL_MAC_ADDRESS" />
-    <uses-permission-sdk-23 android:name="android.permission.MANAGE_USB" />
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <uses-feature

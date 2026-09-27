@@ -45,3 +45,29 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 -dontwarn java.beans.PropertyVetoException
+
+# --- ZyBox: vpnhotspot 模块 ---
+-keep class zy.hotspot.app.** { *; }
+-dontwarn android.bluetooth.BluetoothPan
+-dontwarn android.net.ConnectivityManager$OnStartTetheringCallback
+-dontwarn android.net.TetheredClient$AddressInfo
+-dontwarn android.net.TetheredClient
+-dontwarn android.net.TetheringInterface
+-dontwarn android.net.TetheringManager$StartTetheringCallback
+-dontwarn android.net.TetheringManager$TetheringEventCallback
+-dontwarn android.net.TetheringManager$TetheringInterfaceRegexps
+-dontwarn android.net.TetheringManager$TetheringRequest$Builder
+-dontwarn android.net.TetheringManager$TetheringRequest
+-dontwarn android.net.TetheringManager
+-dontwarn android.net.wifi.DeauthenticationReasonCode
+-dontwarn android.net.wifi.ISoftApCallback$Stub
+-dontwarn android.net.wifi.ISoftApCallback
+-dontwarn android.net.wifi.IWifiManager
+-dontwarn android.net.wifi.OuiKeyedData$Builder
+-dontwarn android.net.wifi.OuiKeyedData
+-dontwarn android.net.wifi.SoftApCapability
+-dontwarn android.net.wifi.SoftApConfiguration$Builder
+-dontwarn android.net.wifi.SoftApInfo
+-dontwarn android.net.wifi.WifiClient
+-dontwarn android.net.wifi.WifiManager$SoftApCallback
+-dontwarn android.net.wifi.p2p.WifiP2pConnectionInfo

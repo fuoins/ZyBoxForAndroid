@@ -60,7 +60,7 @@
             android:title="@string/zybox_optimization" />
         <item
             android:id="@+id/nav_vpn_hotspot"
-            android:icon="@drawable/ic_baseline_hotspot_24"
+            android:icon="@drawable/ic_wifi_tethering"
             android:title="@string/vpn_hotspot" />
     </group>
 

@@ -42,6 +42,10 @@ class SagerNet : Application(),
         super.attachBaseContext(base)
 
         application = this
+
+        // ZyBox: VPNHotspot 环境初始化提前到 attachBaseContext（所有进程无条件执行），
+        // 确保 root/daemon 等早期代码能访问 deviceStorage（原版在 Application.attachBaseContext 初始化）
+        zy.hotspot.app.App.ensureInit(this)
     }
 
     private val nativeInterface = NativeInterface()
@@ -58,6 +62,8 @@ class SagerNet : Application(),
 
         if (isMainProcess || isBgProcess) {
             externalAssets.mkdirs()
+            // ZyBox: 集成 VPNHotspot（Tethering 页原样搬入），初始化其环境
+            zy.hotspot.app.App.init(this)
             Seq.setContext(this)
             Libcore.initCore(
                 process,

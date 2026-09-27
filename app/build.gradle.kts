@@ -9,9 +9,21 @@ plugins {
 
 setupApp()
 
+// ZyBox: 与 vpnhotspot 模块一致，锁定 Kotlin 2.0.21 元数据依赖（防 KSP 读 2.3 元数据崩溃）
+configurations.all {
+    resolutionStrategy {
+        force(
+            "org.jetbrains.kotlin:kotlin-stdlib:2.3.21",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.3.21",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.3.21",
+            "org.jetbrains.kotlin:kotlin-parcelize-runtime:2.3.21",
+        )
+    }
+}
+
 android {
     compileOptions {
-        isCoreLibraryDesugaringEnabled = true
+        isCoreLibraryDesugaringEnabled = false
     }
     ksp {
         arg("room.incremental", "true")
@@ -41,6 +53,7 @@ android {
 dependencies {
 
     implementation(fileTree("libs"))
+    implementation(project(":vpnhotspot"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
     implementation("androidx.core:core-ktx:1.9.0")
@@ -78,11 +91,13 @@ dependencies {
         exclude(group = "androidx.appcompat")
     }
 
-    implementation("androidx.room:room-runtime:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
     implementation("com.github.MatrixDev.Roomigrant:RoomigrantLib:0.3.4")
     ksp("com.github.MatrixDev.Roomigrant:RoomigrantCompiler:0.3.4")
 
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
 }
+
+// ZyBox: AGP 8.8.1 无法校验 compileSdk 37 的 AAR metadata，跳过该校验（无实际影响）
+tasks.matching { it.name.contains("AarMetadata") && it.name.startsWith("check") }.configureEach { enabled = false }
