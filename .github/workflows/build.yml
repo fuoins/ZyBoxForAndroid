@@ -64,7 +64,7 @@ jobs:
           if [ "$VARIANT" = "fdroidRelease" ]; then TASK=:app:assembleFdroidRelease; fi
           if [ "$VARIANT" = "playRelease" ]; then TASK=:app:assemblePlayRelease; fi
           if [ "$VARIANT" = "debug" ]; then TASK=:app:assembleFdroidDebug; fi
-          ./gradlew $TASK -x lintVitalAnalyzeFdroidRelease -x lintVitalAnalyzeRelease -x :vpnhotspot:lintVitalAnalyzeRelease --console=plain -Dorg.gradle.jvmargs="-Xmx4g"
+          ./gradlew $TASK -x lintVitalAnalyzeFdroidRelease -x lintVitalAnalyzeRelease -x :vpnhotspot:lintVitalAnalyzeRelease -x :app:lintVitalReportFdroidRelease -x :app:lintVitalReportRelease --console=plain -Dorg.gradle.jvmargs="-Xmx4g"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
