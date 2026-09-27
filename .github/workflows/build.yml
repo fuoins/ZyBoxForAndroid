@@ -49,15 +49,7 @@ jobs:
             for v in 37.2 37.1 37.0; do
               if [ -d "$ANDROID_HOME/platforms/android-$v" ]; then
                 cp -r "$ANDROID_HOME/platforms/android-$v" "$ANDROID_HOME/platforms/android-37"
-                python3 - "$ANDROID_HOME/platforms/android-37/source.properties" <<'PY'
-import re,sys
-p=sys.argv[1]
-s=open(p).read()
-s=re.sub(r'(Platform.Version=)[0-9.]+', r'\g<1>37', s)
-s=re.sub(r'(Pkg.Revision=)[0-9.]+', r'\g<1>1', s)
-open(p,'w').write(s)
-print("patched", p)
-PY
+                sed -i -E 's/(Platform.Version=)[0-9.]+/\137/; s/(Pkg.Revision=)[0-9.]+/\11/' "$ANDROID_HOME/platforms/android-37/source.properties"
                 echo "copied android-37 <- android-$v"
                 break
               fi
