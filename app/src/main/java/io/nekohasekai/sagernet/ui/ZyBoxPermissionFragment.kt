@@ -61,12 +61,14 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
             (requireActivity() as? MainActivity)?.runAutoInit()
             refresh()
         }
-        // ZyBox: 一键必须 / 一键所有(含可选)
+        // ZyBox: 一键必须 / 一键必须+可选
         view.findViewById<View>(R.id.perm_btn_all_required).setOnClickListener {
             (requireActivity() as? MainActivity)?.runOneClick(false)
+            setOneClickProcessing()
         }
         view.findViewById<View>(R.id.perm_btn_all_optional).setOnClickListener {
             (requireActivity() as? MainActivity)?.runOneClick(true)
+            setOneClickProcessing()
         }
         view.findViewById<View>(R.id.perm_btn_notif).setOnClickListener {
             (requireActivity() as? MainActivity)?.requestNotifPermission()
@@ -89,6 +91,22 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
         }
 
         refresh()
+    }
+
+    // ZyBox: 一键处理中——两个一键按钮禁用并提示，1.8s 后恢复
+    private fun setOneClickProcessing() {
+        val btn1 = view.findViewById<View>(R.id.perm_btn_all_required)
+        val btn2 = view.findViewById<View>(R.id.perm_btn_all_optional)
+        btn1.isEnabled = false
+        btn2.isEnabled = false
+        (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
+        (btn2 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
+        view.postDelayed({
+            btn1.isEnabled = true
+            btn2.isEnabled = true
+            (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_required)
+            (btn2 as? TextView)?.text = getString(R.string.zybox_oneclick_all)
+        }, 1800)
     }
 
     // ZyBox: 供 MainActivity 权限回调时刷新

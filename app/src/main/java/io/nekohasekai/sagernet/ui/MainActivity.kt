@@ -350,17 +350,29 @@ class MainActivity : ThemedActivity(),
         refreshPermissionFragment()
     }
 
-    // ZyBox: 一键必须 / 一键所有(含可选)——复用自动初始化链路（通知+VPN+设置页+应用列表），
-    // 一键所有额外执行路由规则全开与分应用代理绕过导入
+    // ZyBox: 一键必须 / 一键必须+可选——复用自动初始化链路（通知+VPN+设置页+应用列表），
+    // 含可选时额外执行路由规则全开与分应用代理绕过导入
     fun runOneClick(includeOptional: Boolean) {
         if (autoInitRunning) return
+        // 一键处理中：两个一键按钮禁用并提示
+        val btnRequired = initDialog?.findViewById<android.view.View>(R.id.init_btn_all_required)
+        val btnAll = initDialog?.findViewById<android.view.View>(R.id.init_btn_all_optional)
+        btnRequired?.isEnabled = false
+        btnAll?.isEnabled = false
+        (btnRequired as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_processing)
+        (btnAll as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_processing)
         runAutoInit()
-        if (includeOptional) {
-            binding.root.postDelayed({
+        binding.root.postDelayed({
+            // 恢复一键按钮
+            btnRequired?.isEnabled = true
+            btnAll?.isEnabled = true
+            (btnRequired as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_required)
+            (btnAll as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_all)
+            if (includeOptional) {
                 importBuiltinBypassApps()
                 enableAllRoutingRules { if (!isFinishing) displayFragmentWithId(R.id.nav_configuration) }
-            }, 1600)
-        }
+            }
+        }, 1600)
     }
 
     private fun showFirstLaunchDialog() {
