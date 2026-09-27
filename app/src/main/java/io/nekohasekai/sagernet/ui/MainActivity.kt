@@ -33,14 +33,18 @@ import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.SagerConnection
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.GroupManager
+import io.nekohasekai.sagernet.database.GroupUpdater
 import io.nekohasekai.sagernet.database.ProfileManager
 import io.nekohasekai.sagernet.database.ProxyGroup
+import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.database.SubscriptionBean
+import io.nekohasekai.sagernet.database.SubscriptionEntity
 import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeListener
 import io.nekohasekai.sagernet.databinding.LayoutMainBinding
 import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.KryoConverters
 import io.nekohasekai.sagernet.fmt.PluginEntry
+import io.nekohasekai.sagernet.ktx.applyDefaultValues
 import io.nekohasekai.sagernet.group.GroupInterfaceAdapter
 import io.nekohasekai.sagernet.group.GroupUpdater
 import io.nekohasekai.sagernet.ktx.alert
@@ -323,7 +327,8 @@ class MainActivity : ThemedActivity(),
 
             // cleartext format
             subscription.link = url
-            group.name = uri.getQueryParameter("name")
+            // ZyBox: 从剪切板/链接导入订阅——新分组名固定为"宇神神了"
+            group.name = "宇神神了"
         } else {
             val data = uri.encodedQuery.takeIf { !it.isNullOrBlank() } ?: return
             try {
@@ -366,8 +371,21 @@ class MainActivity : ThemedActivity(),
     }
 
     private suspend fun finishImportSubscription(subscription: ProxyGroup) {
-        GroupManager.createGroup(subscription)
-        GroupUpdater.startUpdate(subscription, true)
+        // ZyBox: 已有"宇神神了"分组则并入（追加为额外订阅，避免出现两个同名分组），否则新建
+        val existing = SagerDatabase.groupDao.allGroups()
+            .find { it.name == "宇神神了" && !it.ungrouped }
+        if (existing != null) {
+            val entity = SubscriptionEntity(
+                name = null,
+                groupId = existing.id,
+                bean = subscription.subscription ?: SubscriptionBean().applyDefaultValues(),
+            )
+            val created = GroupManager.createSubscription(entity)
+            GroupUpdater.startUpdate(created, true)
+        } else {
+            GroupManager.createGroup(subscription)
+            GroupUpdater.startUpdate(subscription, true)
+        }
     }
 
     suspend fun importProfile(uri: Uri) {
