@@ -48,8 +48,17 @@ jobs:
           if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
             for v in 37.2 37.1 37.0; do
               if [ -d "$ANDROID_HOME/platforms/android-$v" ]; then
-                ln -s "android-$v" "$ANDROID_HOME/platforms/android-37"
-                echo "linked android-37 -> android-$v"
+                cp -r "$ANDROID_HOME/platforms/android-$v" "$ANDROID_HOME/platforms/android-37"
+                python3 - "$ANDROID_HOME/platforms/android-37/source.properties" <<'PY'
+import re,sys
+p=sys.argv[1]
+s=open(p).read()
+s=re.sub(r'(Platform.Version=)[0-9.]+', r'\g<1>37', s)
+s=re.sub(r'(Pkg.Revision=)[0-9.]+', r'\g<1>1', s)
+open(p,'w').write(s)
+print("patched", p)
+PY
+                echo "copied android-37 <- android-$v"
                 break
               fi
             done
