@@ -36,15 +36,29 @@
                     android:textStyle="bold"
                     android:textColor="?android:attr/textColorPrimary" />
 
-                <TextView
-                    android:id="@+id/init_progress"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/init_btn_enter"
+                    style="@style/Widget.MaterialComponents.Button.ZyBox"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0/4"
-                    android:textAppearance="?android:attr/textAppearanceMedium"
-                    android:textStyle="bold"
-                    android:textColor="@color/material_pink_500" />
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="进入 0/4"
+                    android:textSize="13sp" />
             </LinearLayout>
+
+            <!-- 必须项分栏标题 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="2dp"
+                android:text="@string/zybox_init_required_section"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textStyle="bold"
+                android:textColor="@color/material_pink_500" />
 
             <!-- 一键必须 / 一键所有(含可选) -->
             <LinearLayout
@@ -110,13 +124,6 @@
                         android:text="@string/zybox_init_auto"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_init_auto_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -162,13 +169,6 @@
                         android:text="@string/zybox_init_notif"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_init_notif_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -214,13 +214,6 @@
                         android:text="@string/zybox_init_vpn"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_init_vpn_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -266,13 +259,6 @@
                         android:text="@string/zybox_init_apps"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_init_apps_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -329,13 +315,6 @@
                         android:text="@string/zybox_permission_root"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_permission_root_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -383,14 +362,20 @@
                         android:text="@string/zybox_init_route_all"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_init_route_all_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/init_btn_route_start"
+                    style="@style/Widget.MaterialComponents.Button.ZyBox"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/zybox_init_start"
+                    android:textSize="13sp" />
             </LinearLayout>
 
             <!-- 可选 2：分应用代理绕过配置一键设置 -->
@@ -427,26 +412,105 @@
                         android:text="@string/zybox_init_apps_import"
                         android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/zybox_init_apps_import_sum"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
-                        android:textColor="?android:attr/textColorSecondary" />
                 </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/init_btn_apps_import_start"
+                    style="@style/Widget.MaterialComponents.Button.ZyBox"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/zybox_init_start"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 描述区：所有选项的说明集中显示在最底部 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="2dp"
+                android:text="@string/zybox_init_desc_section"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textStyle="bold"
+                android:textColor="@color/material_pink_500" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/zybox_ping_capsule"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/zybox_init_auto_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/zybox_init_notif_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/zybox_init_vpn_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/zybox_init_apps_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/zybox_permission_root_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/zybox_init_route_all_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/zybox_init_apps_import_sum"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="3dp" />
             </LinearLayout>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
-
-    <!-- 进入按钮（4/4 前禁用） -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/init_btn_enter"
-        style="@style/Widget.MaterialComponents.Button.ZyBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="4dp"
-        android:text="@string/zybox_init_enter" />
 </LinearLayout>

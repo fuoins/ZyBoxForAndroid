@@ -365,7 +365,6 @@ class MainActivity : ThemedActivity(),
 
     private fun showFirstLaunchDialog() {
         val view = layoutInflater.inflate(R.layout.dialog_zybox_init, null)
-        val progress = view.findViewById<android.widget.TextView>(R.id.init_progress)
         val statusAuto = view.findViewById<android.widget.TextView>(R.id.init_status_auto)
         val statusNotif = view.findViewById<android.widget.TextView>(R.id.init_status_notif)
         val statusVpn = view.findViewById<android.widget.TextView>(R.id.init_status_vpn)
@@ -396,8 +395,16 @@ class MainActivity : ThemedActivity(),
                 if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
             }
         }
+        view.findViewById<android.view.View>(R.id.init_btn_route_start).setOnClickListener {
+            enableAllRoutingRules {
+                if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
+            }
+        }
         // ZyBox: 可选 2——分应用代理绕过配置一键导入
         view.findViewById<android.view.View>(R.id.init_btn_apps_import).setOnClickListener {
+            importBuiltinBypassApps()
+        }
+        view.findViewById<android.view.View>(R.id.init_btn_apps_import_start).setOnClickListener {
             importBuiltinBypassApps()
         }
         view.findViewById<android.view.View>(R.id.init_btn_enter).setOnClickListener {
@@ -429,9 +436,12 @@ class MainActivity : ThemedActivity(),
     }
 
     private fun refreshInitDialog(d: androidx.appcompat.app.AlertDialog) {
-        val view = d.findViewById<android.widget.TextView>(R.id.init_progress) ?: return
         val done = initDoneCount()
-        view.text = "$done/4"
+        // 顶部进入按钮："进入 X/4"，4 项全完成且自动初始化未运行才可点击
+        val enterBtn = d.findViewById<android.view.View>(R.id.init_btn_enter) ?: return
+        enterBtn.isEnabled = done >= 4 && !autoInitRunning
+        (enterBtn as? android.widget.TextView)?.text =
+            getString(R.string.zybox_init_enter) + " $done/4"
         d.findViewById<android.widget.TextView>(R.id.init_status_auto)?.text =
             if (isAutoInitDone) "✅" else "❌"
         d.findViewById<android.widget.TextView>(R.id.init_status_notif)?.text =
@@ -449,15 +459,6 @@ class MainActivity : ThemedActivity(),
                 d.findViewById<android.widget.TextView>(R.id.init_status_root)?.text =
                     if (granted) "✅" else "❌"
             }
-        }
-        // ZyBox: 4 项必须全做完才可进入（按钮锁定）；自动初始化执行期间也保持锁定
-        val enterBtn = d.findViewById<android.view.View>(R.id.init_btn_enter)
-        if (enterBtn != null) {
-            enterBtn.isEnabled = done >= 4 && !autoInitRunning
-            (enterBtn as? android.widget.TextView)?.text = getString(
-                if (done >= 4 && !autoInitRunning) R.string.zybox_init_enter
-                else R.string.zybox_init_enter_locked
-            )
         }
     }
 
