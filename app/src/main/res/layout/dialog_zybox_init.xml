@@ -149,7 +149,95 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- 进入按钮 -->
+    <!-- 第 4 项：应用列表权限（分应用代理） -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/zybox_ping_capsule"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/init_status_apps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="❌"
+            android:textSize="16sp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/zybox_init_apps"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/zybox_init_apps_sum"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textColor="?android:attr/textColorSecondary" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/init_btn_apps"
+            style="@style/Widget.MaterialComponents.Button.ZyBox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/zybox_init_grant"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- 可选功能（非必须） -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="2dp"
+        android:text="@string/zybox_opt_section"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textStyle="bold"
+        android:textColor="@color/material_pink_500" />
+
+    <!-- 可选 1：路由规则一键全开 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/init_btn_route"
+        style="@style/Widget.MaterialComponents.Button.ZyBox.Outlined"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:minHeight="0dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="@string/zybox_init_route_all"
+        android:textSize="13sp" />
+
+    <!-- 可选 2：分应用代理绕过配置一键导入 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/init_btn_apps_import"
+        style="@style/Widget.MaterialComponents.Button.ZyBox.Outlined"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:minHeight="0dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="@string/zybox_init_apps_import"
+        android:textSize="13sp" />
+
+    <!-- 进入按钮（4/4 前禁用） -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/init_btn_enter"
         style="@style/Widget.MaterialComponents.Button.ZyBox"

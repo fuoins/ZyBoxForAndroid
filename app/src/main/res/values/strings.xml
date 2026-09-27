@@ -704,6 +704,17 @@
     <string name="zybox_permission_root">Root 权限</string>
     <string name="zybox_permission_root_sum">VPN 热点开关需要 Root 权限，未授予时热点开启将失败。</string>
     <string name="zybox_vpn_hotspot_section">VPN 热点权限</string>
+    <string name="zybox_init_apps">App list permission</string>
+    <string name="zybox_init_apps_sum">For per-app proxy: read installed app list to select apps that bypass the proxy.</string>
+    <string name="zybox_opt_section">Optional (not required)</string>
+    <string name="zybox_init_route_all">Turn on all routing rules</string>
+    <string name="zybox_init_route_all_sum">Switch to Route page, enable every rule, then return home.</string>
+    <string name="zybox_init_apps_import">Import bypass config</string>
+    <string name="zybox_init_apps_import_sum">One-tap import your per-app proxy bypass list (built-in config), apps on the list go direct.</string>
+    <string name="zybox_init_enter_locked">Finish all 4 required items to enter</string>
+    <string name="zybox_apps_permission_granted">App list permission already granted</string>
+    <string name="zybox_route_all_done">All routing rules enabled</string>
+    <string name="zybox_apps_import_done">Bypass app list imported</string>
     <string name="zybox_permission_hint">Query permission status and initialization progress here. Tap the button on the right to finish any pending item.</string>
     <string name="zybox_permission_query">Permissions &amp; Init Query</string>
     <string name="zybox_init_incomplete">Some items pending. Continue in Menu → Permissions &amp; Init Query.</string>

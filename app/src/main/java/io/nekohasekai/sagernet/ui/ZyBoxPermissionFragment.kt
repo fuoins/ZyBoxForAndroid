@@ -21,7 +21,12 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
         val statusAuto = view.findViewById<TextView>(R.id.perm_status_auto)
         val statusNotif = view.findViewById<TextView>(R.id.perm_status_notif)
         val statusVpn = view.findViewById<TextView>(R.id.perm_status_vpn)
+        val statusApps = view.findViewById<TextView>(R.id.perm_status_apps)
         val statusRoot = view.findViewById<TextView>(R.id.perm_status_root)
+
+        fun refreshApps() {
+            statusApps.text = if ((requireActivity() as? MainActivity)?.isAppsPermissionGranted() == true) "✅" else "❌"
+        }
 
         fun refreshRoot() {
             // 异步检测 root（su 可用性），不阻塞 UI
@@ -48,6 +53,7 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
             } else true
             statusNotif.text = if (notifGranted) "✅" else "❌"
             statusVpn.text = if (VpnService.prepare(requireContext()) == null) "✅" else "❌"
+            refreshApps()
             refreshRoot()
         }
 
@@ -60,6 +66,19 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
         }
         view.findViewById<View>(R.id.perm_btn_vpn).setOnClickListener {
             (requireActivity() as? MainActivity)?.requestVpnPermission()
+        }
+        view.findViewById<View>(R.id.perm_btn_apps).setOnClickListener {
+            (requireActivity() as? MainActivity)?.requestAppsPermission()
+        }
+        // ZyBox: 可选 1——路由规则一键全开
+        view.findViewById<View>(R.id.perm_btn_route).setOnClickListener {
+            (requireActivity() as? MainActivity)?.enableAllRoutingRules {
+                (activity as? MainActivity)?.displayFragmentWithId(R.id.nav_configuration)
+            }
+        }
+        // ZyBox: 可选 2——分应用代理绕过配置一键导入
+        view.findViewById<View>(R.id.perm_btn_apps_import).setOnClickListener {
+            (requireActivity() as? MainActivity)?.importBuiltinBypassApps()
         }
 
         refresh()
@@ -80,6 +99,8 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
             ) "❌" else "✅"
         it.findViewById<TextView>(R.id.perm_status_vpn).text =
             if (VpnService.prepare(requireContext()) == null) "✅" else "❌"
+        it.findViewById<TextView>(R.id.perm_status_apps).text =
+            if ((requireActivity() as? MainActivity)?.isAppsPermissionGranted() == true) "✅" else "❌"
         val statusRoot = it.findViewById<TextView>(R.id.perm_status_root)
         Thread {
             val hasRoot = try {
@@ -107,6 +128,8 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
                 ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
             ) "✅" else "❌"
             sV.text = if (VpnService.prepare(requireContext()) == null) "✅" else "❌"
+            val sApps = it.findViewById<TextView>(R.id.perm_status_apps)
+            sApps.text = if ((requireActivity() as? MainActivity)?.isAppsPermissionGranted() == true) "✅" else "❌"
             val statusRoot = it.findViewById<TextView>(R.id.perm_status_root)
             Thread {
                 val hasRoot = try {

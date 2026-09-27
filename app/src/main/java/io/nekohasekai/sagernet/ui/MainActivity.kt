@@ -44,6 +44,7 @@ import io.nekohasekai.sagernet.fmt.AbstractBean
 import io.nekohasekai.sagernet.fmt.KryoConverters
 import io.nekohasekai.sagernet.fmt.PluginEntry
 import io.nekohasekai.sagernet.group.GroupUpdater
+import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ktx.applyDefaultValues
 import io.nekohasekai.sagernet.group.GroupInterfaceAdapter
 import io.nekohasekai.sagernet.group.GroupUpdater
@@ -176,6 +177,131 @@ class MainActivity : ThemedActivity(),
         VpnService.prepare(this)?.let { vpnPermission.launch(it) }
     }
 
+    // ZyBox: 应用列表权限（分应用代理）——QUERY_ALL_PACKAGES 为安装即授普通权限，按钮点击刷新状态
+    fun requestAppsPermission() {
+        val granted = ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.QUERY_ALL_PACKAGES
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            snackbar(R.string.zybox_apps_permission_granted).show()
+        } else {
+            try {
+                startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.fromParts("package", packageName, null)
+                    )
+                )
+            } catch (e: Exception) {
+                Logs.w(e)
+            }
+        }
+        initDialog?.let { d -> refreshInitDialog(d) }
+        refreshPermissionFragment()
+    }
+
+    fun isAppsPermissionGranted(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.QUERY_ALL_PACKAGES
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // ZyBox: 路由规则一键全开（数据层全开 → 跳路由页展示 → 回主页）
+    fun enableAllRoutingRules(onDone: () -> Unit) {
+        runOnDefaultDispatcher {
+            val rules = SagerDatabase.rulesDao.allRules()
+            if (rules.isNotEmpty()) {
+                rules.forEach { it.enabled = true }
+                SagerDatabase.rulesDao.updateRules(rules)
+            }
+            onMainDispatcher {
+                snackbar(R.string.zybox_route_all_done).show()
+                displayFragmentWithId(R.id.nav_route)
+                binding.root.postDelayed(onDone, 1600)
+            }
+        }
+    }
+
+    // ZyBox: 分应用代理绕过配置一键导入（内置配置，跳过首行开关标记，包名换行写入 individual）
+    fun importBuiltinBypassApps() {
+        val packages = BUILTIN_BYPASS_PACKAGES
+        DataStore.individual = packages
+        snackbar(R.string.zybox_apps_import_done).show()
+        initDialog?.let { d -> refreshInitDialog(d) }
+    }
+
+    companion object {
+        // ZyBox: 内置分应用代理绕过配置（首行 true 为开关标记，已剔除；包名换行分隔）
+        const val BUILTIN_BYPASS_PACKAGES = "com.mfcloudcalculate.networkdisk\n" +
+                "cn.cj.pe\n" +
+                "com.fiveplay\n" +
+                "com.android.purebilibili\n" +
+                "com.moonshot.kimichat\n" +
+                "org.localsend.localsend_app\n" +
+                "com.fongmi.android.tv\n" +
+                "com.tencent.mobileqq\n" +
+                "com.suda.yzune.wakeupschedule\n" +
+                "com.android.bankabc\n" +
+                "com.icbc\n" +
+                "com.chinamworld.main\n" +
+                "com.greenpoint.android.mc10086.activity\n" +
+                "com.chinamobile.mcloud\n" +
+                "com.chinamworld.bocmbci\n" +
+                "com.heytap.themestore\n" +
+                "com.unionpay\n" +
+                "com.tmri.app.main\n" +
+                "com.bankcomm.Bankcomm\n" +
+                "com.jingdong.app.mall\n" +
+                "com.jd.jrapp\n" +
+                "com.tencent.wework\n" +
+                "com.tencent.hunyuan.app.chat\n" +
+                "com.jlmobile\n" +
+                "com.cmcc.cmvideo\n" +
+                "tv.danmaku.bili\n" +
+                "com.maimemo.android.momo\n" +
+                "com.ktls.fileinfo\n" +
+                "com.realtech.xiaocan\n" +
+                "com.pingan.lifecircle\n" +
+                "com.pingan.carowner\n" +
+                "com.pingan.lifeinsurance\n" +
+                "com.nowcasting.activity\n" +
+                "com.webank.wemoney\n" +
+                "com.tencent.mm\n" +
+                "com.smile.gifmaker\n" +
+                "com.uu898.uuhavequality\n" +
+                "com.shanbay.kaoyan\n" +
+                "com.ss.android.ugc.aweme\n" +
+                "com.ss.android.ugc.livelite\n" +
+                "com.ss.android.yumme.video\n" +
+                "cmb.pb\n" +
+                "com.xunmeng.pinduoduo\n" +
+                "com.sohu.inputmethod.sogou.xiaomi\n" +
+                "com.eg.android.AlipayGphone\n" +
+                "cn.gov.pbc.dcep\n" +
+                "moc.nauxuoyoaixoaix.www\n" +
+                "com.taobao.taobao\n" +
+                "com.taobao.litetao\n" +
+                "me.ele\n" +
+                "com.sdu.didi.psnger\n" +
+                "com.tencent.gamehelper.smoba\n" +
+                "com.plan.kot32.tomatotime\n" +
+                "com.dragon.read\n" +
+                "com.baidu.netdisk\n" +
+                "com.baidu.input_oppo\n" +
+                "com.tencent.map\n" +
+                "com.cainiao.wireless\n" +
+                "com.larus.nova\n" +
+                "com.douban.frodo\n" +
+                "com.wandoujia.phoenix2\n" +
+                "com.heytap.market\n" +
+                "com.coolapk.market\n" +
+                "com.xt.retouch\n" +
+                "com.MobileTicket\n" +
+                "com.taobao.idlefish\n" +
+                "io.legado.app.release\n" +
+                "com.jxedt"
+    }
+
     fun runAutoInit() {
         if (autoInitRunning) return
         if (!isAutoInitDone) {
@@ -221,6 +347,7 @@ class MainActivity : ThemedActivity(),
         val statusAuto = view.findViewById<android.widget.TextView>(R.id.init_status_auto)
         val statusNotif = view.findViewById<android.widget.TextView>(R.id.init_status_notif)
         val statusVpn = view.findViewById<android.widget.TextView>(R.id.init_status_vpn)
+        val statusApps = view.findViewById<android.widget.TextView>(R.id.init_status_apps)
 
         view.findViewById<android.view.View>(R.id.init_btn_auto).setOnClickListener {
             runAutoInit()
@@ -231,15 +358,24 @@ class MainActivity : ThemedActivity(),
         view.findViewById<android.view.View>(R.id.init_btn_vpn).setOnClickListener {
             requestVpnPermission()
         }
+        view.findViewById<android.view.View>(R.id.init_btn_apps).setOnClickListener {
+            requestAppsPermission()
+        }
+        // ZyBox: 可选 1——路由规则一键全开（全开 → 路由页 → 回主页）
+        view.findViewById<android.view.View>(R.id.init_btn_route).setOnClickListener {
+            enableAllRoutingRules {
+                if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
+            }
+        }
+        // ZyBox: 可选 2——分应用代理绕过配置一键导入
+        view.findViewById<android.view.View>(R.id.init_btn_apps_import).setOnClickListener {
+            importBuiltinBypassApps()
+        }
         view.findViewById<android.view.View>(R.id.init_btn_enter).setOnClickListener {
-            val done = (if (isAutoInitDone) 1 else 0) +
-                    (if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
-                            this, POST_NOTIFICATIONS
-                        ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
-                    ) 1 else 0) +
-                    (if (VpnService.prepare(this) == null) 1 else 0)
-            if (done < 3) {
+            val done = initDoneCount()
+            if (done < 4) {
                 snackbar(getString(R.string.zybox_init_incomplete)).show()
+                return@setOnClickListener
             }
             initDialog?.dismiss()
             initDialog = null
@@ -253,15 +389,20 @@ class MainActivity : ThemedActivity(),
         refreshInitDialog(initDialog!!)
     }
 
-    private fun refreshInitDialog(d: androidx.appcompat.app.AlertDialog) {
-        val view = d.findViewById<android.widget.TextView>(R.id.init_progress) ?: return
-        val done = (if (isAutoInitDone) 1 else 0) +
+    private fun initDoneCount(): Int {
+        return (if (isAutoInitDone) 1 else 0) +
                 (if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                         this, POST_NOTIFICATIONS
                     ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
                 ) 1 else 0) +
-                (if (VpnService.prepare(this) == null) 1 else 0)
-        view.text = "$done/3"
+                (if (VpnService.prepare(this) == null) 1 else 0) +
+                (if (isAppsPermissionGranted()) 1 else 0)
+    }
+
+    private fun refreshInitDialog(d: androidx.appcompat.app.AlertDialog) {
+        val view = d.findViewById<android.widget.TextView>(R.id.init_progress) ?: return
+        val done = initDoneCount()
+        view.text = "$done/4"
         d.findViewById<android.widget.TextView>(R.id.init_status_auto)?.text =
             if (isAutoInitDone) "✅" else "❌"
         d.findViewById<android.widget.TextView>(R.id.init_status_notif)?.text =
@@ -271,6 +412,16 @@ class MainActivity : ThemedActivity(),
             ) "❌" else "✅"
         d.findViewById<android.widget.TextView>(R.id.init_status_vpn)?.text =
             if (VpnService.prepare(this) == null) "✅" else "❌"
+        d.findViewById<android.widget.TextView>(R.id.init_status_apps)?.text =
+            if (isAppsPermissionGranted()) "✅" else "❌"
+        // ZyBox: 4 项必须全做完才可进入（按钮锁定）
+        val enterBtn = d.findViewById<android.view.View>(R.id.init_btn_enter)
+        if (enterBtn != null) {
+            enterBtn.isEnabled = done >= 4
+            (enterBtn as? android.widget.TextView)?.text = getString(
+                if (done >= 4) R.string.zybox_init_enter else R.string.zybox_init_enter_locked
+            )
+        }
     }
 
     override fun onRequestPermissionsResult(

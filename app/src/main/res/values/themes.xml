@@ -125,6 +125,14 @@
         <item name="android:textSize">14sp</item>
     </style>
 
+    <style name="Widget.MaterialComponents.Button.ZyBox.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="cornerRadius">16dp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="strokeColor">@color/material_pink_500</item>
+        <item name="android:textColor">@color/material_pink_500</item>
+    </style>
+
     <style name="AppearanceFoundation.Title" parent="TextAppearance.AppCompat.Title">
         <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textStyle">bold</item>
