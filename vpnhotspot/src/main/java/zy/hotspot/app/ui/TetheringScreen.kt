@@ -226,41 +226,17 @@ fun TetheringScreen(
         modifier = Modifier.fillMaxSize(),
     ) {
         SettingsList {
-            preferenceGroup(key = "active_tethering") {
-                row(R.string.tethering_temp_hotspot) {
-                    val toggleLocalOnly: () -> Unit = {
-                        if (localOnlyIface == null) {
-                            startLocalOnly(if (Build.VERSION.SDK_INT >= 33) {
-                                Manifest.permission.NEARBY_WIFI_DEVICES
-                            } else Manifest.permission.ACCESS_FINE_LOCATION)
-                        } else onStopTemporaryHotspot()
-                    }
-                    TetheringRow(
-                        icon = R.drawable.ic_android_wifi_3_bar_plus,
-                        title = stringResource(R.string.tethering_temp_hotspot),
-                        summary = localOnlySummary,
-                        checked = localOnlyIface != null,
-                        onClick = onConfigureTemporaryHotspot ?: toggleLocalOnly,
-                        onCheckedChange = if (onConfigureTemporaryHotspot == null) null else toggleLocalOnly,
-                    )
-                }
-                row(R.string.tethering_static_ip) {
-                    TetheringRow(
-                        icon = R.drawable.ic_push_pin,
-                        title = stringResource(R.string.tethering_static_ip),
-                        summary = buildAnnotatedString {
-                            for ((address, prefixLength) in staticIpAddresses) {
-                                if (length > 0) append('\n')
-                                appendIpAddress(address, linkStyles)
-                                if (prefixLength.toInt() != address.address.size * 8) append("/$prefixLength")
-                            }
-                        },
-                        checked = staticIpActive,
-                        switchEnabled = !staticIpApplying,
-                        onClick = {
-                            staticIpDraft = StaticIpSetter.ips
-                        },
-                        onCheckedChange = { StaticIpSetter.enable(!staticIpActive) },
+            // ZyBox: wlan热点置顶
+            preferenceGroup(key = "wifi_hotspot") {
+                row(R.string.tethering_manage_wifi) {
+                    TetheringTypeRow(
+                        icon = R.drawable.ic_network_wifi,
+                        title = R.string.tethering_manage_wifi,
+                        checked = tetheredTypes.contains(TetherType.WIFI),
+                        summary = wifiSummary,
+                        tetheringType = TetheringManager.TETHERING_WIFI,
+                        snackbarHostState = snackbarHostState,
+                        onConfigure = onConfigureAp,
                     )
                 }
             }
@@ -274,7 +250,8 @@ fun TetheringScreen(
                         row("vpn_tethering") {
                             TetheringRow(
                                 icon = TetherType.ofInterface(iface).icon,
-                                title = iface,
+                                // ZyBox: 接口名后标注 (vpn热点)
+                                title = "$iface (vpn热点)",
                                 summary = networkInterfaceAddressesText(
                                     ifaceLookup[iface],
                                     linkStyles,
@@ -311,12 +288,18 @@ fun TetheringScreen(
                         icon = R.drawable.ic_add,
                         iconTint = MaterialTheme.colorScheme.secondary,
                         title = stringResource(R.string.tethering_manage),
-                        summary = buildAnnotatedString {
-                            append(stringResource(R.string.tethering_manage_shares_summary))
-                            if (offloadEnabled) {
-                                append('\n')
-                                append(stringResource(R.string.tethering_manage_offload_enabled))
-                            }
+                        // ZyBox: 描述字体减小
+                        summaryContent = {
+                            Text(
+                                buildAnnotatedString {
+                                    append(stringResource(R.string.tethering_manage_shares_summary))
+                                    if (offloadEnabled) {
+                                        append('\n')
+                                        append(stringResource(R.string.tethering_manage_offload_enabled))
+                                    }
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         },
                         onClick = { ManageBar.start(context::startActivity) },
                     )
@@ -325,7 +308,13 @@ fun TetheringScreen(
                     SwitchPreferenceRow(
                         icon = R.drawable.ic_speed,
                         title = R.string.settings_system_tether_offload,
-                        summary = stringResource(R.string.settings_system_tether_offload_summary),
+                        // ZyBox: 描述字体减小
+                        summaryContent = {
+                            Text(
+                                stringResource(R.string.settings_system_tether_offload_summary),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        },
                         checked = offloadEnabled,
                         onCheckedChange = { enabled ->
                             if (inspectionMode) return@SwitchPreferenceRow
@@ -346,17 +335,37 @@ fun TetheringScreen(
                         },
                     )
                 }
-                row(R.string.tethering_manage_wifi) {
-                    TetheringTypeRow(
-                        icon = R.drawable.ic_network_wifi,
-                        title = R.string.tethering_manage_wifi,
-                        checked = tetheredTypes.contains(TetherType.WIFI),
-                        summary = wifiSummary,
-                        tetheringType = TetheringManager.TETHERING_WIFI,
-                        snackbarHostState = snackbarHostState,
-                        onConfigure = onConfigureAp,
+                // ZyBox: 静态ip移到管理组末尾
+                row(R.string.tethering_static_ip) {
+                    TetheringRow(
+                        icon = R.drawable.ic_push_pin,
+                        title = stringResource(R.string.tethering_static_ip),
+                        summary = buildAnnotatedString {
+                            for ((address, prefixLength) in staticIpAddresses) {
+                                if (length > 0) append('\n')
+                                appendIpAddress(address, linkStyles)
+                                if (prefixLength.toInt() != address.address.size * 8) append("/$prefixLength")
+                            }
+                        },
+                        checked = staticIpActive,
+                        switchEnabled = !staticIpApplying,
+                        onClick = {
+                            staticIpDraft = StaticIpSetter.ips
+                        },
+                        onCheckedChange = { StaticIpSetter.enable(!staticIpActive) },
                     )
                 }
+            }
+            // ZyBox: 底部提示——开启wlan热点才会显示ap0(vpn热点)
+            item(key = "zybox_hint") {
+                Text(
+                    text = "开启wlan热点才会显示ap0(vpn热点)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                )
             }
         }
     }

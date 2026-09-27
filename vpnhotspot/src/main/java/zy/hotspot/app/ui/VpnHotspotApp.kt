@@ -240,13 +240,14 @@ fun VpnHotspotApp(clientViewModel: ClientViewModel) {
                 val localOnlyIface by (localOnlyBinder?.iface)?.collectAsStateWithLifecycle(null)
                     ?: remember { mutableStateOf(null) }
                 RootDestinationScaffold(
-                    title = R.string.app_name,
+                    title = 0, // ZyBox: 根页不显示顶部标题
                     selectedDestination = RootDestination.Tethering,
                     navController = navController,
                     validClientCount = validClientCount,
                     activeSnackbarPadding = route == RootDestination.Tethering.route,
                     onSnackbarStartPaddingChanged = { snackbarStartPadding = it },
                     onSnackbarBottomPaddingChanged = { snackbarBottomPadding = it },
+                    onMenuClick = { (context as? android.app.Activity)?.finish() },
                 ) {
                     TetheringScreen(
                         snackbarHostState,
@@ -380,6 +381,8 @@ private fun RootDestinationScaffold(
     activeSnackbarPadding: Boolean,
     onSnackbarStartPaddingChanged: (Dp) -> Unit,
     onSnackbarBottomPaddingChanged: (Dp) -> Unit,
+    // ZyBox: 根页左上三杠返回主应用
+    onMenuClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     onReselect: () -> Unit = {},
     content: @Composable () -> Unit,
@@ -422,6 +425,8 @@ private fun RootDestinationScaffold(
                 snackbarStartPadding = navigationRailWidth,
                 onSnackbarStartPaddingChanged = onSnackbarStartPaddingChanged,
                 onSnackbarBottomPaddingChanged = onSnackbarBottomPaddingChanged,
+                useMenuIcon = true,
+                onMenuClick = onMenuClick,
                 actions = actions,
                 contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
                 content = content,
@@ -434,6 +439,8 @@ private fun RootDestinationScaffold(
             activeSnackbarPadding = activeSnackbarPadding,
             onSnackbarStartPaddingChanged = onSnackbarStartPaddingChanged,
             onSnackbarBottomPaddingChanged = onSnackbarBottomPaddingChanged,
+            useMenuIcon = true,
+            onMenuClick = onMenuClick,
             actions = actions,
             bottomBar = {
                 NavigationBar(
@@ -513,6 +520,9 @@ private fun DestinationScaffold(
     onSnackbarStartPaddingChanged: (Dp) -> Unit,
     onSnackbarBottomPaddingChanged: (Dp) -> Unit,
     onNavigateUp: (() -> Unit)? = null,
+    // ZyBox: 根页左上三杠（返回主应用），与 onNavigateUp 互斥
+    useMenuIcon: Boolean = false,
+    onMenuClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     bottomBar: (@Composable () -> Unit)? = null,
     floatingActionButton: (@Composable () -> Unit)? = null,
@@ -544,9 +554,18 @@ private fun DestinationScaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(title)) },
+                // ZyBox: title=0 时不显示顶部标题（根页删掉"VPN热点"字样）
+                title = { if (title != 0) Text(stringResource(title)) },
                 navigationIcon = {
-                    if (onNavigateUp != null) {
+                    if (useMenuIcon) {
+                        // ZyBox: 左上三杠，点击返回主应用菜单
+                        TooltipIconButton(
+                            tooltip = stringResource(R.string.action_bar_up_description),
+                            onClick = onMenuClick ?: {},
+                        ) {
+                            NavIcon(R.drawable.ic_navigation_menu, stringResource(R.string.action_bar_up_description))
+                        }
+                    } else if (onNavigateUp != null) {
                         val tooltip = stringResource(R.string.action_bar_up_description)
                         TooltipIconButton(
                             tooltip = tooltip,

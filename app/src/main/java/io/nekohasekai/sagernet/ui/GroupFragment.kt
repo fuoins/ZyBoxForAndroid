@@ -535,16 +535,9 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                 if (proxyGroup.type != GroupType.SUBSCRIPTION) {
                     popup.menu.removeItem(R.id.action_share_subscription)
                 }
-                runOnDefaultDispatcher {
-                    val hasSubs = SagerDatabase.subscriptionDao.countByGroup(proxyGroup.id) > 0
-                    onMainDispatcher {
-                        if (!hasSubs) {
-                            popup.menu.removeItem(R.id.action_manage_subscriptions)
-                        }
-                        popup.setOnMenuItemClickListener(this@GroupHolder)
-                        popup.show()
-                    }
-                }
+                // ZyBox: 管理订阅直接显示，无需先添加订阅到本组；空订阅也可打开查看
+                popup.setOnMenuItemClickListener(this@GroupHolder)
+                popup.show()
             }
 
             if (proxyGroup.id in GroupUpdater.updating) {
@@ -749,10 +742,6 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     val mainSub = group.subscription?.takeIf {
                         group.type == GroupType.SUBSCRIPTION
                     }
-                    if (entities.isEmpty() && mainSub == null) {
-                        snackbar(R.string.no_subscriptions).show()
-                        return@onMainDispatcher
-                    }
                     val scroll = ScrollView(requireContext())
                     val container = LinearLayout(requireContext()).apply {
                         orientation = LinearLayout.VERTICAL
@@ -762,16 +751,35 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     val dialog = MaterialAlertDialogBuilder(requireContext())
                         .setTitle(R.string.manage_subscriptions)
                         .setView(scroll)
-                        .setPositiveButton(android.R.string.ok, null)
+                        .setPositiveButton(R.string.add_subscription_to_group, null)
+                        .setNegativeButton(android.R.string.cancel, null)
                         .create()
-                    // ZyBox: 分组自带主订阅（第一行，仅可更新，不提供删除/编辑）
-                    if (mainSub != null) {
-                        container.addView(
-                            buildMainSubscriptionRow(group, mainSub) { dialog.dismiss() }
-                        )
+                    // ZyBox: 空订阅也打开对话框，显示提示而非直接关闭
+                    if (entities.isEmpty() && mainSub == null) {
+                        container.addView(TextView(requireContext()).apply {
+                            text = getString(R.string.no_subscriptions)
+                            textSize = 14f
+                            setTextColor(0xFF888888.toInt())
+                            setPadding(0, dp2px(4), 0, dp2px(16))
+                        })
+                    } else {
+                        // ZyBox: 分组自带主订阅（第一行，仅可更新，不提供删除/编辑）
+                        if (mainSub != null) {
+                            container.addView(
+                                buildMainSubscriptionRow(group, mainSub) { dialog.dismiss() }
+                            )
+                        }
+                        for (entity in entities) {
+                            container.addView(buildSubscriptionRow(entity) { dialog.dismiss() })
+                        }
                     }
-                    for (entity in entities) {
-                        container.addView(buildSubscriptionRow(entity) { dialog.dismiss() })
+                    // ZyBox: 对话框内直接添加订阅（不再需要先退出再进 ⋮ → 添加订阅到本分组）
+                    dialog.setOnShowListener {
+                        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                            .setOnClickListener {
+                                dialog.dismiss()
+                                showAddSubscriptionDialog(group)
+                            }
                     }
                     dialog.show()
                 }

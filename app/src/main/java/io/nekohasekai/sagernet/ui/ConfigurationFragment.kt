@@ -1826,7 +1826,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     tabLayout.visibility = View.VISIBLE
                 }
 
-                notifyItemInserted(groupList.size - 1)
+                notifyDataSetChanged()
                 tabLayout.getTabAt(groupList.size - 1)?.select()
             }
         }
@@ -1837,7 +1837,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             tabLayout.post {
                 groupList.removeAt(index)
-                notifyItemRemoved(index)
+                // ZyBox: 同上，全量刷新避免 itemId 集合变化引发的 ViewPager2 一致性崩溃
+                notifyDataSetChanged()
             }
         }
 

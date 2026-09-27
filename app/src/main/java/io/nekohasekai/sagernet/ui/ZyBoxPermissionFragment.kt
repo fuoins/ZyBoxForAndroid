@@ -16,9 +16,27 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        toolbar.setTitle(R.string.zybox_permission_title)
+
         val statusAuto = view.findViewById<TextView>(R.id.perm_status_auto)
         val statusNotif = view.findViewById<TextView>(R.id.perm_status_notif)
         val statusVpn = view.findViewById<TextView>(R.id.perm_status_vpn)
+        val statusRoot = view.findViewById<TextView>(R.id.perm_status_root)
+
+        fun refreshRoot() {
+            // 异步检测 root（su 可用性），不阻塞 UI
+            Thread {
+                val hasRoot = try {
+                    val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+                    val ok = p.inputStream.bufferedReader().readText().contains("uid=0")
+                    p.destroy()
+                    ok
+                } catch (_: Exception) {
+                    false
+                }
+                view.post { statusRoot.text = if (hasRoot) "✅" else "❌" }
+            }.start()
+        }
 
         fun refresh() {
             val activity = requireActivity()
@@ -30,6 +48,7 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
             } else true
             statusNotif.text = if (notifGranted) "✅" else "❌"
             statusVpn.text = if (VpnService.prepare(requireContext()) == null) "✅" else "❌"
+            refreshRoot()
         }
 
         view.findViewById<View>(R.id.perm_btn_auto).setOnClickListener {
@@ -61,6 +80,18 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
             ) "❌" else "✅"
         it.findViewById<TextView>(R.id.perm_status_vpn).text =
             if (VpnService.prepare(requireContext()) == null) "✅" else "❌"
+        val statusRoot = it.findViewById<TextView>(R.id.perm_status_root)
+        Thread {
+            val hasRoot = try {
+                val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+                val ok = p.inputStream.bufferedReader().readText().contains("uid=0")
+                p.destroy()
+                ok
+            } catch (_: Exception) {
+                false
+            }
+            view?.post { statusRoot.text = if (hasRoot) "✅" else "❌" }
+        }.start()
     }
 
     override fun onResume() {
@@ -76,6 +107,18 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
                 ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
             ) "✅" else "❌"
             sV.text = if (VpnService.prepare(requireContext()) == null) "✅" else "❌"
+            val statusRoot = it.findViewById<TextView>(R.id.perm_status_root)
+            Thread {
+                val hasRoot = try {
+                    val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+                    val ok = p.inputStream.bufferedReader().readText().contains("uid=0")
+                    p.destroy()
+                    ok
+                } catch (_: Exception) {
+                    false
+                }
+                view?.post { statusRoot.text = if (hasRoot) "✅" else "❌" }
+            }.start()
         }
     }
 }
