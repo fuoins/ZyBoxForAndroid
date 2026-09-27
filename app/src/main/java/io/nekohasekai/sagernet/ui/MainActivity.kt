@@ -200,9 +200,19 @@ class MainActivity : ThemedActivity(),
     }
 
     fun isAppsPermissionGranted(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this, android.Manifest.permission.QUERY_ALL_PACKAGES
-        ) == PackageManager.PERMISSION_GRANTED
+        // QUERY_ALL_PACKAGES 声明即授，但部分 ROM 声明后仍受 package visibility 限制；
+        // 以"可见第三方应用数量"为准，避免显示已给而实际读不到应用列表
+        if (ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.QUERY_ALL_PACKAGES
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return false
+        return try {
+            val thirdParty = packageManager.getInstalledApplications(0)
+                .count { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
+            thirdParty >= 20
+        } catch (e: Exception) {
+            false
+        }
     }
 
     // ZyBox: Root 权限检测（异步，su 可用性）
@@ -717,12 +727,7 @@ class MainActivity : ThemedActivity(),
             R.id.nav_traffic -> displayFragment(WebviewFragment())
             R.id.nav_tools -> displayFragment(ToolsFragment())
             R.id.nav_logcat -> displayFragment(LogcatFragment())
-            R.id.nav_faq -> {
-                launchCustomTab("https://matsuridayo.github.io/")
-                return false
-            }
 
-            R.id.nav_about -> displayFragment(AboutFragment())
             R.id.nav_zybox_about -> displayFragment(ZyBoxAboutFragment())
             R.id.nav_zybox_permission -> displayFragment(ZyBoxPermissionFragment())
             R.id.nav_zybox_optimization -> displayFragment(ZyBoxOptimizationFragment())
@@ -731,7 +736,8 @@ class MainActivity : ThemedActivity(),
                 return false
             }
             R.id.nav_tuiguang -> {
-                launchCustomTab("https://neko-box.pages.dev/喵")
+                // ZyBox: 捐赠入口
+                launchCustomTab("https://zy520.de5.net/juanzeng/")
                 return false
             }
 
