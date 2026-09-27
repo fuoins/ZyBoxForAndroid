@@ -305,9 +305,9 @@ fun TetheringScreen(
                     )
                 }
                 row(R.string.settings_system_tether_offload) {
-                    SwitchPreferenceRow(
+                    PreferenceSwitchRow(
                         icon = R.drawable.ic_speed,
-                        title = R.string.settings_system_tether_offload,
+                        title = stringResource(R.string.settings_system_tether_offload),
                         // ZyBox: 描述字体减小
                         summaryContent = {
                             Text(
@@ -317,7 +317,7 @@ fun TetheringScreen(
                         },
                         checked = offloadEnabled,
                         onCheckedChange = { enabled ->
-                            if (inspectionMode) return@SwitchPreferenceRow
+                            if (inspectionMode) return@PreferenceSwitchRow
                             scope.launch {
                                 offloadChanging = true
                                 try {
