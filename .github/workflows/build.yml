@@ -1,0 +1,33 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install SDK components
+        run: |
+          sdkmanager "platforms;android-37" "build-tools;36.0.0" "platform-tools" || true
+          yes | sdkmanager --licenses || true
+      - name: Build release APK
+        env:
+          nkmr_minify: "0"
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew :app:assembleFdroidRelease -x lintVitalAnalyzeFdroidRelease -x lintVitalAnalyzeRelease -x :vpnhotspot:lintVitalAnalyzeRelease --console=plain -Dorg.gradle.jvmargs="-Xmx4g"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zybox-apk
+          path: app/build/outputs/apk/fdroid/release/*.apk
