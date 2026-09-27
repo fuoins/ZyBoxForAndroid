@@ -95,13 +95,14 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
 
     // ZyBox: 一键处理中——两个一键按钮禁用并提示，1.8s 后恢复
     private fun setOneClickProcessing() {
-        val btn1 = view.findViewById<View>(R.id.perm_btn_all_required)
-        val btn2 = view.findViewById<View>(R.id.perm_btn_all_optional)
+        val v = requireView()
+        val btn1 = v.findViewById<View>(R.id.perm_btn_all_required)
+        val btn2 = v.findViewById<View>(R.id.perm_btn_all_optional)
         btn1?.isEnabled = false
         btn2?.isEnabled = false
         (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
         (btn2 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
-        view.postDelayed({
+        v.postDelayed({
             btn1?.isEnabled = true
             btn2?.isEnabled = true
             (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_required)
