@@ -240,6 +240,26 @@ fun TetheringScreen(
                     )
                 }
             }
+            // ZyBox: 临时热点（恢复 fix11 误删的行）
+            preferenceGroup(key = "active_tethering") {
+                row(R.string.tethering_temp_hotspot) {
+                    val toggleLocalOnly: () -> Unit = {
+                        if (localOnlyIface == null) {
+                            startLocalOnly(if (Build.VERSION.SDK_INT >= 33) {
+                                Manifest.permission.NEARBY_WIFI_DEVICES
+                            } else Manifest.permission.ACCESS_FINE_LOCATION)
+                        } else onStopTemporaryHotspot()
+                    }
+                    TetheringRow(
+                        icon = R.drawable.ic_android_wifi_3_bar_plus,
+                        title = stringResource(R.string.tethering_temp_hotspot),
+                        summary = localOnlySummary,
+                        checked = localOnlyIface != null,
+                        onClick = onConfigureTemporaryHotspot ?: toggleLocalOnly,
+                        onCheckedChange = if (onConfigureTemporaryHotspot == null) null else toggleLocalOnly,
+                    )
+                }
+            }
             for (iface in interfaceIfaces) {
                 item(key = "interface_$iface") {
                     val active = managed.contains(iface)

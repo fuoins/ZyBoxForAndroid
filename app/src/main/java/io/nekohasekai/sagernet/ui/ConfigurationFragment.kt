@@ -1746,7 +1746,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                var selectedGroup = selectedItem?.groupId ?: DataStore.currentGroupId()
+                var selectedGroup = DataStore.currentGroupId()
+                // ZyBox: 导入到新建分组时 createNewGroupForImport 已设置 DataStore.selectedGroup，
+                // 优先用它；selectedItem 仅在无有效分组时兜底，避免 reload 把导入目标覆盖回旧分组
+                if (selectedGroup <= 0L) selectedGroup = selectedItem?.groupId ?: -1L
                 var set = false
                 if (selectedGroup > 0L) {
                     selectedGroupIndex = newGroupList.indexOfFirst { it.id == selectedGroup }

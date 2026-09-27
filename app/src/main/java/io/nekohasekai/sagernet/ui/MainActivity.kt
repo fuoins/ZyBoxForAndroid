@@ -205,6 +205,21 @@ class MainActivity : ThemedActivity(),
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    // ZyBox: Root 权限检测（异步，su 可用性）
+    fun isRootGranted(onResult: (Boolean) -> Unit) {
+        Thread {
+            val hasRoot = try {
+                val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+                val ok = p.inputStream.bufferedReader().readText().contains("uid=0")
+                p.destroy()
+                ok
+            } catch (_: Exception) {
+                false
+            }
+            runOnUiThread { onResult(hasRoot) }
+        }.start()
+    }
+
     // ZyBox: 路由规则一键全开（数据层全开 → 跳路由页展示 → 回主页）
     fun enableAllRoutingRules(onDone: () -> Unit) {
         runOnDefaultDispatcher {
@@ -326,13 +341,8 @@ class MainActivity : ThemedActivity(),
             displayFragmentWithId(R.id.nav_settings)
             binding.root.postDelayed({
                 autoInitRunning = false
-                // 初始化跑完，解开"进入"按钮
-                initDialog?.let { d ->
-                    d.findViewById<android.view.View>(R.id.init_btn_enter)?.isEnabled = true
-                    d.findViewById<android.widget.TextView>(R.id.init_btn_enter)?.setText(
-                        R.string.zybox_init_enter
-                    )
-                }
+                // 初始化跑完，统一刷新（4 项全完成才真正解锁进入按钮）
+                initDialog?.let { d -> refreshInitDialog(d) }
                 if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
             }, 1200)
         }
@@ -413,12 +423,20 @@ class MainActivity : ThemedActivity(),
             if (VpnService.prepare(this) == null) "✅" else "❌"
         d.findViewById<android.widget.TextView>(R.id.init_status_apps)?.text =
             if (isAppsPermissionGranted()) "✅" else "❌"
-        // ZyBox: 4 项必须全做完才可进入（按钮锁定）
+        // ZyBox: Root 权限（异步检测）
+        if (d.findViewById<android.widget.TextView>(R.id.init_status_root) != null) {
+            isRootGranted { granted ->
+                d.findViewById<android.widget.TextView>(R.id.init_status_root)?.text =
+                    if (granted) "✅" else "❌"
+            }
+        }
+        // ZyBox: 4 项必须全做完才可进入（按钮锁定）；自动初始化执行期间也保持锁定
         val enterBtn = d.findViewById<android.view.View>(R.id.init_btn_enter)
         if (enterBtn != null) {
-            enterBtn.isEnabled = done >= 4
+            enterBtn.isEnabled = done >= 4 && !autoInitRunning
             (enterBtn as? android.widget.TextView)?.text = getString(
-                if (done >= 4) R.string.zybox_init_enter else R.string.zybox_init_enter_locked
+                if (done >= 4 && !autoInitRunning) R.string.zybox_init_enter
+                else R.string.zybox_init_enter_locked
             )
         }
     }
