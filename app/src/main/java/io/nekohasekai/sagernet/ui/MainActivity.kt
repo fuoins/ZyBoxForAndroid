@@ -350,6 +350,19 @@ class MainActivity : ThemedActivity(),
         refreshPermissionFragment()
     }
 
+    // ZyBox: 一键必须 / 一键所有(含可选)——复用自动初始化链路（通知+VPN+设置页+应用列表），
+    // 一键所有额外执行路由规则全开与分应用代理绕过导入
+    fun runOneClick(includeOptional: Boolean) {
+        if (autoInitRunning) return
+        runAutoInit()
+        if (includeOptional) {
+            binding.root.postDelayed({
+                importBuiltinBypassApps()
+                enableAllRoutingRules { if (!isFinishing) displayFragmentWithId(R.id.nav_configuration) }
+            }, 1600)
+        }
+    }
+
     private fun showFirstLaunchDialog() {
         val view = layoutInflater.inflate(R.layout.dialog_zybox_init, null)
         val progress = view.findViewById<android.widget.TextView>(R.id.init_progress)
@@ -360,6 +373,13 @@ class MainActivity : ThemedActivity(),
 
         view.findViewById<android.view.View>(R.id.init_btn_auto).setOnClickListener {
             runAutoInit()
+        }
+        // ZyBox: 一键必须（4 项）与一键所有（含可选）
+        view.findViewById<android.view.View>(R.id.init_btn_all_required).setOnClickListener {
+            runOneClick(false)
+        }
+        view.findViewById<android.view.View>(R.id.init_btn_all_optional).setOnClickListener {
+            runOneClick(true)
         }
         view.findViewById<android.view.View>(R.id.init_btn_notif).setOnClickListener {
             requestNotifPermission()

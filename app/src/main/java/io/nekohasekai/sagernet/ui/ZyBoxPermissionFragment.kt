@@ -61,6 +61,13 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
             (requireActivity() as? MainActivity)?.runAutoInit()
             refresh()
         }
+        // ZyBox: 一键必须 / 一键所有(含可选)
+        view.findViewById<View>(R.id.perm_btn_all_required).setOnClickListener {
+            (requireActivity() as? MainActivity)?.runOneClick(false)
+        }
+        view.findViewById<View>(R.id.perm_btn_all_optional).setOnClickListener {
+            (requireActivity() as? MainActivity)?.runOneClick(true)
+        }
         view.findViewById<View>(R.id.perm_btn_notif).setOnClickListener {
             (requireActivity() as? MainActivity)?.requestNotifPermission()
         }

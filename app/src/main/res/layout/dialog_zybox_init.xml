@@ -46,6 +46,40 @@
                     android:textColor="@color/material_pink_500" />
             </LinearLayout>
 
+            <!-- 一键必须 / 一键所有(含可选) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/init_btn_all_required"
+                    style="@style/Widget.MaterialComponents.Button.ZyBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_weight="1"
+                    android:minHeight="0dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:text="@string/zybox_oneclick_required"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/init_btn_all_optional"
+                    style="@style/Widget.MaterialComponents.Button.ZyBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
+                    android:minHeight="0dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:text="@string/zybox_oneclick_all"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
             <!-- 第 1 项：自动初始化 -->
             <LinearLayout
                 android:layout_width="match_parent"
