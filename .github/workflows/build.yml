@@ -35,16 +35,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
-      - name: Install SDK
+      - name: Setup SDK
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-37" "build-tools;36.0.0" || true
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-37" "build-tools;36.0.0"
       - name: Build release APK
         env:
           nkmr_minify: "${{ env.MINIFY == 'on' && '1' || '0' }}"
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
           if [ "$VARIANT" = "fdroidRelease" ]; then TASK=:app:assembleFdroidRelease; fi
           if [ "$VARIANT" = "playRelease" ]; then TASK=:app:assemblePlayRelease; fi
           if [ "$VARIANT" = "debug" ]; then TASK=:app:assembleFdroidDebug; fi
