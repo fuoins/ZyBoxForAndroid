@@ -97,13 +97,13 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
     private fun setOneClickProcessing() {
         val btn1 = view.findViewById<View>(R.id.perm_btn_all_required)
         val btn2 = view.findViewById<View>(R.id.perm_btn_all_optional)
-        btn1.isEnabled = false
-        btn2.isEnabled = false
+        btn1?.isEnabled = false
+        btn2?.isEnabled = false
         (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
         (btn2 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
         view.postDelayed({
-            btn1.isEnabled = true
-            btn2.isEnabled = true
+            btn1?.isEnabled = true
+            btn2?.isEnabled = true
             (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_required)
             (btn2 as? TextView)?.text = getString(R.string.zybox_oneclick_all)
         }, 1800)
