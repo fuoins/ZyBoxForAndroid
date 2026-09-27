@@ -37,9 +37,11 @@ jobs:
           java-version: 17
       - name: Setup SDK
         run: |
+          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1)
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses
+          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-37" "build-tools;36.0.0"
       - name: Build release APK
         env:
           nkmr_minify: "${{ env.MINIFY == 'on' && '1' || '0' }}"
