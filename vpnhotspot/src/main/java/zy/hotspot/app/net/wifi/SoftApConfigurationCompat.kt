@@ -76,11 +76,13 @@ data class SoftApConfigurationCompat(
     var underlying: Parcelable? = null,
 ) : Parcelable {
     companion object {
-        const val BAND_LEGACY = SoftApConfiguration.BAND_2GHZ or SoftApConfiguration.BAND_5GHZ
+        // API 34 SoftApConfiguration: BAND_2GHZ=1, BAND_5GHZ=2, BAND_6GHZ=4, BAND_60GHZ=8
+        // 硬编码字面量，避免 Kotlin 编译器对 Java 常量级联折叠的 AssertionError (compileSdk=34)
+        const val BAND_LEGACY = 1 or 2
         @TargetApi(30)
-        const val BAND_ANY_30 = BAND_LEGACY or SoftApConfiguration.BAND_6GHZ
+        const val BAND_ANY_30 = 3 or 4
         @TargetApi(31)
-        const val BAND_ANY_31 = BAND_ANY_30 or SoftApConfiguration.BAND_60GHZ
+        const val BAND_ANY_31 = 7 or 8
         val BAND_TYPES by lazy {
             if (Build.VERSION.SDK_INT >= 31) try {
                 return@lazy UnblockCentral.SoftApConfiguration_BAND_TYPES

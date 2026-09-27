@@ -42,9 +42,13 @@ jobs:
           echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
           echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
           echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-googletv-license"
-          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1)
-          "$SDKMANAGER" "build-tools;36.0.0" || echo "build-tools 安装跳过"
-          ls "$ANDROID_HOME/platforms" | grep android-34 || true
+          curl -sL -o /tmp/p37.zip "https://dl.google.com/android/repository/platform-37.2_r01.zip" || echo "37 zip 下载失败"
+          if [ -s /tmp/p37.zip ]; then
+            unzip -q /tmp/p37.zip -d "$ANDROID_HOME/platforms" || true
+            [ -d "$ANDROID_HOME/platforms/android-37.2" ] && mv "$ANDROID_HOME/platforms/android-37.2" "$ANDROID_HOME/platforms/android-37"
+            bash scripts/patch_android37.sh "$ANDROID_HOME/platforms" || echo "patch 失败"
+          fi
+          ls "$ANDROID_HOME/platforms" | grep android-37 || true
           echo "sdk.dir=$ANDROID_HOME" > local.properties
       - name: Build release APK
         env:

@@ -49,7 +49,7 @@ val hiddenApiStubsJar = tasks.register<Jar>("hiddenApiStubsJar") {
 
 android {
     namespace = "zy.hotspot.app"
-    compileSdk = 37  // VPNHotspot 源码使用 SDK 36/37 API；AGP 8.8 会提示 unsupported，但可编译（SDK 37 已安装）
+    compileSdk = 37  // VPNHotspot 源码使用 SDK 36/37 API
 
     defaultConfig {
         minSdk = 29  // VPNHotspot 最低要求
