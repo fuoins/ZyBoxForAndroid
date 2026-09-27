@@ -43,7 +43,8 @@ jobs:
           echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
           echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-googletv-license"
           SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -1)
-          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0" || echo "SDK 安装跳过(不阻断)"
+          "$SDKMANAGER" --channel=3 "platforms;android-37" || echo "preview android-37 安装跳过"
+          "$SDKMANAGER" "build-tools;36.0.0" || echo "build-tools 安装跳过"
           ls "$ANDROID_HOME/platforms" || true
           echo "sdk.dir=$ANDROID_HOME" > local.properties
       - name: Build release APK
