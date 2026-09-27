@@ -33,4 +33,10 @@ if [ -f "$SCRIPT_DIR/platform37-package.xml" ]; then
   cp "$SCRIPT_DIR/platform37-package.xml" "$PLATFORM_DIR/package.xml"
 fi
 
-echo "patched $PLATFORM_DIR/source.properties + package.xml"
+# kapt 需要 $ANDROID_HOME/tools/support/annotations.jar（新版 SDK 已移除 tools/，从仓库补入）
+if [ -f "$SCRIPT_DIR/annotations.jar" ]; then
+  mkdir -p "$TARGET/../tools/support"
+  cp "$SCRIPT_DIR/annotations.jar" "$TARGET/../tools/support/annotations.jar"
+fi
+
+echo "patched $PLATFORM_DIR/source.properties + package.xml + annotations.jar"
