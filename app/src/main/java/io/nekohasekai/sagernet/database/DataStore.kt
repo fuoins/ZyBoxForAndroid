@@ -175,6 +175,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     // ZyBox: 首次启动初始化弹窗只显示一次（通知/VPN 权限检测 + 自动初始化）
     var firstLaunchInitDone by configurationStore.boolean(Key.FIRST_LAUNCH_INIT_DONE) { false }
     var autoInitDone by configurationStore.boolean(Key.AUTO_INIT_DONE) { false }
+    // ZyBox: 路由规则一键全开标志（初始化向导可选项完成判定）
+    var routeAllEnabled by configurationStore.boolean(Key.ROUTE_ALL_ENABLED) { false }
 
     val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT) { false }
 

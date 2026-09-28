@@ -42,6 +42,7 @@ object Key {
     const val FIRST_LAUNCH_INIT_DONE = "firstLaunchInitDone"
     const val AUTO_INIT_DONE = "autoInitDone"
     const val SHOW_DIRECT_SPEED = "showDirectSpeed"
+    const val ROUTE_ALL_ENABLED = "routeAllEnabled"
 
     const val APPEND_HTTP_PROXY = "appendHttpProxy"
 

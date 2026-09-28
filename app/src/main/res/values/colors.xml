@@ -304,5 +304,6 @@
     <color name="zybox_divider">#EEF0F6</color>
     <color name="card_selected_bg">#33E91E63</color>
     <color name="card_stroke">#29000000</color>
+    <color name="zybox_enter_blue">#1E88E5</color>
 
 </resources>

@@ -3,29 +3,30 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
     android:paddingStart="20dp"
     android:paddingTop="16dp"
     android:paddingEnd="20dp"
     android:paddingBottom="8dp">
 
-    <!-- 进入按钮（全宽置顶，文字带进度，4/4 且初始化完成才可点） -->
+    <!-- 进入按钮（全宽置顶，文字带进度，4/4 且初始化完成才可点，蓝色醒目） -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/init_btn_enter"
         style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:minHeight="0dp"
+        android:minHeight="52dp"
         android:paddingStart="14dp"
         android:paddingEnd="14dp"
-        android:text="进入 0/4"
-        android:textSize="14sp" />
+        app:backgroundTint="@color/zybox_enter_blue"
+        android:text="进入 0/4(必选项待完成🔒)"
+        android:textSize="16sp" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginTop="8dp"
         android:overScrollMode="never"
         android:scrollbars="none">
@@ -35,16 +36,41 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- 必须项分栏标题 -->
-            <TextView
+            <!-- 必须项分栏标题：左 ✓/❌ + 标题 + 右 */4 -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:layout_marginBottom="2dp"
-                android:text="@string/zybox_init_required_section"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:textStyle="bold"
-                android:textColor="@color/material_pink_500" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/init_section_required_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="❌"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/zybox_init_required_section"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textStyle="bold"
+                    android:textColor="@color/material_pink_500" />
+
+                <TextView
+                    android:id="@+id/init_section_required_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0/4"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textStyle="bold"
+                    android:textColor="@color/material_pink_500" />
+            </LinearLayout>
 
             <!-- 一键必须 / 一键所有(含可选) -->
             <LinearLayout
@@ -304,16 +330,41 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 可选功能（非必须） -->
-            <TextView
+            <!-- 可选功能（非必须）：左 ✓/❌ + 标题 + 右 */2 -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 android:layout_marginBottom="2dp"
-                android:text="@string/zybox_opt_section"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:textStyle="bold"
-                android:textColor="@color/material_pink_500" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/init_section_opt_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="❌"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/zybox_opt_section"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textStyle="bold"
+                    android:textColor="@color/material_pink_500" />
+
+                <TextView
+                    android:id="@+id/init_section_opt_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0/2"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:textStyle="bold"
+                    android:textColor="@color/material_pink_500" />
+            </LinearLayout>
 
             <!-- 可选 1：路由规则一键开启 -->
             <LinearLayout

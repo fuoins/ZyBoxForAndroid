@@ -252,6 +252,8 @@ class MainActivity : ThemedActivity(),
             }
             onMainDispatcher {
                 snackbar(R.string.zybox_route_all_done).show()
+                // ZyBox: 标记路由规则一键全开（初始化向导可选项完成判定）
+                DataStore.routeAllEnabled = true
                 displayFragmentWithId(R.id.nav_route)
                 binding.root.postDelayed(onDone, 1600)
             }
@@ -267,6 +269,8 @@ class MainActivity : ThemedActivity(),
         }
         val packages = BUILTIN_BYPASS_PACKAGES
         DataStore.individual = packages
+        // ZyBox: 分应用代理开关默认关闭，一键导入后打开
+        DataStore.proxyApps = true
         snackbar(R.string.zybox_apps_import_done).show()
         initDialog?.let { d -> refreshInitDialog(d) }
     }
@@ -461,7 +465,15 @@ class MainActivity : ThemedActivity(),
             .setView(view)
             .setCancelable(false)
             .show()
+        // ZyBox: 初始化向导全屏
+        initDialog?.window?.setLayout(
+            android.view.WindowManager.LayoutParams.MATCH_PARENT,
+            android.view.WindowManager.LayoutParams.MATCH_PARENT
+        )
         refreshInitDialog(initDialog!!)
+        // ZyBox: 首次进入自动申请 VPN 权限与应用列表权限（系统弹窗，已授权则不弹）
+        requestVpnPermission()
+        requestAppsPermission()
     }
 
     private fun initDoneCount(): Int {
@@ -476,11 +488,22 @@ class MainActivity : ThemedActivity(),
 
     private fun refreshInitDialog(d: androidx.appcompat.app.AlertDialog) {
         val done = initDoneCount()
-        // 顶部进入按钮："进入 X/4"，4 项全完成且自动初始化未运行才可点击
+        // 顶部进入按钮："进入 X/4(必选项待完成🔒)" / "进入 4/4(必选项已完成✓)"，4 项全完成且自动初始化未运行才可点击
         val enterBtn = d.findViewById<android.view.View>(R.id.init_btn_enter) ?: return
         enterBtn.isEnabled = done >= 4 && !autoInitRunning
         (enterBtn as? android.widget.TextView)?.text =
-            getString(R.string.zybox_init_enter) + " $done/4"
+            if (done >= 4) getString(R.string.zybox_init_enter_done)
+            else getString(R.string.zybox_init_enter_pending, done)
+        // ZyBox: 必须项标题行——左 ✓/❌、右 done/4
+        d.findViewById<android.widget.TextView>(R.id.init_section_required_status)?.text =
+            if (done >= 4) "✅" else "❌"
+        d.findViewById<android.widget.TextView>(R.id.init_section_required_count)?.text = "$done/4"
+        // ZyBox: 可选项标题行——左 ✓/❌、右 x/2（分应用代理导入 + 路由规则全开）
+        val optDone = (if (DataStore.proxyApps && DataStore.individual.isNotBlank()) 1 else 0) +
+                (if (DataStore.routeAllEnabled) 1 else 0)
+        d.findViewById<android.widget.TextView>(R.id.init_section_opt_status)?.text =
+            if (optDone >= 2) "✅" else "❌"
+        d.findViewById<android.widget.TextView>(R.id.init_section_opt_count)?.text = "$optDone/2"
         d.findViewById<android.widget.TextView>(R.id.init_status_auto)?.text =
             if (isAutoInitDone) "✅" else "❌"
         d.findViewById<android.widget.TextView>(R.id.init_status_notif)?.text =
