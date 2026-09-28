@@ -162,6 +162,8 @@ class MainActivity : ThemedActivity(),
         private set
 
     private var initDialog: androidx.appcompat.app.AlertDialog? = null
+    // ZyBox: 自动流程中待弹出的 VPN 权限（等通知/应用列表权限框处理完后最后弹，避免全屏 VPN 页中断权限框）
+    private var autoVpnPending = false
 
     fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -359,15 +361,15 @@ class MainActivity : ThemedActivity(),
             }
             isAutoInitDone = true
             DataStore.autoInitDone = true
-            // 自动申请所需权限
+            // 自动申请所需权限：通知 → 应用列表权限框依次弹出（requestPermissions 排队弹窗，不中断 Activity）
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
                 ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 1001)
             }
-            if (VpnService.prepare(this) != null) {
-                VpnService.prepare(this)?.let { vpnPermission.launch(it) }
-            }
+            // ZyBox: 应用列表权限（金标 ROM 弹"获取已安装应用信息"框）；VPN 全屏页放最后（应用列表回调后弹）
+            autoVpnPending = true
+            requestAppsPermission()
             // 自动进入设置页完成速度显示初始化，随后返回主页
             displayFragmentWithId(R.id.nav_settings)
             binding.root.postDelayed({
@@ -385,25 +387,71 @@ class MainActivity : ThemedActivity(),
     // 含可选时额外执行路由规则全开与分应用代理绕过导入
     fun runOneClick(includeOptional: Boolean) {
         if (autoInitRunning) return
-        // 一键处理中：两个一键按钮禁用并提示
+        // 一键处理中：两个一键按钮 + 进入按钮禁用并提示（进入按钮在执行期间不可点击）
         val btnRequired = initDialog?.findViewById<android.view.View>(R.id.init_btn_all_required)
         val btnAll = initDialog?.findViewById<android.view.View>(R.id.init_btn_all_optional)
+        val enterBtn = initDialog?.findViewById<android.view.View>(R.id.init_btn_enter)
         btnRequired?.isEnabled = false
         btnAll?.isEnabled = false
+        enterBtn?.isEnabled = false
         (btnRequired as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_processing)
         (btnAll as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_processing)
+        (enterBtn as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_processing)
         runAutoInit()
         binding.root.postDelayed({
-            // 恢复一键按钮
-            btnRequired?.isEnabled = true
-            btnAll?.isEnabled = true
-            (btnRequired as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_required)
-            (btnAll as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_all)
             if (includeOptional) {
-                importBuiltinBypassApps()
-                enableAllRoutingRules { if (!isFinishing) displayFragmentWithId(R.id.nav_configuration) }
+                // ZyBox: 先完成必须 4 项（等待用户处理完权限弹窗），再执行可选（分应用代理 + 路由全开）
+                waitForRequiredDone(
+                    onDone = {
+                        importBuiltinBypassApps()
+                        enableAllRoutingRules {
+                            if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
+                            restoreOneClickButtons(btnRequired, btnAll, enterBtn)
+                        }
+                    },
+                    onTimeout = {
+                        snackbar(R.string.zybox_init_enter_locked).show()
+                        restoreOneClickButtons(btnRequired, btnAll, enterBtn)
+                    }
+                )
+            } else {
+                restoreOneClickButtons(btnRequired, btnAll, enterBtn)
             }
         }, 1600)
+    }
+
+    // ZyBox: 恢复一键与进入按钮（进入按 4 项完成状态恢复文案）
+    private fun restoreOneClickButtons(
+        btnRequired: android.view.View?, btnAll: android.view.View?, enterBtn: android.view.View?
+    ) {
+        btnRequired?.isEnabled = true
+        btnAll?.isEnabled = true
+        (btnRequired as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_required)
+        (btnAll as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_all)
+        val done = initDoneCount()
+        enterBtn?.isEnabled = done >= 4 && !autoInitRunning
+        (enterBtn as? android.widget.TextView)?.text =
+            if (done >= 4) getString(R.string.zybox_init_enter_done)
+            else getString(R.string.zybox_init_enter_pending, done)
+    }
+
+    // ZyBox: 等待必须 4 项全部完成（轮询，30 秒超时）
+    private fun waitForRequiredDone(onDone: () -> Unit, onTimeout: () -> Unit) {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var tries = 0
+        fun check() {
+            if (initDoneCount() >= 4) {
+                onDone()
+                return
+            }
+            tries++
+            if (tries > 60) {
+                onTimeout()
+                return
+            }
+            handler.postDelayed({ check() }, 500)
+        }
+        check()
     }
 
     private fun showFirstLaunchDialog() {
@@ -465,14 +513,21 @@ class MainActivity : ThemedActivity(),
             .setView(view)
             .setCancelable(false)
             .show()
-        // ZyBox: 初始化向导全屏
-        initDialog?.window?.setLayout(
-            android.view.WindowManager.LayoutParams.MATCH_PARENT,
-            android.view.WindowManager.LayoutParams.MATCH_PARENT
-        )
+        // ZyBox: 初始化向导全屏（窗口铺满 + 背景透明 + 去内边距，配合布局白色背景实现真正全屏）
+        initDialog?.window?.apply {
+            setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                android.view.WindowManager.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+            )
+            decorView.setPadding(0, 0, 0, 0)
+        }
         refreshInitDialog(initDialog!!)
-        // ZyBox: 首次进入自动申请 VPN 权限与应用列表权限（系统弹窗，已授权则不弹）
-        requestVpnPermission()
+        // ZyBox: 首次进入自动申请权限：通知 → 应用列表权限框依次弹出；VPN 全屏页在应用列表回调后最后弹
+        autoVpnPending = true
+        requestNotifPermission()
         requestAppsPermission()
     }
 
@@ -537,6 +592,11 @@ class MainActivity : ThemedActivity(),
                 snackbar(R.string.zybox_apps_permission_granted).show()
             } else {
                 openAppSettingsForAppsPermission()
+            }
+            // ZyBox: 应用列表权限框处理完后，自动弹出 VPN 权限（全屏页放最后，避免中断权限框）
+            if (autoVpnPending) {
+                autoVpnPending = false
+                requestVpnPermission()
             }
             initDialog?.let { d -> refreshInitDialog(d) }
             refreshPermissionFragment()
