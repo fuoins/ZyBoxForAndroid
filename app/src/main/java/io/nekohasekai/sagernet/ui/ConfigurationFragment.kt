@@ -588,6 +588,8 @@ class ConfigurationFragment @JvmOverloads constructor(
     private val importFile =
         registerForActivityResult(ActivityResultContracts.GetContent()) { file ->
             if (file != null) runOnDefaultDispatcher {
+                // ZyBox: 文件"到新建分组"标志——try 外声明，供 catch 订阅导入时使用
+                var wasNewGroup = false
                 try {
                     val fileName =
                         requireContext().contentResolver.query(file, null, null, null, null)
@@ -622,7 +624,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         snackbar(getString(R.string.no_proxies_found_in_file)).show()
                     } else {
                         // ZyBox: 到新建分组：先创建新分组并切换到它
-                        val wasNewGroup = importNewGroup
+                        wasNewGroup = importNewGroup
                         if (importNewGroup) {
                             importNewGroup = false
                             createNewGroupForImport()
