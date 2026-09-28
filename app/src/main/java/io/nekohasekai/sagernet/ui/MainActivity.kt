@@ -280,6 +280,8 @@ class MainActivity : ThemedActivity(),
                 snackbar(R.string.zybox_route_all_done).show()
                 // ZyBox: 标记路由规则一键全开（初始化向导可选项完成判定）
                 DataStore.routeAllEnabled = true
+                // ZyBox: 同步刷新向导可选项计数（避免显示停留在 1/2）
+                initDialog?.let { d -> refreshInitDialog(d) }
                 displayFragmentWithId(R.id.nav_route)
                 binding.root.postDelayed(onDone, 1600)
             }
@@ -558,11 +560,17 @@ class MainActivity : ThemedActivity(),
         }
         refreshInitDialog(initDialog!!)
         // ZyBox: 首次进入自动申请权限：等 Activity 完全 resumed 后再弹（onCreate 阶段 requestPermissions 不弹窗），
-        // 串行弹出：通知框（1001）→ 应用列表框（1002，1001 回调后）→ VPN 全屏页（1002 回调后），避免连续请求排队被 ROM 丢弃
+        // 串行弹出：通知框（1001）→ 应用列表框（1002）→ VPN 全屏页；通知已授权时直接弹应用列表（避免回调不确定被跳过）
         binding.root.postDelayed({
             autoVpnPending = true
             autoAppsPending = true
-            requestNotifPermission()
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotifPermission()
+            } else {
+                requestAppsPermission(true)
+            }
         }, 800)
     }
 
@@ -627,8 +635,10 @@ class MainActivity : ThemedActivity(),
         if (requestCode == 1001 || requestCode == 0) {
             initDialog?.let { d -> refreshInitDialog(d) }
             refreshPermissionFragment()
-            // ZyBox: 串行权限流——通知框处理完后再弹应用列表框（避免连续请求排队被 ROM 丢弃）
-            if (autoAppsPending) requestAppsPermission(true)
+            // ZyBox: 串行权限流——通知框处理完（延迟 600ms 等系统权限流程退出）后再弹应用列表框
+            if (autoAppsPending) {
+                binding.root.postDelayed({ requestAppsPermission(true) }, 600)
+            }
         } else if (requestCode == 1002) {
             // ZyBox: 应用列表权限请求结果——真实检测，仍受限则跳应用详情页（厂商 ROM"获取应用列表"开关）
             val auto = autoAppsPending
