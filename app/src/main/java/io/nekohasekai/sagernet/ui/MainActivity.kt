@@ -169,6 +169,9 @@ class MainActivity : ThemedActivity(),
     // ZyBox: 一键（必须/必须+可选）执行中——refreshInitDialog 强制锁定进入按钮为"正在一键处理中 请勿乱动"，
     // 避免 runAutoInit/权限回调刷新把按钮提前恢复
     private var oneClickActive = false
+    // ZyBox: 应用列表权限框是否已弹出（Activity 进入 onPause = 权限框覆盖了页面）——
+    // 用于补弹判断：框已在显示时不补弹，避免二次请求被系统即时回调误触发 VPN
+    private var appsRequestPaused = false
 
     fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -199,7 +202,22 @@ class MainActivity : ThemedActivity(),
         } catch (_: Exception) {
         }
         try {
+            appsRequestPaused = false
             ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1002)
+            // ZyBox: 防吞补弹——自动请求发出后 1.6s 内没有回调（授权框被系统吞掉/未弹出）且仍未授权，
+            // 且期间没有权限框弹出（无 onPause）时补弹一次；框已在显示（onPause 已发生）不补，
+            // 避免二次请求被系统即时回调误触发 VPN 提前弹出
+            if (auto) {
+                binding.root.postDelayed({
+                    if (autoAppsPending && !appsRequestPaused && !isAppsPermissionGranted() && !isFinishing) {
+                        appsRequestPaused = false
+                        try {
+                            ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1002)
+                        } catch (_: Exception) {
+                        }
+                    }
+                }, 1600)
+            }
         } catch (e: Exception) {
             if (auto) {
                 snackbar(R.string.zybox_apps_permission_needed).show()
@@ -268,8 +286,9 @@ class MainActivity : ThemedActivity(),
         }.start()
     }
 
-    // ZyBox: 路由规则一键全开（数据层全开 → 跳路由页展示 → 回主页）
-    fun enableAllRoutingRules(onDone: () -> Unit) {
+    // ZyBox: 路由规则一键全开（数据层全开 → 默认跳路由页展示 → 回主页）
+    // navigate=false 用于一键必须+可选流程：全屏向导挡着跳转看不到效果，改为只全开+刷新计数+提示
+    fun enableAllRoutingRules(onDone: () -> Unit, navigate: Boolean = true) {
         runOnDefaultDispatcher {
             val rules = SagerDatabase.rulesDao.allRules()
             if (rules.isNotEmpty()) {
@@ -282,8 +301,10 @@ class MainActivity : ThemedActivity(),
                 DataStore.routeAllEnabled = true
                 // ZyBox: 同步刷新向导可选项计数（避免显示停留在 1/2）
                 initDialog?.let { d -> refreshInitDialog(d) }
-                displayFragmentWithId(R.id.nav_route)
-                binding.root.postDelayed(onDone, 1600)
+                if (navigate) {
+                    displayFragmentWithId(R.id.nav_route)
+                }
+                binding.root.postDelayed(onDone, if (navigate) 1600 else 800)
             }
         }
     }
@@ -433,7 +454,8 @@ class MainActivity : ThemedActivity(),
                 waitForRequiredDone(
                     onDone = {
                         importBuiltinBypassApps()
-                        enableAllRoutingRules {
+                        // ZyBox: 一键流程不跳路由页（全屏向导挡住看不到跳转，误以为未实现），只全开+刷新计数+提示
+                        enableAllRoutingRules(navigate = false) {
                             if (!isFinishing) displayFragmentWithId(R.id.nav_configuration)
                             restoreOneClickButtons(btnRequired, btnAll, enterBtn)
                         }
@@ -486,6 +508,12 @@ class MainActivity : ThemedActivity(),
             handler.postDelayed({ check() }, 500)
         }
         check()
+    }
+
+    // ZyBox: 应用列表权限框弹出（覆盖页面）会触发 onPause——用于补弹判断（框已在显示则不补弹）
+    override fun onPause() {
+        super.onPause()
+        appsRequestPaused = true
     }
 
     private fun showFirstLaunchDialog() {
@@ -635,10 +663,8 @@ class MainActivity : ThemedActivity(),
         if (requestCode == 1001 || requestCode == 0) {
             initDialog?.let { d -> refreshInitDialog(d) }
             refreshPermissionFragment()
-            // ZyBox: 串行权限流——通知框处理完（延迟 600ms 等系统权限流程退出）后再弹应用列表框
-            if (autoAppsPending) {
-                binding.root.postDelayed({ requestAppsPermission(true) }, 600)
-            }
+            // ZyBox: 串行权限流——通知框处理完立即弹应用列表框（无间隔；被吞由补弹机制兜底）
+            if (autoAppsPending) requestAppsPermission(true)
         } else if (requestCode == 1002) {
             // ZyBox: 应用列表权限请求结果——真实检测，仍受限则跳应用详情页（厂商 ROM"获取应用列表"开关）
             val auto = autoAppsPending
