@@ -288,7 +288,8 @@ class MainActivity : ThemedActivity(),
 
     // ZyBox: 路由规则一键全开（数据层全开 → 默认跳路由页展示 → 回主页）
     // navigate=false 用于一键必须+可选流程：全屏向导挡着跳转看不到效果，改为只全开+刷新计数+提示
-    fun enableAllRoutingRules(onDone: () -> Unit, navigate: Boolean = true) {
+    // 注意：onDone 必须是最后一个参数（尾随 lambda 才能绑定到它）
+    fun enableAllRoutingRules(navigate: Boolean = true, onDone: () -> Unit) {
         runOnDefaultDispatcher {
             val rules = SagerDatabase.rulesDao.allRules()
             if (rules.isNotEmpty()) {
