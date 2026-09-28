@@ -176,14 +176,22 @@ class MainActivity : ThemedActivity(),
         VpnService.prepare(this)?.let { vpnPermission.launch(it) }
     }
 
-    // ZyBox: 应用列表权限（分应用代理）——与其他应用对齐：调用系统权限请求 API。
-    // 官方 ROM 上 QUERY_ALL_PACKAGES 为普通权限（直接授予、无弹窗）；部分厂商 ROM（MIUI/ColorOS 等）
-    // 将其特殊化为可弹窗权限，此时会弹出与其他应用一致的授权框；仍受限则跳应用详情页兜底。
+    // ZyBox: 应用列表权限（分应用代理）——对齐其他应用的弹窗行为：
+    // QUERY_ALL_PACKAGES 为普通权限（声明即授，无弹窗）；
+    // 金标联盟（ColorOS/MIUI/vivo/荣耀）定义的 com.android.permission.GET_INSTALLED_APPS 为
+    // 危险权限，requestPermissions 时会弹出"获取已安装应用信息"授权框（OPPO 官方适配方案）。
     fun requestAppsPermission() {
+        val perms = mutableListOf(android.Manifest.permission.QUERY_ALL_PACKAGES)
+        // 权限存在才请求（金标 ROM 有，原生 AOSP 无此权限，跳过不弹）
         try {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(android.Manifest.permission.QUERY_ALL_PACKAGES), 1002
+            packageManager.getPermissionInfo(
+                "com.android.permission.GET_INSTALLED_APPS", 0
             )
+            perms += "com.android.permission.GET_INSTALLED_APPS"
+        } catch (_: Exception) {
+        }
+        try {
+            ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1002)
         } catch (e: Exception) {
             openAppSettingsForAppsPermission()
         }
