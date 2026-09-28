@@ -71,3 +71,12 @@
 -dontwarn android.net.wifi.WifiClient
 -dontwarn android.net.wifi.WifiManager$SoftApCallback
 -dontwarn android.net.wifi.p2p.WifiP2pConnectionInfo
+# ZyBox: vpnhotspot 模块反射层（R8 保留，防止反射目标被混淆/裁剪）
+-keep class zy.hotspot.app.** { *; }
+
+# ZyBox: VPN 热点用反射调用的隐藏系统 API（SDK android.jar 中不存在，R8 报 Missing class 需忽略）
+-dontwarn android.net.IIntResultListener
+-dontwarn android.net.IIntResultListener$Stub
+-dontwarn android.net.ITetheringConnector
+-dontwarn android.net.wifi.p2p.WifiP2pGroupList
+-dontwarn android.net.wifi.p2p.WifiP2pManager$PersistentGroupInfoListener
