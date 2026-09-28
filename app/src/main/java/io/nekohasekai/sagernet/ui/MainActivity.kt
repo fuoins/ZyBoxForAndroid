@@ -251,7 +251,12 @@ class MainActivity : ThemedActivity(),
     }
 
     // ZyBox: 分应用代理绕过配置一键导入（内置配置，跳过首行开关标记，包名换行写入 individual）
+    // 前提：已授予已安装应用信息权限（QUERY_ALL_PACKAGES），否则提示先授权
     fun importBuiltinBypassApps() {
+        if (!isAppsPermissionGranted()) {
+            snackbar(R.string.zybox_apps_permission_needed).show()
+            return
+        }
         val packages = BUILTIN_BYPASS_PACKAGES
         DataStore.individual = packages
         snackbar(R.string.zybox_apps_import_done).show()
