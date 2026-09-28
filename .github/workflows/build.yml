@@ -20,8 +20,8 @@ on:
         default: 'off'
         type: choice
         options:
-          - off
-          - on
+          - "off"
+          - "on"
 
 jobs:
   build:
