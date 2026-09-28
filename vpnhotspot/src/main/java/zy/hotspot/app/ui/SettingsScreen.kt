@@ -81,6 +81,7 @@ import zy.hotspot.app.util.allRoutes
 import zy.hotspot.app.util.globalNetworkRequestBuilder
 import zy.hotspot.app.util.launchUrl
 import zy.hotspot.app.util.readableMessage
+import zy.hotspot.app.util.withRootHint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -275,7 +276,7 @@ fun SettingsScreen(snackbarHostState: SnackbarHostState) {
                                 throw e
                             } catch (e: Exception) {
                                 Timber.w(e)
-                                snackbarHostState.showLongSnackbar(e.readableMessage)
+                                snackbarHostState.showLongSnackbar(e.withRootHint(context))
                             } finally {
                                 offloadEnabled = TetherOffloadManager.enabled
                                 offloadChanging = false
@@ -368,7 +369,7 @@ fun SettingsScreen(snackbarHostState: SnackbarHostState) {
                                 throw e
                             } catch (e: Exception) {
                                 Timber.w(e)
-                                snackbarHostState.showLongSnackbar(e.readableMessage)
+                                snackbarHostState.showLongSnackbar(e.withRootHint(context))
                             }
                         }
                     },

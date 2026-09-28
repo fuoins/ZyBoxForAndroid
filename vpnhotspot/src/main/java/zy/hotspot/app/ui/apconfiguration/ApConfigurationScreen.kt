@@ -44,6 +44,7 @@ import zy.hotspot.app.ui.preferenceGroup
 import zy.hotspot.app.ui.showLongSnackbar
 import zy.hotspot.app.util.Services
 import zy.hotspot.app.util.readableMessage
+import zy.hotspot.app.util.withRootHint
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -81,7 +82,7 @@ fun ApConfigurationScreen(
                         try {
                             qrCode = state.generateConfig(requirePassword = false, full = false).toQrCode()
                         } catch (e: RuntimeException) {
-                            scope.launch { snackbarHostState.showLongSnackbar(e.readableMessage) }
+                            scope.launch { snackbarHostState.showLongSnackbar(e.withRootHint(context)) }
                         }
                     },
                 )

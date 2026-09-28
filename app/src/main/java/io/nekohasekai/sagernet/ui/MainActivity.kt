@@ -166,6 +166,9 @@ class MainActivity : ThemedActivity(),
     private var autoVpnPending = false
     // ZyBox: 当前应用列表权限请求来自自动流程（首次/一键）——未授权时提示手动授权而非强制跳详情页
     private var autoAppsPending = false
+    // ZyBox: 一键（必须/必须+可选）执行中——refreshInitDialog 强制锁定进入按钮为"正在一键处理中 请勿乱动"，
+    // 避免 runAutoInit/权限回调刷新把按钮提前恢复
+    private var oneClickActive = false
 
     fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -203,6 +206,11 @@ class MainActivity : ThemedActivity(),
             } else {
                 openAppSettingsForAppsPermission()
             }
+            // ZyBox: 应用列表请求异常时继续弹 VPN（避免 autoVpnPending 悬挂）
+            if (autoVpnPending) {
+                autoVpnPending = false
+                requestVpnPermission()
+            }
         }
     }
 
@@ -222,11 +230,20 @@ class MainActivity : ThemedActivity(),
 
     fun isAppsPermissionGranted(): Boolean {
         // QUERY_ALL_PACKAGES 声明即授，但部分 ROM 声明后仍受 package visibility 限制；
-        // 以"可见第三方应用数量"为准，避免显示已给而实际读不到应用列表
+        // 金标 ROM（小米/OPPO/vivo/荣耀）：以 com.android.permission.GET_INSTALLED_APPS 授权为准——
+        // 该权限是"获取已安装应用信息"弹窗权限，授权即解锁完整可见性（比第三方数量阈值判定更准）
         if (ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.QUERY_ALL_PACKAGES
             ) != PackageManager.PERMISSION_GRANTED
         ) return false
+        try {
+            if (ContextCompat.checkSelfPermission(
+                    this, "com.android.permission.GET_INSTALLED_APPS"
+                ) == PackageManager.PERMISSION_GRANTED
+            ) return true
+        } catch (_: Exception) {
+        }
+        // 原生 ROM（无 GET_INSTALLED_APPS）：以"可见第三方应用数量"为准，避免显示已给而实际读不到应用列表
         return try {
             val thirdParty = packageManager.getInstalledApplications(0)
                 .count { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
@@ -272,6 +289,7 @@ class MainActivity : ThemedActivity(),
     // ZyBox: 分应用代理绕过配置一键导入（内置配置，跳过首行开关标记，包名换行写入 individual）
     // 前提：已授予已安装应用信息权限（QUERY_ALL_PACKAGES），否则提示先授权
     fun importBuiltinBypassApps() {
+        // ZyBox: 分应用代理配置需"已安装应用信息"权限（授权后可见完整应用列表，配置才可正常显示/生效）
         if (!isAppsPermissionGranted()) {
             snackbar(R.string.zybox_apps_permission_needed).show()
             return
@@ -368,16 +386,16 @@ class MainActivity : ThemedActivity(),
             }
             isAutoInitDone = true
             DataStore.autoInitDone = true
-            // 自动申请所需权限：通知 → 应用列表权限框依次弹出（requestPermissions 排队弹窗，不中断 Activity）
+            // 自动申请所需权限：串行——通知框 →（1001 回调）→ 应用列表框 →（1002 回调）→ VPN 全屏页
+            autoVpnPending = true
+            autoAppsPending = true
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(this, POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
                 ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 1001)
+            } else {
+                requestAppsPermission(true)
             }
-            // ZyBox: 应用列表权限（金标 ROM 弹"获取已安装应用信息"框）；VPN 全屏页放最后（应用列表回调后弹）
-            autoVpnPending = true
-            autoAppsPending = true
-            requestAppsPermission(true)
             // 自动进入设置页完成速度显示初始化，随后返回主页
             displayFragmentWithId(R.id.nav_settings)
             binding.root.postDelayed({
@@ -395,6 +413,7 @@ class MainActivity : ThemedActivity(),
     // 含可选时额外执行路由规则全开与分应用代理绕过导入
     fun runOneClick(includeOptional: Boolean) {
         if (autoInitRunning) return
+        oneClickActive = true
         // 一键处理中：两个一键按钮 + 进入按钮禁用并提示（进入按钮在执行期间不可点击）
         val btnRequired = initDialog?.findViewById<android.view.View>(R.id.init_btn_all_required)
         val btnAll = initDialog?.findViewById<android.view.View>(R.id.init_btn_all_optional)
@@ -418,8 +437,11 @@ class MainActivity : ThemedActivity(),
                         }
                     },
                     onTimeout = {
-                        // ZyBox: 5s 内必须权限未给全——停止并提示手动授权
-                        snackbar(R.string.zybox_init_required_incomplete).show()
+                        // ZyBox: 5s 内必须权限未给全——停止并提示手动授权（Toast 显示在顶层，不被全屏向导盖住）
+                        android.widget.Toast.makeText(
+                            this, R.string.zybox_init_required_incomplete,
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
                         restoreOneClickButtons(btnRequired, btnAll, enterBtn)
                     }
                 )
@@ -433,6 +455,7 @@ class MainActivity : ThemedActivity(),
     private fun restoreOneClickButtons(
         btnRequired: android.view.View?, btnAll: android.view.View?, enterBtn: android.view.View?
     ) {
+        oneClickActive = false
         btnRequired?.isEnabled = true
         btnAll?.isEnabled = true
         (btnRequired as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_required)
@@ -535,12 +558,11 @@ class MainActivity : ThemedActivity(),
         }
         refreshInitDialog(initDialog!!)
         // ZyBox: 首次进入自动申请权限：等 Activity 完全 resumed 后再弹（onCreate 阶段 requestPermissions 不弹窗），
-        // 通知 → 应用列表权限框依次弹出；VPN 全屏页在应用列表回调后最后弹
+        // 串行弹出：通知框（1001）→ 应用列表框（1002，1001 回调后）→ VPN 全屏页（1002 回调后），避免连续请求排队被 ROM 丢弃
         binding.root.postDelayed({
             autoVpnPending = true
             autoAppsPending = true
             requestNotifPermission()
-            requestAppsPermission(true)
         }, 800)
     }
 
@@ -558,10 +580,16 @@ class MainActivity : ThemedActivity(),
         val done = initDoneCount()
         // 顶部进入按钮："进入 X/4(必选项待完成🔒)" / "进入 4/4(必选项已完成✓)"，4 项全完成且自动初始化未运行才可点击
         val enterBtn = d.findViewById<android.view.View>(R.id.init_btn_enter) ?: return
-        enterBtn.isEnabled = done >= 4 && !autoInitRunning
-        (enterBtn as? android.widget.TextView)?.text =
-            if (done >= 4) getString(R.string.zybox_init_enter_done)
-            else getString(R.string.zybox_init_enter_pending, done)
+        // ZyBox: 一键执行中强制锁定进入按钮（避免 runAutoInit/权限回调刷新提前恢复）
+        if (oneClickActive) {
+            enterBtn.isEnabled = false
+            (enterBtn as? android.widget.TextView)?.text = getString(R.string.zybox_oneclick_processing)
+        } else {
+            enterBtn.isEnabled = done >= 4 && !autoInitRunning
+            (enterBtn as? android.widget.TextView)?.text =
+                if (done >= 4) getString(R.string.zybox_init_enter_done)
+                else getString(R.string.zybox_init_enter_pending, done)
+        }
         // ZyBox: 必须项标题行——左 ✓/❌、右 done/4
         d.findViewById<android.widget.TextView>(R.id.init_section_required_status)?.text =
             if (done >= 4) "✅" else "❌"
@@ -599,6 +627,8 @@ class MainActivity : ThemedActivity(),
         if (requestCode == 1001 || requestCode == 0) {
             initDialog?.let { d -> refreshInitDialog(d) }
             refreshPermissionFragment()
+            // ZyBox: 串行权限流——通知框处理完后再弹应用列表框（避免连续请求排队被 ROM 丢弃）
+            if (autoAppsPending) requestAppsPermission(true)
         } else if (requestCode == 1002) {
             // ZyBox: 应用列表权限请求结果——真实检测，仍受限则跳应用详情页（厂商 ROM"获取应用列表"开关）
             val auto = autoAppsPending

@@ -9,6 +9,7 @@ import zy.hotspot.app.App
 import zy.hotspot.app.App.Companion.app
 import zy.hotspot.app.util.Services
 import zy.hotspot.app.util.readableMessage
+import zy.hotspot.app.util.withRootHint
 
 class SmartSnackbar private constructor(
     private val text: CharSequence,
@@ -24,7 +25,8 @@ class SmartSnackbar private constructor(
 
         fun make(@StringRes text: Int): SmartSnackbar = make(app.getText(text))
         fun make(text: CharSequence = "") = SmartSnackbar(text)
-        fun make(e: Throwable) = make(e.readableMessage)
+        // ZyBox: root shell 不可用时追加"没有root权限 请勿点击任何此页面功能"
+        fun make(e: Throwable) = make(e.withRootHint(app))
 
         @MainThread
         internal fun registerComposeHandler(

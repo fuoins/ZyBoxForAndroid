@@ -53,6 +53,16 @@ tailrec fun Throwable.getRootCause(): Throwable {
 }
 val Throwable.readableMessage: String get() = getRootCause().run { localizedMessage ?: javaClass.name }
 
+// ZyBox: root shell 不可用提示后追加"没有root权限 请勿点击任何此页面功能"
+fun Throwable.withRootHint(context: android.content.Context): String {
+    val base = readableMessage
+    return if (this is be.mygod.librootkotlinx.NoShellException ||
+        base.contains("Root shell", ignoreCase = true)
+    ) {
+        base + "\n" + context.getString(R.string.root_shell_unavailable_hint)
+    } else base
+}
+
 fun String.toRegionalIndicatorFlagOrNull(): String? {
     val code = uppercase(Locale.US)
     if (code.length != 2 || code.any { it !in 'A'..'Z' }) return null

@@ -87,6 +87,7 @@ import zy.hotspot.app.net.wifi.VendorData
 import zy.hotspot.app.ui.theme.VpnHotspotPreviewSurface
 import zy.hotspot.app.util.Services
 import zy.hotspot.app.util.readableMessage
+import zy.hotspot.app.util.withRootHint
 import zy.hotspot.app.widget.SmartSnackbar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
@@ -346,7 +347,7 @@ fun TetheringScreen(
                                     throw e
                                 } catch (e: Exception) {
                                     Timber.w(e)
-                                    snackbarHostState.showLongSnackbar(e.readableMessage)
+                                    snackbarHostState.showLongSnackbar(e.withRootHint(context))
                                 } finally {
                                     offloadEnabled = TetherOffloadManager.enabled
                                     offloadChanging = false
@@ -633,10 +634,7 @@ private suspend fun runTethering(
     } catch (e: Exception) {
         TetheringManagerCompat.reportException(e)
         // ZyBox: root shell 不可用时追加"没有root权限 请勿点击任何此页面功能"
-        val msg = if (e is be.mygod.librootkotlinx.NoShellException) {
-            e.readableMessage + "\n" + context.getString(R.string.root_shell_unavailable_hint)
-        } else e.readableMessage
-        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        Toast.makeText(context, e.withRootHint(context), Toast.LENGTH_LONG).show()
         ManageBar.start(context::startActivity)
     }
 }
