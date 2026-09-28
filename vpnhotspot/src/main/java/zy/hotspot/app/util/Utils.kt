@@ -2,6 +2,7 @@ package zy.hotspot.app.util
 
 import android.content.BroadcastReceiver
 import zy.hotspot.app.App
+import zy.hotspot.app.R
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent

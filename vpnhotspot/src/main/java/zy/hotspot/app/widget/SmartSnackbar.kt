@@ -26,7 +26,7 @@ class SmartSnackbar private constructor(
         fun make(@StringRes text: Int): SmartSnackbar = make(app.getText(text))
         fun make(text: CharSequence = "") = SmartSnackbar(text)
         // ZyBox: root shell 不可用时追加"没有root权限 请勿点击任何此页面功能"
-        fun make(e: Throwable) = make(e.withRootHint(app))
+        fun make(e: Throwable) = make(e.withRootHint(app.deviceStorage))
 
         @MainThread
         internal fun registerComposeHandler(
