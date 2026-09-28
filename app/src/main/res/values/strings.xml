@@ -720,6 +720,9 @@
     <string name="zybox_init_apps_import">分应用代理绕过配置一键设置</string>
     <string name="zybox_init_apps_import_sum">[分应用代理绕过配置一键设置] 作者自用配置，可在设置里进行修改；列表内应用全部走直连。</string>
     <string name="zybox_init_enter_locked">完成全部 4 项后可进入</string>
+    <string name="zybox_init_required_incomplete">必须权限申请不全 请手动授权后再试</string>
+    <string name="zybox_oneclick_required_sum">[一键必须] 自动完成 4 项必须权限：自动初始化、通知、VPN、应用列表。</string>
+    <string name="zybox_oneclick_all_sum">[一键必须+可选] 先完成 4 项必须权限，再执行分应用代理绕过配置与路由规则全开。</string>
     <string name="zybox_apps_permission_granted">应用列表权限已授予</string>
     <string name="zybox_apps_permission_needed">请先授予已安装应用信息权限，再使用分应用代理一键配置</string>
     <string name="zybox_route_all_done">所有路由规则已全部开启</string>

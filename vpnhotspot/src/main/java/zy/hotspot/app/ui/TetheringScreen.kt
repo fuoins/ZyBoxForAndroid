@@ -632,7 +632,11 @@ private suspend fun runTethering(
         e.errorCode?.let { showTetherError(context, snackbarHostState, tetherType, it) }
     } catch (e: Exception) {
         TetheringManagerCompat.reportException(e)
-        Toast.makeText(context, e.readableMessage, Toast.LENGTH_LONG).show()
+        // ZyBox: root shell 不可用时追加"没有root权限 请勿点击任何此页面功能"
+        val msg = if (e is be.mygod.librootkotlinx.NoShellException) {
+            e.readableMessage + "\n" + context.getString(R.string.root_shell_unavailable_hint)
+        } else e.readableMessage
+        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         ManageBar.start(context::startActivity)
     }
 }

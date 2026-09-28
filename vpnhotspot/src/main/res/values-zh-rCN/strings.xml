@@ -273,6 +273,7 @@
   </plurals>
   <string name="failure_reason_unknown">未知 #%d</string>
   <string name="permission_missing">权限不足</string>
+  <string name="root_shell_unavailable_hint">没有root权限 请勿点击任何此页面功能</string>
   <string name="configuration_view">设置 WLAN</string>
   <string name="configuration_invalid">配置可能无效</string>
   <string name="configuration_share">使用 QR 码分享</string>

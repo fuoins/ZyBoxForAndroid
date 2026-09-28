@@ -164,6 +164,8 @@ class MainActivity : ThemedActivity(),
     private var initDialog: androidx.appcompat.app.AlertDialog? = null
     // ZyBox: 自动流程中待弹出的 VPN 权限（等通知/应用列表权限框处理完后最后弹，避免全屏 VPN 页中断权限框）
     private var autoVpnPending = false
+    // ZyBox: 当前应用列表权限请求来自自动流程（首次/一键）——未授权时提示手动授权而非强制跳详情页
+    private var autoAppsPending = false
 
     fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -182,7 +184,8 @@ class MainActivity : ThemedActivity(),
     // QUERY_ALL_PACKAGES 为普通权限（声明即授，无弹窗）；
     // 金标联盟（ColorOS/MIUI/vivo/荣耀）定义的 com.android.permission.GET_INSTALLED_APPS 为
     // 危险权限，requestPermissions 时会弹出"获取已安装应用信息"授权框（OPPO 官方适配方案）。
-    fun requestAppsPermission() {
+    // auto=true（首次自动/一键自动）：请求失败或未授权时不强制跳详情页，提示手动授权（避免打断初始化流程）
+    fun requestAppsPermission(auto: Boolean = false) {
         val perms = mutableListOf(android.Manifest.permission.QUERY_ALL_PACKAGES)
         // 权限存在才请求（金标 ROM 有，原生 AOSP 无此权限，跳过不弹）
         try {
@@ -195,7 +198,11 @@ class MainActivity : ThemedActivity(),
         try {
             ActivityCompat.requestPermissions(this, perms.toTypedArray(), 1002)
         } catch (e: Exception) {
-            openAppSettingsForAppsPermission()
+            if (auto) {
+                snackbar(R.string.zybox_apps_permission_needed).show()
+            } else {
+                openAppSettingsForAppsPermission()
+            }
         }
     }
 
@@ -369,7 +376,8 @@ class MainActivity : ThemedActivity(),
             }
             // ZyBox: 应用列表权限（金标 ROM 弹"获取已安装应用信息"框）；VPN 全屏页放最后（应用列表回调后弹）
             autoVpnPending = true
-            requestAppsPermission()
+            autoAppsPending = true
+            requestAppsPermission(true)
             // 自动进入设置页完成速度显示初始化，随后返回主页
             displayFragmentWithId(R.id.nav_settings)
             binding.root.postDelayed({
@@ -410,7 +418,8 @@ class MainActivity : ThemedActivity(),
                         }
                     },
                     onTimeout = {
-                        snackbar(R.string.zybox_init_enter_locked).show()
+                        // ZyBox: 5s 内必须权限未给全——停止并提示手动授权
+                        snackbar(R.string.zybox_init_required_incomplete).show()
                         restoreOneClickButtons(btnRequired, btnAll, enterBtn)
                     }
                 )
@@ -435,7 +444,7 @@ class MainActivity : ThemedActivity(),
             else getString(R.string.zybox_init_enter_pending, done)
     }
 
-    // ZyBox: 等待必须 4 项全部完成（轮询，30 秒超时）
+    // ZyBox: 等待必须 4 项全部完成（轮询，5 秒超时——用户要求 5s 内未给全即停止）
     private fun waitForRequiredDone(onDone: () -> Unit, onTimeout: () -> Unit) {
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
         var tries = 0
@@ -445,7 +454,7 @@ class MainActivity : ThemedActivity(),
                 return
             }
             tries++
-            if (tries > 60) {
+            if (tries > 10) {
                 onTimeout()
                 return
             }
@@ -525,10 +534,14 @@ class MainActivity : ThemedActivity(),
             decorView.setPadding(0, 0, 0, 0)
         }
         refreshInitDialog(initDialog!!)
-        // ZyBox: 首次进入自动申请权限：通知 → 应用列表权限框依次弹出；VPN 全屏页在应用列表回调后最后弹
-        autoVpnPending = true
-        requestNotifPermission()
-        requestAppsPermission()
+        // ZyBox: 首次进入自动申请权限：等 Activity 完全 resumed 后再弹（onCreate 阶段 requestPermissions 不弹窗），
+        // 通知 → 应用列表权限框依次弹出；VPN 全屏页在应用列表回调后最后弹
+        binding.root.postDelayed({
+            autoVpnPending = true
+            autoAppsPending = true
+            requestNotifPermission()
+            requestAppsPermission(true)
+        }, 800)
     }
 
     private fun initDoneCount(): Int {
@@ -588,10 +601,17 @@ class MainActivity : ThemedActivity(),
             refreshPermissionFragment()
         } else if (requestCode == 1002) {
             // ZyBox: 应用列表权限请求结果——真实检测，仍受限则跳应用详情页（厂商 ROM"获取应用列表"开关）
+            val auto = autoAppsPending
+            autoAppsPending = false
             if (isAppsPermissionGranted()) {
                 snackbar(R.string.zybox_apps_permission_granted).show()
             } else {
-                openAppSettingsForAppsPermission()
+                if (auto) {
+                    // 自动流程（首次/一键）：不强制跳详情页打断流程，提示可点击授权按钮
+                    snackbar(R.string.zybox_apps_permission_needed).show()
+                } else {
+                    openAppSettingsForAppsPermission()
+                }
             }
             // ZyBox: 应用列表权限框处理完后，自动弹出 VPN 权限（全屏页放最后，避免中断权限框）
             if (autoVpnPending) {
