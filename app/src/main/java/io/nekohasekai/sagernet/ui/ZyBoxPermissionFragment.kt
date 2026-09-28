@@ -103,6 +103,8 @@ class ZyBoxPermissionFragment : ToolbarFragment(R.layout.layout_zybox_permission
         (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
         (btn2 as? TextView)?.text = getString(R.string.zybox_oneclick_processing)
         v.postDelayed({
+            // ZyBox: 页面可能已关闭（fragment detach），此时不再触碰 UI 与资源
+            if (!isAdded) return@postDelayed
             btn1?.isEnabled = true
             btn2?.isEnabled = true
             (btn1 as? TextView)?.text = getString(R.string.zybox_oneclick_required)
