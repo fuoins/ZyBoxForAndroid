@@ -176,9 +176,20 @@ class MainActivity : ThemedActivity(),
         VpnService.prepare(this)?.let { vpnPermission.launch(it) }
     }
 
-    // ZyBox: 应用列表权限（分应用代理）——QUERY_ALL_PACKAGES 为安装即授普通权限、无系统授予弹窗，
-    // 点击后打开应用详情设置页让用户检查/管理权限（有实际反应）
+    // ZyBox: 应用列表权限（分应用代理）——与其他应用对齐：调用系统权限请求 API。
+    // 官方 ROM 上 QUERY_ALL_PACKAGES 为普通权限（直接授予、无弹窗）；部分厂商 ROM（MIUI/ColorOS 等）
+    // 将其特殊化为可弹窗权限，此时会弹出与其他应用一致的授权框；仍受限则跳应用详情页兜底。
     fun requestAppsPermission() {
+        try {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.QUERY_ALL_PACKAGES), 1002
+            )
+        } catch (e: Exception) {
+            openAppSettingsForAppsPermission()
+        }
+    }
+
+    private fun openAppSettingsForAppsPermission() {
         try {
             startActivity(
                 android.content.Intent(
@@ -190,8 +201,6 @@ class MainActivity : ThemedActivity(),
             Logs.w(e)
             snackbar(R.string.zybox_apps_permission_granted).show()
         }
-        initDialog?.let { d -> refreshInitDialog(d) }
-        refreshPermissionFragment()
     }
 
     fun isAppsPermissionGranted(): Boolean {
@@ -484,6 +493,15 @@ class MainActivity : ThemedActivity(),
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1001 || requestCode == 0) {
+            initDialog?.let { d -> refreshInitDialog(d) }
+            refreshPermissionFragment()
+        } else if (requestCode == 1002) {
+            // ZyBox: 应用列表权限请求结果——真实检测，仍受限则跳应用详情页（厂商 ROM"获取应用列表"开关）
+            if (isAppsPermissionGranted()) {
+                snackbar(R.string.zybox_apps_permission_granted).show()
+            } else {
+                openAppSettingsForAppsPermission()
+            }
             initDialog?.let { d -> refreshInitDialog(d) }
             refreshPermissionFragment()
         }
