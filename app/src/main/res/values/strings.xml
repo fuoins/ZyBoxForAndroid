@@ -726,6 +726,7 @@
     <string name="zybox_apps_permission_granted">应用列表权限已授予</string>
     <string name="zybox_apps_permission_needed">请先授予已安装应用信息权限，再使用分应用代理一键配置</string>
     <string name="zybox_route_all_done">所有路由规则已全部开启</string>
+    <string name="zybox_route_no_rules">未找到可开启的路由规则</string>
     <string name="zybox_apps_import_done">分应用代理绕过配置已导入</string>
     <string name="zybox_permission_hint">在此查询权限状态与初始化进度，点击右侧按钮完成未授权的项。</string>
     <string name="zybox_permission_query">Permissions &amp; Init Query</string>

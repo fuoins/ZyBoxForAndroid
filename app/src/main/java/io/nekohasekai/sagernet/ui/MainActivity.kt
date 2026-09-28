@@ -172,6 +172,11 @@ class MainActivity : ThemedActivity(),
     // ZyBox: 应用列表权限框是否已弹出（Activity 进入 onPause = 权限框覆盖了页面）——
     // 用于补弹判断：框已在显示时不补弹，避免二次请求被系统即时回调误触发 VPN
     private var appsRequestPaused = false
+    // ZyBox: 应用列表请求异常自动重试计数（最多 3 次，避免无限循环）
+    private var appsRequestRetryCount = 0
+    // ZyBox: Activity 是否已 resumed（1001 回调里请求应用列表需 Activity 处于 resumed 状态，
+    // 否则部分 ROM 上 requestPermissions 抛异常/静默失败）
+    private var activityResumed = false
 
     fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT >= 33) {
@@ -221,13 +226,14 @@ class MainActivity : ThemedActivity(),
         } catch (e: Exception) {
             if (auto) {
                 snackbar(R.string.zybox_apps_permission_needed).show()
+                // ZyBox: 应用列表请求异常（如 Activity 尚未 resumed）时不弹 VPN（避免 VPN 提前打断流程），
+                // 自动重试直至成功弹出应用列表框；autoVpnPending 保留，应用列表处理完后再弹 VPN
+                if (autoAppsPending && appsRequestRetryCount < 3) {
+                    appsRequestRetryCount++
+                    binding.root.postDelayed({ requestAppsPermission(true) }, 500)
+                }
             } else {
                 openAppSettingsForAppsPermission()
-            }
-            // ZyBox: 应用列表请求异常时继续弹 VPN（避免 autoVpnPending 悬挂）
-            if (autoVpnPending) {
-                autoVpnPending = false
-                requestVpnPermission()
             }
         }
     }
@@ -291,15 +297,24 @@ class MainActivity : ThemedActivity(),
     // 注意：onDone 必须是最后一个参数（尾随 lambda 才能绑定到它）
     fun enableAllRoutingRules(navigate: Boolean = true, onDone: () -> Unit) {
         runOnDefaultDispatcher {
-            val rules = SagerDatabase.rulesDao.allRules()
-            if (rules.isNotEmpty()) {
+            var rules = SagerDatabase.rulesDao.allRules()
+            if (rules.isEmpty() && !DataStore.rulesFirstCreate) {
+                // ZyBox: 规则表为空（首次/被清空）时自动创建默认规则，再全开——确保"一键全开"真实生效
+                rules = ProfileManager.getRules()
+            }
+            val opened = rules.isNotEmpty()
+            if (opened) {
                 rules.forEach { it.enabled = true }
                 SagerDatabase.rulesDao.updateRules(rules)
             }
             onMainDispatcher {
-                snackbar(R.string.zybox_route_all_done).show()
-                // ZyBox: 标记路由规则一键全开（初始化向导可选项完成判定）
-                DataStore.routeAllEnabled = true
+                if (opened) {
+                    snackbar(R.string.zybox_route_all_done).show()
+                    // ZyBox: 标记路由规则一键全开（初始化向导可选项完成判定）——仅在数据层真实全开后标记
+                    DataStore.routeAllEnabled = true
+                } else {
+                    snackbar(R.string.zybox_route_no_rules).show()
+                }
                 // ZyBox: 同步刷新向导可选项计数（避免显示停留在 1/2）
                 initDialog?.let { d -> refreshInitDialog(d) }
                 if (navigate) {
@@ -515,6 +530,12 @@ class MainActivity : ThemedActivity(),
     override fun onPause() {
         super.onPause()
         appsRequestPaused = true
+        activityResumed = false
+    }
+
+    override fun onResume() {
+        super.onResume()
+        activityResumed = true
     }
 
     private fun showFirstLaunchDialog() {
@@ -664,8 +685,18 @@ class MainActivity : ThemedActivity(),
         if (requestCode == 1001 || requestCode == 0) {
             initDialog?.let { d -> refreshInitDialog(d) }
             refreshPermissionFragment()
-            // ZyBox: 串行权限流——通知框处理完立即弹应用列表框（无间隔；被吞由补弹机制兜底）
-            if (autoAppsPending) requestAppsPermission(true)
+            // ZyBox: 串行权限流——通知框处理完立即弹应用列表框（无间隔；被吞由补弹机制兜底）。
+            // 若 Activity 尚未 resumed（部分 ROM 权限回调先于 onResume），延迟 300ms 等 resumed 后再请求，
+            // 避免 requestPermissions 抛异常导致 VPN 提前弹出
+            if (autoAppsPending) {
+                if (activityResumed) {
+                    requestAppsPermission(true)
+                } else {
+                    binding.root.postDelayed({
+                        if (autoAppsPending && activityResumed) requestAppsPermission(true)
+                    }, 300)
+                }
+            }
         } else if (requestCode == 1002) {
             // ZyBox: 应用列表权限请求结果——真实检测，仍受限则跳应用详情页（厂商 ROM"获取应用列表"开关）
             val auto = autoAppsPending
