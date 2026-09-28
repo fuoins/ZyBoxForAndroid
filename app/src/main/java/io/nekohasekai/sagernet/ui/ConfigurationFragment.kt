@@ -622,6 +622,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         snackbar(getString(R.string.no_proxies_found_in_file)).show()
                     } else {
                         // ZyBox: 到新建分组：先创建新分组并切换到它
+                        val wasNewGroup = importNewGroup
                         if (importNewGroup) {
                             importNewGroup = false
                             createNewGroupForImport()
@@ -631,7 +632,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                         import(proxies)
                     }
                 } catch (e: SubscriptionFoundException) {
-                    (requireActivity() as MainActivity).importSubscription(e.link.toUri())
+                    // ZyBox: 文件"到新建分组"导入订阅时也强制新建分组
+                    (requireActivity() as MainActivity).importSubscription(e.link.toUri(), wasNewGroup)
                 } catch (e: Exception) {
                     Logs.w(e)
                     onMainDispatcher {
@@ -878,7 +880,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                             import(proxies)
                         }
                     } catch (e: SubscriptionFoundException) {
-                        (requireActivity() as MainActivity).importSubscription(e.link.toUri())
+                        // ZyBox: 剪切板"到新建分组"导入订阅时强制新建分组
+                        (requireActivity() as MainActivity).importSubscription(e.link.toUri(), true)
                     } catch (e: Exception) {
                         Logs.w(e)
                         onMainDispatcher {
@@ -910,7 +913,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                             import(proxies)
                         }
                     } catch (e: SubscriptionFoundException) {
-                        (requireActivity() as MainActivity).importSubscription(e.link.toUri())
+                        // ZyBox: 剪切板+ping"到新建分组"导入订阅时强制新建分组
+                        (requireActivity() as MainActivity).importSubscription(e.link.toUri(), true)
                     } catch (e: Exception) {
                         Logs.w(e)
                         onMainDispatcher {

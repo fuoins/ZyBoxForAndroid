@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">VPN 热点</string>
+  <string name="app_name">ZyBox</string>
   <string name="title_repeater">无线中继</string>
   <string name="title_tethering">网络共享</string>
   <string name="title_clients">已连设备</string>

@@ -176,24 +176,19 @@ class MainActivity : ThemedActivity(),
         VpnService.prepare(this)?.let { vpnPermission.launch(it) }
     }
 
-    // ZyBox: 应用列表权限（分应用代理）——QUERY_ALL_PACKAGES 为安装即授普通权限，按钮点击刷新状态
+    // ZyBox: 应用列表权限（分应用代理）——QUERY_ALL_PACKAGES 为安装即授普通权限、无系统授予弹窗，
+    // 点击后打开应用详情设置页让用户检查/管理权限（有实际反应）
     fun requestAppsPermission() {
-        val granted = ContextCompat.checkSelfPermission(
-            this, android.Manifest.permission.QUERY_ALL_PACKAGES
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            snackbar(R.string.zybox_apps_permission_granted).show()
-        } else {
-            try {
-                startActivity(
-                    android.content.Intent(
-                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        android.net.Uri.fromParts("package", packageName, null)
-                    )
+        try {
+            startActivity(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", packageName, null)
                 )
-            } catch (e: Exception) {
-                Logs.w(e)
-            }
+            )
+        } catch (e: Exception) {
+            Logs.w(e)
+            snackbar(R.string.zybox_apps_permission_granted).show()
         }
         initDialog?.let { d -> refreshInitDialog(d) }
         refreshPermissionFragment()
@@ -527,7 +522,7 @@ class MainActivity : ThemedActivity(),
         return connection.service!!.urlTest()
     }
 
-    suspend fun importSubscription(uri: Uri) {
+    suspend fun importSubscription(uri: Uri, forceNewGroup: Boolean = false) {
         val group: ProxyGroup
 
         val url = uri.getQueryParameter("url")
@@ -571,7 +566,7 @@ class MainActivity : ThemedActivity(),
                 .setMessage(getString(R.string.subscription_import_message, name))
                 .setPositiveButton(R.string.yes) { _, _ ->
                     runOnDefaultDispatcher {
-                        finishImportSubscription(group)
+                        finishImportSubscription(group, forceNewGroup)
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -581,7 +576,22 @@ class MainActivity : ThemedActivity(),
 
     }
 
-    private suspend fun finishImportSubscription(subscription: ProxyGroup) {
+    private suspend fun finishImportSubscription(
+        subscription: ProxyGroup, forceNewGroup: Boolean = false
+    ) {
+        // ZyBox: forceNewGroup（从剪切板/文件"导入到新建分组"）：总是新建独立分组，不并入已有分组
+        if (forceNewGroup) {
+            val base = "宇神神了"
+            var name = base
+            var i = 2
+            while (SagerDatabase.groupDao.allGroups().any { it.name == name && !it.ungrouped }) {
+                name = "$base $i"; i++
+            }
+            subscription.name = name
+            GroupManager.createGroup(subscription)
+            GroupUpdater.startUpdate(subscription, true)
+            return
+        }
         // ZyBox: 已有"宇神神了"分组则并入（追加为额外订阅，避免出现两个同名分组），否则新建
         val existing = SagerDatabase.groupDao.allGroups()
             .find { it.name == "宇神神了" && !it.ungrouped }
