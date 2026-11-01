@@ -62,6 +62,10 @@ class SagerNet : Application(),
 
         if (isMainProcess || isBgProcess) {
             externalAssets.mkdirs()
+            // ZyBox: 必须同步、且必须在 Libcore.initCore 之前完成。
+            // sing-box 启动路由时会立刻打开 geosite.db，若此处仍在后台写文件，
+            // 它会读到被截断的库并报 "parse rule-set: Type: EOF"，导致无法连接。
+            copyGeoAssetsIfNeeded()
             // ZyBox: 集成 VPNHotspot（Tethering 页原样搬入），初始化其环境
             zy.hotspot.app.App.init(this)
             Seq.setContext(this)
@@ -81,11 +85,18 @@ class SagerNet : Application(),
             runOnDefaultDispatcher {
                 PackageCache.register()
                 cleanWebview()
-                copyGeoAssetsIfNeeded()
             }
         }
 
         if (isMainProcess) {
+            // ZyBox: 「测速延迟持久化同步」改为默认关闭。
+            // 老用户库里已经存了 true，仅改默认值对他们无效，这里做一次性迁移。
+            if (DataStore.configurationStore.getBoolean(MIGRATION_SYNC_PING) != true) {
+                DataStore.syncPingOnTest = false
+                DataStore.syncPingFailed = false
+                DataStore.configurationStore.putBoolean(MIGRATION_SYNC_PING, true)
+            }
+
             Theme.apply(this)
             Theme.applyNightTheme()
             runOnDefaultDispatcher {
@@ -129,6 +140,12 @@ class SagerNet : Application(),
 
     @SuppressLint("InlinedApi")
     companion object {
+
+        // 完整 geo 库都是 3MB 级别，小于 1KB 只可能是上次写坏的空壳
+        private const val MIN_GEO_SIZE = 1024L
+
+        // 「测速延迟持久化同步」默认关闭的一次性迁移标记
+        private const val MIGRATION_SYNC_PING = "zybox_sync_ping_default_off_v1"
 
         lateinit var application: SagerNet
 
@@ -223,20 +240,51 @@ class SagerNet : Application(),
         }()
     }
 
-    // ZyBox: 首次启动自动把内置 geoip/geosite 数据库拷贝到外部 files 目录（sing-box 规则集读取路径，开规则集开箱即用）
+    // ZyBox: 首次启动把内置 geoip/geosite 数据库铺到外部 files 目录（sing-box 规则集的读取路径）。
+    // 关键在于「原子」：先写 .tmp 再 rename，其它进程永远看不到写了一半的库；
+    // 并用文件锁串行化，避免主进程与 :bg 进程同时截断同一个文件。
     private fun copyGeoAssetsIfNeeded() {
         val names = arrayOf("geoip.db", "geosite.db")
-        for (name in names) {
-            val target = java.io.File(externalAssets, name)
-            if (!target.exists() || target.length() < 1000) {
+        val lockFile = File(externalAssets, ".geo.lock")
+        try {
+            java.io.RandomAccessFile(lockFile, "rw").use { raf ->
+                val lock = raf.channel.lock()
                 try {
-                    assets.open(name).use { input ->
-                        target.outputStream().use { output -> input.copyTo(output) }
+                    for (name in names) {
+                        val target = File(externalAssets, name)
+                        // available() 对压缩 asset 返回解压后的总长度，
+                        // 用它和磁盘文件对比，能识别「写到一半」的残库，而不只是空文件
+                        val expected = try {
+                            assets.open(name).use { it.available().toLong() }
+                        } catch (e: Exception) {
+                            -1L
+                        }
+                        if (expected > MIN_GEO_SIZE && target.length() == expected) continue
+                        if (expected <= MIN_GEO_SIZE && target.length() > MIN_GEO_SIZE) continue
+
+                        val tmp = File(externalAssets, "$name.tmp")
+                        if (tmp.exists()) tmp.delete()
+                        assets.open(name).use { input ->
+                            java.io.FileOutputStream(tmp).use { output ->
+                                input.copyTo(output)
+                                output.fd.sync()
+                            }
+                        }
+                        if (tmp.length() <= MIN_GEO_SIZE) {
+                            tmp.delete()
+                            continue
+                        }
+                        if (!tmp.renameTo(target)) {
+                            target.delete()
+                            tmp.renameTo(target)
+                        }
                     }
-                } catch (e: Exception) {
-                    // 内置资产缺失时跳过，不影响启动
+                } finally {
+                    lock.release()
                 }
             }
+        } catch (e: Exception) {
+            Logs.w(e)
         }
     }
 

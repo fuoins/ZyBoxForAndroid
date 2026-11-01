@@ -21,6 +21,8 @@
     <color name="glass_surface_soft">#7AFFFFFF</color>
     <color name="glass_surface_strong">#D6FFFFFF</color>
     <color name="glass_surface_sunken">#5CDFE6F0</color>
+    <!-- 弹出菜单专用：必须挡住底下的正文，否则菜单字叠在列表字上完全看不清 -->
+    <color name="glass_popup_solid">#F7FBFDFF</color>
 
     <!-- 边缘与高光 -->
     <color name="glass_stroke">#A6FFFFFF</color>

@@ -18,6 +18,8 @@
     <color name="glass_surface_soft">#12FFFFFF</color>
     <color name="glass_surface_strong">#26FFFFFF</color>
     <color name="glass_surface_sunken">#1A0A0E16</color>
+    <!-- 夜间同样要给足不透明度，玻璃感交给背景模糊 -->
+    <color name="glass_popup_solid">#F70A0F17</color>
 
     <color name="glass_stroke">#33FFFFFF</color>
     <color name="glass_stroke_outer">#4D000000</color>

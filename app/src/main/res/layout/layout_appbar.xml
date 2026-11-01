@@ -11,6 +11,7 @@
     android:layout_height="wrap_content"
     android:background="@android:color/transparent"
     android:elevation="0dp"
+    app:backgroundTint="@null"
     app:liftOnScroll="false">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -25,8 +26,9 @@
         android:paddingStart="6dp"
         android:paddingEnd="6dp"
         android:touchscreenBlocksFocus="false"
+        app:backgroundTint="@null"
         app:navigationIconTint="@color/glass_text_primary"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
+        app:popupTheme="@style/ThemeOverlay.ZyBox.Popup"
         app:subtitleTextColor="@color/glass_text_secondary"
         app:title="@string/app_name"
         app:titleTextAppearance="@style/ZyBoxToolbarTitle"

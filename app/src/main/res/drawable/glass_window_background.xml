@@ -1,73 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Liquid Glass · 窗口底层
-    一层冷银基底 + 四团柔光，构成整个 App 的「液态玻璃」光源。
-    所有玻璃面板都建立在这层光之上。
+    只铺一层冷银基底，光斑全部由 LiquidGlassBackdrop 在运行时绘制。
+    早期版本在这里用 layer-list 摆过四个 oval 光源，但 layer-list 的
+    gravity + size 在部分设备上会被拉伸成方形色块，正好压在悬浮工具栏背后，
+    看起来像一块矩形背景，因此这里只保留纯色。
 -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="@color/glass_bg" />
-        </shape>
-    </item>
-
-    <!-- 左上主光源 -->
-    <item android:gravity="top|left">
-        <shape android:shape="oval">
-            <size
-                android:width="420dp"
-                android:height="420dp" />
-            <gradient
-                android:type="radial"
-                android:centerX="0.5"
-                android:centerY="0.5"
-                android:gradientRadius="210dp"
-                android:startColor="@color/glass_glow_a"
-                android:endColor="@android:color/transparent" />
-        </shape>
-    </item>
-
-    <!-- 右侧冷光 -->
-    <item android:gravity="center_vertical|right">
-        <shape android:shape="oval">
-            <size
-                android:width="360dp"
-                android:height="360dp" />
-            <gradient
-                android:type="radial"
-                android:gradientRadius="180dp"
-                android:startColor="@color/glass_glow_b"
-                android:endColor="@android:color/transparent" />
-        </shape>
-    </item>
-
-    <!-- 底部反光 -->
-    <item android:gravity="bottom|center_horizontal">
-        <shape android:shape="oval">
-            <size
-                android:width="520dp"
-                android:height="300dp" />
-            <gradient
-                android:type="radial"
-                android:gradientRadius="190dp"
-                android:startColor="@color/glass_glow_c"
-                android:endColor="@android:color/transparent" />
-        </shape>
-    </item>
-
-    <!-- 冷灰补光，避免大面积纯白 -->
-    <item android:gravity="top|right">
-        <shape android:shape="oval">
-            <size
-                android:width="280dp"
-                android:height="280dp" />
-            <gradient
-                android:type="radial"
-                android:gradientRadius="150dp"
-                android:startColor="@color/glass_glow_d"
-                android:endColor="@android:color/transparent" />
-        </shape>
-    </item>
-
-</layer-list>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/glass_bg" />
+</shape>

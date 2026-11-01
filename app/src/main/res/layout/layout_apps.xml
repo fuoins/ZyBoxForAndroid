@@ -15,6 +15,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginTop="6dp"
         android:layout_marginEnd="10dp"
+        app:backgroundTint="@null"
         android:elevation="0dp">
 
         <com.google.android.material.appbar.CollapsingToolbarLayout
@@ -28,11 +29,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 android:background="@android:color/transparent"
+                app:backgroundTint="@null"
                 android:elevation="0dp"
                 android:theme="@style/ThemeOverlay.ZyBox.Toolbar"
                 android:touchscreenBlocksFocus="false"
                 app:layout_collapseMode="pin"
-                app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
+                app:popupTheme="@style/ThemeOverlay.ZyBox.Popup"
                 app:title="@string/app_name" />
 
             <LinearLayout

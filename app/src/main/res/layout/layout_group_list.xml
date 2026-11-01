@@ -17,7 +17,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        android:elevation="4dp"
+        android:elevation="0dp"
         android:visibility="gone"
         app:tabBackground="@drawable/zybox_tab_bg"
         app:tabIndicator="@drawable/zybox_tab_indicator"

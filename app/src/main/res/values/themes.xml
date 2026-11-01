@@ -95,6 +95,7 @@
         <item name="snackbarStyle">@style/Widget.MaterialComponents.Snackbar.ZyBox</item>
         <item name="popupMenuStyle">@style/Widget.ZyBox.PopupMenu</item>
         <item name="listPopupWindowStyle">@style/Widget.ZyBox.ListPopupWindow</item>
+        <item name="actionOverflowMenuStyle">@style/Widget.ZyBox.PopupMenu.Overflow</item>
 
     </style>
 
@@ -283,6 +284,16 @@
         <item name="actionMenuTextColor">@color/glass_text_primary</item>
     </style>
 
+    <!-- 弹出菜单主题：AppCompat 默认是半透明黑，深色下菜单字会和正文糊在一起 -->
+    <style name="ThemeOverlay.ZyBox.Popup" parent="ThemeOverlay.AppCompat.DayNight">
+        <item name="android:popupBackground">@drawable/glass_popup</item>
+        <item name="android:colorBackground">@color/glass_popup_solid</item>
+        <item name="android:textColorPrimary">@color/glass_text_primary</item>
+        <item name="android:textColorSecondary">@color/glass_text_secondary</item>
+        <item name="android:textColor">@color/glass_text_primary</item>
+        <item name="colorControlNormal">@color/glass_text_primary</item>
+    </style>
+
     <!-- ===== 弹出菜单 ===== -->
     <style name="Widget.ZyBox.PopupMenu" parent="Widget.AppCompat.PopupMenu">
         <item name="android:popupBackground">@drawable/glass_popup</item>
@@ -290,6 +301,11 @@
     </style>
 
     <style name="Widget.ZyBox.ListPopupWindow" parent="Widget.AppCompat.ListPopupWindow">
+        <item name="android:popupBackground">@drawable/glass_popup</item>
+    </style>
+
+    <!-- 工具栏右上角三点：同样是玻璃，不能回落到 AppCompat 的半透明黑 -->
+    <style name="Widget.ZyBox.PopupMenu.Overflow" parent="Widget.AppCompat.PopupMenu.Overflow">
         <item name="android:popupBackground">@drawable/glass_popup</item>
     </style>
 

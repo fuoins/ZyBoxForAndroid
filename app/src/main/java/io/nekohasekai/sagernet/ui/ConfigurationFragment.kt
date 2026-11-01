@@ -36,6 +36,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import io.nekohasekai.sagernet.widget.GlassPopupMenu
 import io.nekohasekai.sagernet.GroupOrder
 import io.nekohasekai.sagernet.GroupType
 import io.nekohasekai.sagernet.Key
@@ -2686,7 +2687,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
 
                     fun showShare(anchor: View) {
-                        val popup = PopupMenu(requireContext(), anchor)
+                        val popup = GlassPopupMenu(requireContext(), anchor)
                         popup.menuInflater.inflate(R.menu.profile_share_menu, popup.menu)
 
                         when {
@@ -2732,7 +2733,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             fun showDoubleColumnMenu(anchor: View, proxyEntity: ProxyEntity) {
-                val popup = PopupMenu(requireContext(), anchor)
+                val popup = GlassPopupMenu(requireContext(), anchor)
                 popup.menuInflater.inflate(R.menu.double_column_item_menu, popup.menu)
                 if (select) popup.menu.removeItem(R.id.action_delete)
                 popup.setOnMenuItemClickListener { menuItem ->
@@ -2770,7 +2771,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             private fun showShareMenu(anchor: View, proxyEntity: ProxyEntity) {
-                val popup = PopupMenu(requireContext(), anchor)
+                val popup = GlassPopupMenu(requireContext(), anchor)
                 popup.menuInflater.inflate(R.menu.profile_share_menu, popup.menu)
                 when {
                     !proxyEntity.haveStandardLink() -> {
