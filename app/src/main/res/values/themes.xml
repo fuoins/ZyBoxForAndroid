@@ -255,8 +255,12 @@
         <item name="android:background">@android:color/transparent</item>
         <item name="backgroundTint">@color/glass_dialog_solid</item>
         <item name="colorSurface">@color/glass_dialog_solid</item>
-        <!-- 背后的页面已经高斯模糊，再压 32% 黑就糊成一块，收到 18% -->
-        <item name="android:windowDimAmount">0.18</item>
+        <!--
+            注意：这里不能用 android:windowDimAmount —— 它是 internal attr，
+            aapt 链接期直接报 "style attribute not found"。
+            Dialog 的变暗程度只能在代码里 dialog.window?.setDimAmount(...) 调，
+            默认 0.32 配上背景高斯模糊已经够用。
+        -->
         <item name="buttonBarPositiveButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary</item>
         <item name="buttonBarNegativeButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary</item>
         <item name="buttonBarNeutralButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary</item>
@@ -266,7 +270,6 @@
         <item name="bottomSheetStyle">@style/Widget.MaterialComponents.BottomSheet.ZyBox</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="backgroundTint">@color/glass_dialog_solid</item>
-        <item name="android:windowDimAmount">0.18</item>
     </style>
 
     <style name="Widget.MaterialComponents.BottomSheet.ZyBox" parent="Widget.MaterialComponents.BottomSheet.Modal">
