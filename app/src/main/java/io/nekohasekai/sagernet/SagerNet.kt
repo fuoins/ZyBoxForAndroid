@@ -86,6 +86,13 @@ class SagerNet : Application(),
         }
 
         if (isMainProcess) {
+            // ZyBox: 「测速延迟持久化同步」默认关闭。
+            // 老用户库里已经存了 true，仅改默认值对他们无效，这里做一次性迁移。
+            if (DataStore.configurationStore.getBoolean(MIGRATION_SYNC_PING) != true) {
+                DataStore.syncPingOnTest = false
+                DataStore.configurationStore.putBoolean(MIGRATION_SYNC_PING, true)
+            }
+
             Theme.apply(this)
             Theme.applyNightTheme()
             runOnDefaultDispatcher {
@@ -129,6 +136,9 @@ class SagerNet : Application(),
 
     @SuppressLint("InlinedApi")
     companion object {
+
+        // 「测速延迟持久化同步」默认关闭的一次性迁移标记
+        private const val MIGRATION_SYNC_PING = "zybox_sync_ping_default_off_v1"
 
         lateinit var application: SagerNet
 
