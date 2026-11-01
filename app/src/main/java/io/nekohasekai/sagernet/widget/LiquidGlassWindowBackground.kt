@@ -43,15 +43,100 @@ class LiquidGlassWindowBackground(
 
     private var photo: Bitmap? = null
     private var photoDim = 0
+    private var photoBlur = 0
+
+    /**
+     * 柔化用的小图缓存。窗口背景每帧都会重绘，模糊不能现算，
+     * 只在「换了图 / 改了模糊强度」时重建一次。
+     */
+    private var softPhoto: Bitmap? = null
+    private var softKey: Long = 0L
 
     /**
      * 设置自定义背景图。[dim] 是 0..80 的暗化百分比，压在照片之上，
      * 保证前景玻璃和文字在亮图上也读得清。
+     *
+     * [blur] 是 0..40 的模糊强度。这里没法用 `RenderEffect` ——
+     * 那是 View 才有的 API，`Drawable` 上没有；而窗口背景一旦改成 View
+     * 就会重新出现「只盖住内容区」的长方形接缝（就是当初要躲开的坑）。
+     * 所以改成先在后台把图逐级减半降采样，绘制时再用双线性插值放大：
+     * 缩得越狠，放大后越糊，观感与高斯模糊接近，且 minSdk 21 都能用。
      */
-    fun setPhoto(bitmap: Bitmap?, dim: Int) {
+    fun setPhoto(bitmap: Bitmap?, dim: Int, blur: Int = 0) {
+        val nextBlur = blur.coerceIn(0, 40)
+        if (photo === bitmap && photoDim == dim.coerceIn(0, 80) && photoBlur == nextBlur) {
+            invalidateSelf()
+            return
+        }
         photo = bitmap
         photoDim = dim.coerceIn(0, 80)
+        photoBlur = nextBlur
+        dropSoftPhoto()
         invalidateSelf()
+    }
+
+    private fun dropSoftPhoto() {
+        val old = softPhoto ?: return
+        softPhoto = null
+        softKey = 0L
+        // 极端情况（1×1 的图）Bitmap.createScaledBitmap 会原样返回入参，
+        // 此时软图就是原图本身，绝不能 recycle，否则下一次 draw 直接崩。
+        if (old !== photo && !old.isRecycled) old.recycle()
+    }
+
+    /**
+     * 取实际要画的那张图：模糊强度为 0 时直接返回原图，
+     * 否则返回预降采样过的柔化版（带缓存）。
+     */
+    private fun displayPhoto(): Bitmap? {
+        val source = photo ?: return null
+        if (source.isRecycled) return null
+        if (photoBlur <= 0) return source
+
+        val key = (System.identityHashCode(source).toLong() shl 8) or photoBlur.toLong()
+        val cached = softPhoto
+        if (cached != null && softKey == key && !cached.isRecycled) return cached
+
+        val built = buildSoftPhoto(source, photoBlur)
+        if (built == null || built === source) return source
+        dropSoftPhoto()
+        softPhoto = built
+        softKey = key
+        return built
+    }
+
+    /**
+     * 逐级 1/2 缩小。一次缩到底会丢掉太多细节、边缘发硬；
+     * 两级以上的连续插值降采样更接近高斯核，放大后过渡更顺。
+     */
+    private fun buildSoftPhoto(source: Bitmap, blur: Int): Bitmap? {
+        // blur 40 → 约 1/13 边长，放大回全屏就是很重的毛玻璃
+        val targetFactor = 1f + blur * 0.30f
+        return try {
+            var current = source
+            var owned = false
+            var factor = 1f
+            while (factor * 2f <= targetFactor) {
+                val w = (current.width / 2).coerceAtLeast(1)
+                val h = (current.height / 2).coerceAtLeast(1)
+                if (w <= 1 && h <= 1) break
+                val next = Bitmap.createScaledBitmap(current, w, h, true)
+                if (owned && current !== next) current.recycle()
+                current = next
+                owned = true
+                factor *= 2f
+            }
+            if (!owned) {
+                // 强度很低、连一级都降不下去，就复制一份 1/2 的
+                val w = (source.width / 2).coerceAtLeast(1)
+                val h = (source.height / 2).coerceAtLeast(1)
+                Bitmap.createScaledBitmap(source, w, h, true)
+            } else {
+                current
+            }
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     override fun draw(canvas: Canvas) {
@@ -68,10 +153,13 @@ class LiquidGlassWindowBackground(
         drawGlow(canvas, 2, w * 0.46f, h * 1.02f, w * 1.05f)
         drawGlow(canvas, 3, w * 0.88f, -h * 0.02f, w * 0.52f)
 
-        val bitmap = photo ?: return
+        val bitmap = displayPhoto() ?: return
         if (bitmap.isRecycled) return
         paint.shader = null
         paint.alpha = 255
+        // 柔化版是几十像素的小图，放大时靠双线性插值把过渡抹开；
+        // 关掉滤波就会看到硬边的色块（马赛克），不是模糊。
+        paint.isFilterBitmap = true
         drawPhotoCenterCrop(canvas, bitmap)
         if (photoDim > 0) {
             canvas.drawColor((photoDim * 255 / 100) shl 24)

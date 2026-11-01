@@ -583,9 +583,7 @@ class MainActivity : ThemedActivity(),
         if (!DataStore.appearanceBgEnabled || !file.isFile) {
             appliedBackgroundKey = null
             dropBackgroundBitmap()
-            background.setPhoto(null, 0)
-            // 没有照片就不糊：光斑本身是柔和的径向渐变，糊了只会变灰
-            applyWindowBackgroundBlur(0)
+            background.setPhoto(null, 0, 0)
             return
         }
 
@@ -597,8 +595,9 @@ class MainActivity : ThemedActivity(),
             append(':').append(DataStore.appearanceBgBlur)
         }
         if (key == appliedBackgroundKey && backgroundBitmap != null) {
-            background.setPhoto(backgroundBitmap, DataStore.appearanceBgDim)
-            applyWindowBackgroundBlur(DataStore.appearanceBgBlur)
+            background.setPhoto(
+                backgroundBitmap, DataStore.appearanceBgDim, DataStore.appearanceBgBlur
+            )
             return
         }
 
@@ -617,38 +616,14 @@ class MainActivity : ThemedActivity(),
                 if (bitmap == null) {
                     appliedBackgroundKey = null
                     dropBackgroundBitmap()
-                    background.setPhoto(null, 0)
-                    applyWindowBackgroundBlur(0)
+                    background.setPhoto(null, 0, 0)
                     return@withContext
                 }
                 appliedBackgroundKey = key
                 dropBackgroundBitmap()
                 backgroundBitmap = bitmap
-                background.setPhoto(bitmap, DataStore.appearanceBgDim)
-                applyWindowBackgroundBlur(DataStore.appearanceBgBlur)
+                background.setPhoto(bitmap, DataStore.appearanceBgDim, DataStore.appearanceBgBlur)
             }
-        }
-    }
-
-    /**
-     * 背景模糊直接作用在窗口背景这张 Drawable 上（API 31+ 的
-     * [android.graphics.drawable.Drawable.setRenderEffect]）。
-     *
-     * 光斑本来就是柔和渐变，一起糊掉几乎看不出差别；背景图则正好被糊成
-     * 毛玻璃。不能再用 View.setRenderEffect —— 那一层已经不存在了。
-     */
-    private fun applyWindowBackgroundBlur(radiusDp: Int) {
-        val background = glassBackground
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        try {
-            val radius = radiusDp.coerceIn(0, 40) * resources.displayMetrics.density
-            background.setRenderEffect(
-                if (radius <= 0f) null
-                else android.graphics.RenderEffect.createBlurEffect(
-                    radius, radius, android.graphics.Shader.TileMode.CLAMP
-                )
-            )
-        } catch (_: Throwable) {
         }
     }
 

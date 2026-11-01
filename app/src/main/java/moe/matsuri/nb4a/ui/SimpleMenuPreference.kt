@@ -52,12 +52,17 @@ open class SimpleMenuPreference
         mSpinner.layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
 
         /*
-         * 两处白底，一处都不能留：
+         * 三处白底，一处都不能留：
          *
          * 1. Spinner 控件本身 —— 某些 Material 版本的 spinnerStyle 会挂一块
          *    实色 background，在玻璃行里就是贴在右边的白方块。直接置空。
-         * 2. 下拉浮层 —— 默认取 ?attr/colorPopupBackground（colorSurface），
-         *    浅色下是一块 97% 白的板子。换成 glass_popup_menu（60% 薄玻璃），
+         * 2. 装 Spinner 的 widget_frame —— preference 布局给它挂了
+         *    ?android:attr/selectableItemBackground。那是**直角**的水波纹，
+         *    手指一按下，按钮位置立刻亮起一块白色长方形 —— 用户两轮反馈的
+         *    「分组类型 / 排序点击后有个长方形的白色，位置和按钮一样」就是它。
+         *    涟漪的圆角由外层玻璃行提供，这里不需要再画一层。
+         * 3. 下拉浮层 —— 默认取 ?attr/colorPopupBackground（colorSurface），
+         *    浅色下是一块 97% 白的板子。换成 glass_popup_menu（薄玻璃），
          *    配合背景高斯模糊才是同一套材质。
          *
          * 注意 Spinner 的 setter 叫 setPopupBackgroundDrawable（getter 是
@@ -67,6 +72,8 @@ open class SimpleMenuPreference
         mSpinner.setPopupBackgroundDrawable(
             ContextCompat.getDrawable(mSpinner.context, R.drawable.glass_popup_menu)
         )
+        holder.itemView.findViewById<View>(androidx.preference.R.id.widget_frame)
+            ?.background = null
 
         /*
          * Liquid Glass：Spinner 的下拉是 framework 自己开的 PopupWindow。
