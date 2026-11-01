@@ -158,5 +158,5 @@ object GlassBlur {
     }
 
     private const val POLL_STEP_MS = 110L
-    private const val GRACE_MS = 900L
+    private const val GRACE_MS = 1500L
 }

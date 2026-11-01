@@ -51,18 +51,38 @@ open class SimpleMenuPreference
         mSpinner.layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
 
         /*
-         * Liquid Glass：Spinner 的下拉是 framework 自己开的 PopupWindow，
-         * 而且**不抢焦点** —— Activity 不会收到 onWindowFocusChanged(false)，
-         * 全局限焦模糊对它失效。这里在下拉被触碰时手动盯一会儿：
-         * 一旦 isPopupShowing 为 true 就模糊宿主，收起即撤。
+         * Liquid Glass：Spinner 的下拉是 framework 自己开的 PopupWindow。
+         * 它多半是 modal 的、会夺焦点，全局限焦模糊能兜住；但为了在
+         * 「不夺焦点」的 ROM 上也有同样的效果，这里在触摸时盯一眼下拉状态。
+         *
+         * Spinner.isPopupShowing() 是 @hide（编译期 Unresolved），只能反射。
+         * 反射被 hidden-api 拦掉时退化成「点击后固定模糊 1.6s」——
+         * 至少覆盖用户快速选择的动作，且不会留下后台任务。
          * 不拦截事件（返回 false），点击行为保持原样。
          */
         mSpinner.setOnTouchListener { v, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP ->
-                    GlassBlur.watchWhile(GlassBlur.decorOf(v.context)) { mSpinner.isPopupShowing }
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                val decor = GlassBlur.decorOf(v.context)
+                val probe = popupShowingMethod
+                if (decor != null && probe != null) {
+                    GlassBlur.watchWhile(decor) {
+                        probe.invoke(mSpinner) as? Boolean ?: false
+                    }
+                } else if (decor != null) {
+                    GlassBlur.acquire(decor)
+                    v.postDelayed({ GlassBlur.release(decor) }, 1600L)
+                }
             }
             false
+        }
+    }
+
+    private companion object {
+        /** `Spinner.isPopupShowing()` 是 @hide，编译期找不到，只能反射。 */
+        val popupShowingMethod = try {
+            Spinner::class.java.getMethod("isPopupShowing")
+        } catch (_: Throwable) {
+            null
         }
     }
 
