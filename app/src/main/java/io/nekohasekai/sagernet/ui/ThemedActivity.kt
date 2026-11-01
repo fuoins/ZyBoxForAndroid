@@ -8,8 +8,10 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.lifecycle.Lifecycle
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.snackbar.Snackbar
 import io.nekohasekai.sagernet.R
@@ -38,32 +40,49 @@ abstract class ThemedActivity : AppCompatActivity {
         // Liquid Glass：透明系统栏 + 自适应图标明暗，让玻璃背景一直延伸到屏幕边缘
         GlassUi.applySystemBars(this)
 
+        /*
+         * 图片背景/光斑背景必须铺到系统栏后面，否则内容区就是一块被状态栏
+         * 和导航栏框起来的矩形 —— 看起来像「主页上有个长方形」。
+         *
+         * Android 15 起系统会对 targetSdk 35 强制 edge-to-edge，但更早的版本
+         * 不会；显式关掉 decorFitsSystemWindows 让各版本表现一致。
+         */
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         uiMode = resources.configuration.uiMode
 
-        if (Build.VERSION.SDK_INT >= 35) {
-            ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { _, insets ->
-                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                val top = bars.top
-                findViewById<AppBarLayout>(R.id.appbar)?.apply {
-                    updatePadding(top = top)
-//                Logs.w("appbar $top")
-                }
-                // Liquid Glass：底部状态坞要浮在手势条之上，不能被系统导航区压住
-                findViewById<android.view.View>(R.id.stats)?.let { stats ->
-                    val lp = stats.layoutParams as? android.view.ViewGroup.MarginLayoutParams
-                    if (lp != null) {
-                        val margin = bars.bottom + (10 * resources.displayMetrics.density).toInt()
-                        if (lp.bottomMargin != margin) {
-                            lp.bottomMargin = margin
-                            stats.layoutParams = lp
-                        }
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val top = bars.top
+            findViewById<AppBarLayout>(R.id.appbar)?.apply {
+                updatePadding(top = top)
+            }
+            // Liquid Glass：底部状态坞要浮在手势条之上，不能被系统导航区压住
+            findViewById<android.view.View>(R.id.stats)?.let { stats ->
+                val lp = stats.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+                if (lp != null) {
+                    val margin = bars.bottom + (10 * resources.displayMetrics.density).toInt()
+                    if (lp.bottomMargin != margin) {
+                        lp.bottomMargin = margin
+                        stats.layoutParams = lp
                     }
                 }
-//            findViewById<NavigationView>(R.id.nav_view)?.apply {
-//                updatePadding(top = top)
-//            }
-                insets
             }
+            // 抽屉同样要避开状态栏/导航栏，否则玻璃面板会被系统栏切掉一截
+            findViewById<android.view.View>(R.id.nav_view)?.let { nav ->
+                val lp = nav.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+                if (lp != null) {
+                    val base = (10 * resources.displayMetrics.density).toInt()
+                    val topMargin = bars.top + base
+                    val bottomMargin = bars.bottom + base
+                    if (lp.topMargin != topMargin || lp.bottomMargin != bottomMargin) {
+                        lp.topMargin = topMargin
+                        lp.bottomMargin = bottomMargin
+                        nav.layoutParams = lp
+                    }
+                }
+            }
+            insets
         }
     }
 
@@ -99,9 +118,26 @@ abstract class ThemedActivity : AppCompatActivity {
         } else {
             // 焦点变化会先于弹窗真正 attach，等一帧再判断，避免误糊
             window?.decorView?.postDelayed({
-                if (!hasWindowFocus() && !isFinishing && !isDestroyed) acquirePopupBlur()
+                if (shouldBlurForPopup()) acquirePopupBlur()
             }, POPUP_BLUR_DELAY)
         }
+    }
+
+    /**
+     * 「失焦」并不等于「有弹窗」。下面几种情况本页仍然完整可见，
+     * 只是用户在别处操作，模糊反而碍事：
+     *
+     * - 切到后台 / 最近任务：Activity 已经不在 RESUMED，onPause 里会撤模糊
+     * - 小窗、分屏（多窗口模式）：本页还在屏幕上，只是没拿到焦点
+     *
+     * 排除掉之后，剩下的失焦基本就是 PopupMenu / Dialog / BottomSheet
+     * 这类真正盖在本页上的浮层。
+     */
+    private fun shouldBlurForPopup(): Boolean {
+        if (hasWindowFocus() || isFinishing || isDestroyed) return false
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return false
+        return true
     }
 
     override fun onPause() {

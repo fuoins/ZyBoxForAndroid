@@ -108,6 +108,11 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
     var groupLayoutMode by configurationStore.stringToInt(Key.GROUP_LAYOUT_MODE) { 0 }
     var profileCardStyle by configurationStore.stringToInt(Key.PROFILE_CARD_STYLE) { 1 }
+
+    // Liquid Glass · 外观设置：自定义背景图
+    var appearanceBgEnabled by configurationStore.boolean(Key.APPEARANCE_BG_ENABLED) { false }
+    var appearanceBgDim by configurationStore.stringToInt(Key.APPEARANCE_BG_DIM) { 35 }
+    var appearanceBgBlur by configurationStore.stringToInt(Key.APPEARANCE_BG_BLUR) { 16 }
     var globalMode by configurationStore.boolean(Key.GLOBAL_MODE)
 
     var networkChangeResetConnections by configurationStore.boolean(Key.NETWORK_CHANGE_RESET_CONNECTIONS) { true }

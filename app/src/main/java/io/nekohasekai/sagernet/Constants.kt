@@ -62,6 +62,11 @@ object Key {
     const val ACQUIRE_WAKE_LOCK = "acquireWakeLock"
     const val SHOW_BOTTOM_BAR = "showBottomBar"
 
+    // Liquid Glass · 外观设置：自定义背景图（日间/夜间各一张）
+    const val APPEARANCE_BG_ENABLED = "appearanceBgEnabled"
+    const val APPEARANCE_BG_DIM = "appearanceBgDim"
+    const val APPEARANCE_BG_BLUR = "appearanceBgBlur"
+
     const val ALLOW_INSECURE_ON_REQUEST = "allowInsecureOnRequest"
 
     const val TUN_IMPLEMENTATION = "tunImplementation"

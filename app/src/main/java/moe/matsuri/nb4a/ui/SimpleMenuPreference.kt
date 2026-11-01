@@ -24,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Spinner
+import androidx.core.content.ContextCompat
 import androidx.preference.DropDownPreference
 import androidx.preference.PreferenceViewHolder
 import io.nekohasekai.sagernet.R
@@ -49,6 +50,19 @@ open class SimpleMenuPreference
         super.onBindViewHolder(holder)
         val mSpinner = holder.itemView.findViewById<Spinner>(R.id.spinner)
         mSpinner.layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+
+        /*
+         * 下拉浮层默认取 ?attr/colorPopupBackground（Material 的 colorSurface），
+         * 在浅色下就是一块不透明白色矩形 —— 用户看到的「按钮位置突然冒出个
+         * 白方块」就是它。换成玻璃底 + 去掉阴影，才和整套材质连得上。
+         *
+         * 注意 Spinner 的 setter 叫 setPopupBackgroundDrawable（getter 是
+         * getPopupBackground），名字不一致，Kotlin 合成属性用不了，必须显式调用。
+         */
+        mSpinner.setPopupBackgroundDrawable(
+            ContextCompat.getDrawable(mSpinner.context, R.drawable.glass_popup)
+        )
+        mSpinner.setPopupElevation(0f)
 
         /*
          * Liquid Glass：Spinner 的下拉是 framework 自己开的 PopupWindow。
@@ -103,6 +117,17 @@ open class SimpleMenuPreference
         ArrayAdapter<CharSequence?>(context, resource) {
 
         var currentPosition = -1
+
+        /**
+         * Spinner 自己显示的「当前值」也是用这个布局 + spinnerDropDownItemStyle
+         * inflate 的，那个 style 自带一块白底 —— 用户看到的「点击位置突然出现
+         * 一个白色长方形」其实就是它，一直贴在设置行右侧。这里抹成透明。
+         */
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = super.getView(position, convertView, parent)
+            view.setBackgroundColor(Color.TRANSPARENT)
+            return view
+        }
 
         override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
             val view: View = super.getDropDownView(position, convertView, parent)

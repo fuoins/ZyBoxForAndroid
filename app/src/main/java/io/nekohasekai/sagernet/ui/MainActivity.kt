@@ -61,6 +61,7 @@ import io.nekohasekai.sagernet.utils.GlassBlur
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.matsuri.nb4a.utils.Util
 
 class MainActivity : ThemedActivity(),
@@ -533,7 +534,94 @@ class MainActivity : ThemedActivity(),
     override fun onResume() {
         super.onResume()
         activityResumed = true
+        // 外观设置里换过背景图 / 拖过暗化滑杆，回到主页时统一应用一次
+        applyAppearanceBackground()
     }
+
+    /**
+     * Liquid Glass · 自定义背景图。
+     *
+     * 日间与夜间各存一张（[io.nekohasekai.sagernet.utils.AppearanceBackground]），
+     * 按当前 uiMode 取对应那张。图片盖在动态光斑层之上，再压一层可调暗化，
+     * 保证前景玻璃和文字在任何图上都读得清。
+     */
+    fun applyAppearanceBackground() {
+        val image = binding.appearanceBackground
+        val scrim = binding.appearanceScrim
+        val file = io.nekohasekai.sagernet.utils.AppearanceBackground.file(
+            io.nekohasekai.sagernet.utils.GlassUi.isNight(this)
+        )
+
+        if (!DataStore.appearanceBgEnabled || !file.isFile) {
+            appliedBackgroundKey = null
+            image.visibility = View.GONE
+            image.setImageDrawable(null)
+            scrim.visibility = View.GONE
+            binding.glassBackdrop.setAnimated(true)
+            return
+        }
+
+        // 同一张图、同样的暗化/模糊参数就不重新解码 —— onResume 会频繁触发
+        val key = buildString {
+            append(file.absolutePath)
+            append(':').append(file.lastModified())
+            append(':').append(DataStore.appearanceBgDim)
+            append(':').append(DataStore.appearanceBgBlur)
+        }
+        if (key == appliedBackgroundKey && image.visibility == View.VISIBLE) {
+            scrim.alpha = (DataStore.appearanceBgDim.coerceIn(0, 80)) / 100f
+            applyBackgroundBlur(image)
+            return
+        }
+
+        val generation = ++backgroundGeneration
+        val reqWidth = resources.displayMetrics.widthPixels
+        val reqHeight = resources.displayMetrics.heightPixels
+        lifecycleScope.launch(Dispatchers.IO) {
+            val bitmap = io.nekohasekai.sagernet.utils.AppearanceBackground.decode(
+                file, reqWidth, reqHeight
+            )
+            withContext(Dispatchers.Main) {
+                if (generation != backgroundGeneration || isFinishing || isDestroyed) {
+                    bitmap?.recycle()
+                    return@withContext
+                }
+                if (bitmap == null) {
+                    appliedBackgroundKey = null
+                    image.visibility = View.GONE
+                    scrim.visibility = View.GONE
+                    binding.glassBackdrop.setAnimated(true)
+                    return@withContext
+                }
+                appliedBackgroundKey = key
+                image.setImageBitmap(bitmap)
+                image.visibility = View.VISIBLE
+                applyBackgroundBlur(image)
+                scrim.alpha = (DataStore.appearanceBgDim.coerceIn(0, 80)) / 100f
+                scrim.visibility = View.VISIBLE
+                // 图已经盖满，光斑动画没有意义，停掉省电
+                binding.glassBackdrop.setAnimated(false)
+            }
+        }
+    }
+
+    private fun applyBackgroundBlur(image: android.widget.ImageView) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        try {
+            val radius = DataStore.appearanceBgBlur.coerceIn(0, 40) *
+                    resources.displayMetrics.density
+            image.setRenderEffect(
+                if (radius <= 0f) null
+                else android.graphics.RenderEffect.createBlurEffect(
+                    radius, radius, android.graphics.Shader.TileMode.CLAMP
+                )
+            )
+        } catch (_: Throwable) {
+        }
+    }
+
+    private var backgroundGeneration = 0
+    private var appliedBackgroundKey: String? = null
 
     private fun showFirstLaunchDialog() {
         val view = layoutInflater.inflate(R.layout.dialog_zybox_init, null)
@@ -952,7 +1040,8 @@ class MainActivity : ThemedActivity(),
         drawer.setScrimColor(ContextCompat.getColor(this, R.color.glass_scrim))
         drawer.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-                setDrawerBlur(slideOffset > 0.001f)
+                // 阈值留 3%：抽屉快合上时立刻恢复清晰，不要等到动画彻底结束
+                setDrawerBlur(slideOffset > 0.03f)
             }
 
             override fun onDrawerClosed(drawerView: View) {
@@ -972,6 +1061,12 @@ class MainActivity : ThemedActivity(),
 
     @SuppressLint("CommitTransaction")
     fun displayFragment(fragment: ToolbarFragment) {
+        /*
+         * 先撤掉抽屉模糊，再关抽屉。
+         * 旧版只在 onDrawerClosed 里撤，抽屉还有 250ms 关闭动画，
+         * 期间新页面已经切好却仍然是糊的 —— 用户会以为「切页很慢」。
+         */
+        setDrawerBlur(false)
         if (fragment is ConfigurationFragment) {
             binding.stats.allowShow = true
             binding.fab.show()
@@ -994,6 +1089,7 @@ class MainActivity : ThemedActivity(),
 
             R.id.nav_group -> displayFragment(GroupFragment())
             R.id.nav_route -> displayFragment(RouteFragment())
+            R.id.nav_appearance -> displayFragment(AppearanceFragment())
             R.id.nav_settings -> displayFragment(SettingsFragment())
             R.id.nav_traffic -> displayFragment(WebviewFragment())
             R.id.nav_tools -> displayFragment(ToolsFragment())

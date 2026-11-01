@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass · 外观设置
+    排序 / 布局 / 卡片样式 + 日间夜间各自独立的背景图。
+-->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/appearance_sort_layout">
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="2"
+            app:entries="@array/group_orders"
+            app:entryValues="@array/int_array_3"
+            app:icon="@drawable/ic_baseline_low_priority_24"
+            app:key="appearance_group_order"
+            app:persistent="false"
+            app:summary="@string/appearance_sort_sum"
+            app:title="@string/appearance_sort" />
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="0"
+            app:entries="@array/appearance_layout_modes"
+            app:entryValues="@array/appearance_layout_values"
+            app:icon="@drawable/ic_baseline_view_list_24"
+            app:key="groupLayoutMode"
+            app:title="@string/layout"
+            app:useSimpleSummaryProvider="true" />
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="1"
+            app:entries="@array/appearance_card_styles"
+            app:entryValues="@array/appearance_card_values"
+            app:icon="@drawable/ic_baseline_layers_24"
+            app:key="profileCardStyle"
+            app:title="@string/card_style"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/appearance_background">
+
+        <SwitchPreference
+            app:icon="@drawable/ic_image_photo"
+            app:key="appearanceBgEnabled"
+            app:summary="@string/appearance_bg_enable_sum"
+            app:title="@string/appearance_bg_enable" />
+
+        <Preference
+            app:icon="@drawable/ic_image_photo"
+            app:key="appearance_bg_day"
+            app:persistent="false"
+            app:title="@string/appearance_bg_day" />
+
+        <Preference
+            app:icon="@drawable/ic_image_photo"
+            app:key="appearance_bg_night"
+            app:persistent="false"
+            app:title="@string/appearance_bg_night" />
+
+        <SeekBarPreference
+            app:defaultValue="35"
+            app:key="appearanceBgDim"
+            app:max="80"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:title="@string/appearance_bg_dim" />
+
+        <SeekBarPreference
+            app:defaultValue="16"
+            app:key="appearanceBgBlur"
+            app:max="40"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:title="@string/appearance_bg_blur" />
+
+        <Preference
+            app:key="appearance_bg_clear"
+            app:persistent="false"
+            app:summary="@string/appearance_bg_clear_sum"
+            app:title="@string/appearance_bg_clear" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

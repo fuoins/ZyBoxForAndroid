@@ -420,6 +420,27 @@
         <item>@string/group_order_by_delay</item>
     </string-array>
 
+    <!-- Liquid Glass · 外观设置 -->
+    <string-array name="appearance_layout_modes">
+        <item>@string/layout_single_column</item>
+        <item>@string/layout_double_column</item>
+    </string-array>
+
+    <string-array name="appearance_layout_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+
+    <string-array name="appearance_card_styles">
+        <item>@string/card_style_classic</item>
+        <item>@string/card_style_stroke</item>
+    </string-array>
+
+    <string-array name="appearance_card_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+
     <string-array name="ssh_auth_type">
         <item>@string/ssh_auth_type_none</item>
         <item>@string/password</item>

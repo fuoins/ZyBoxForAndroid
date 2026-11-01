@@ -323,9 +323,14 @@
     <style name="Widget.ZyBox.PopupMenu" parent="Widget.AppCompat.PopupMenu">
         <item name="android:popupBackground">@drawable/glass_popup</item>
         <item name="android:popupElevation">0dp</item>
-        <!-- 贴边会让人分不清菜单和触发它的按钮，留 4dp 缝隙更像浮起来的玻璃片 -->
-        <item name="android:overlapAnchor">false</item>
-        <item name="android:dropDownVerticalOffset">4dp</item>
+        <!--
+            菜单顶边要和触发它的那条玻璃栏齐平：overlapAnchor 让浮层从
+            anchor 顶部展开，再上移 4dp 抵掉按钮在 Toolbar 内的居中留白。
+            旧版本是 overlapAnchor=false + 下移 4dp，菜单顶被压到按钮下沿，
+            看起来"矮了一截"。
+        -->
+        <item name="android:overlapAnchor">true</item>
+        <item name="android:dropDownVerticalOffset">-4dp</item>
     </style>
 
     <style name="Widget.ZyBox.ListPopupWindow" parent="Widget.AppCompat.ListPopupWindow">
@@ -337,8 +342,8 @@
     <style name="Widget.ZyBox.PopupMenu.Overflow" parent="Widget.AppCompat.PopupMenu.Overflow">
         <item name="android:popupBackground">@drawable/glass_popup</item>
         <item name="android:popupElevation">0dp</item>
-        <item name="android:overlapAnchor">false</item>
-        <item name="android:dropDownVerticalOffset">4dp</item>
+        <item name="android:overlapAnchor">true</item>
+        <item name="android:dropDownVerticalOffset">-4dp</item>
     </style>
 
     <!-- ===== 文本 ===== -->

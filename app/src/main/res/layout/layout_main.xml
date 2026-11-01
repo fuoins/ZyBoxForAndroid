@@ -24,6 +24,26 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <!--
+            自定义背景图：盖在光斑层之上。
+            日间/夜间各存一张，由 MainActivity.applyAppearanceBackground() 决定显示哪张。
+        -->
+        <ImageView
+            android:id="@+id/appearance_background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <!-- 背景暗化层：保证前景玻璃与文字在亮图上也读得清 -->
+        <View
+            android:id="@+id/appearance_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#000000"
+            android:visibility="gone" />
+
         <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:id="@+id/fragment_holder"
             android:layout_width="match_parent"

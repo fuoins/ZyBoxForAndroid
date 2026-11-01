@@ -36,7 +36,6 @@ class LiquidGlassBackdrop @JvmOverloads constructor(
     private var running = false
     private var animate = true
 
-    private val baseColor = ContextCompat.getColor(context, R.color.glass_bg)
     private val glowColors = intArrayOf(
         ContextCompat.getColor(context, R.color.glass_glow_a),
         ContextCompat.getColor(context, R.color.glass_glow_b),
@@ -117,8 +116,12 @@ class LiquidGlassBackdrop @JvmOverloads constructor(
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
-        canvas.drawColor(baseColor)
-
+        /*
+         * 这里刻意不 canvas.drawColor(baseColor)：
+         * 底色交给窗口背景（glass_window_background）铺满整块屏幕，
+         * 本层只叠加光斑。自己再铺一层不透明色，会让内容区被画成
+         * 一块独立的矩形板 —— 在状态栏/导航栏旁边就能看到它的边界。
+         */
         val t = phase * 2f * Math.PI.toFloat()
         val breath = 1f + 0.06f * sin(t)
         val driftX = w * 0.06f * sin(t * 0.75f)
