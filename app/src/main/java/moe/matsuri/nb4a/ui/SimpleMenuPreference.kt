@@ -52,15 +52,20 @@ open class SimpleMenuPreference
         mSpinner.layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
 
         /*
-         * 下拉浮层默认取 ?attr/colorPopupBackground（Material 的 colorSurface），
-         * 在浅色下就是一块不透明白色矩形 —— 用户看到的「按钮位置突然冒出个
-         * 白方块」就是它。换成玻璃底，才和整套材质连得上。
+         * 两处白底，一处都不能留：
+         *
+         * 1. Spinner 控件本身 —— 某些 Material 版本的 spinnerStyle 会挂一块
+         *    实色 background，在玻璃行里就是贴在右边的白方块。直接置空。
+         * 2. 下拉浮层 —— 默认取 ?attr/colorPopupBackground（colorSurface），
+         *    浅色下是一块 97% 白的板子。换成 glass_popup_menu（60% 薄玻璃），
+         *    配合背景高斯模糊才是同一套材质。
          *
          * 注意 Spinner 的 setter 叫 setPopupBackgroundDrawable（getter 是
          * getPopupBackground），名字不一致，Kotlin 合成属性用不了，必须显式调用。
          */
+        mSpinner.background = null
         mSpinner.setPopupBackgroundDrawable(
-            ContextCompat.getDrawable(mSpinner.context, R.drawable.glass_popup)
+            ContextCompat.getDrawable(mSpinner.context, R.drawable.glass_popup_menu)
         )
 
         /*

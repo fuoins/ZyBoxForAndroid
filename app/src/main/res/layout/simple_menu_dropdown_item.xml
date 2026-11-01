@@ -13,13 +13,24 @@
      limitations under the License.
 -->
 
+<!--
+    Liquid Glass · Spinner 下拉项
+
+    原来这里挂着 style="?android:attr/spinnerDropDownItemStyle"，
+    那个 style 在部分 Material 版本里自带一块实色 background，
+    叠在玻璃浮层上就是一条条白带。这里改成显式属性，背景强制透明，
+    材质由外层的 glass_popup_menu 统一提供。
+-->
 <CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
-    style="?android:attr/spinnerDropDownItemStyle"
     android:layout_width="match_parent"
     android:layout_height="48dp"
+    android:background="@android:color/transparent"
+    android:checkMark="?android:attr/listChoiceIndicatorSingle"
     android:ellipsize="marquee"
     android:gravity="center"
     android:minWidth="112dp"
     android:paddingEnd="16dp"
     android:paddingStart="16dp"
-    android:singleLine="true" />
+    android:singleLine="true"
+    android:textColor="@color/glass_text_primary"
+    android:textSize="15sp" />

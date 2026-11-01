@@ -3,17 +3,15 @@ package io.nekohasekai.sagernet.ui
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.MotionEvent
+import android.view.View
 import android.widget.TextView
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
-import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.snackbar.Snackbar
-import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.utils.GlassBlur
 import io.nekohasekai.sagernet.utils.GlassUi
 import io.nekohasekai.sagernet.utils.Theme
@@ -40,49 +38,18 @@ abstract class ThemedActivity : AppCompatActivity {
         GlassUi.applySystemBars(this)
 
         /*
-         * 图片背景/光斑背景必须铺到系统栏后面，否则内容区就是一块被状态栏
-         * 和导航栏框起来的矩形 —— 看起来像「主页上有个长方形」。
+         * 系统栏内边距交给 AppCompat 的 subDecor（`FitWindowsLinearLayout`
+         * 自带 fitsSystemWindows）统一处理 —— 它会给内容区补上状态栏/导航栏
+         * 高度的 padding，列表和顶栏都不会被系统栏压住。
          *
-         * Android 15 起系统会对 targetSdk 35 强制 edge-to-edge；
-         * 更早的版本保持原先的 fitSystemWindows 行为，避免列表被手势条盖住。
+         * 这里绝对不能再补一次：上一版在 SDK 35+ 手动给 appbar 加 top padding，
+         * 结果顶栏被推下两倍状态栏高度，上方空出一条背景色，看起来就像
+         * 「主页上有个长方形」的一部分。
+         *
+         * 背景（光斑 + 背景图）走窗口背景，由 DecorView 铺满整窗，
+         * 不受内容区 padding 影响 —— 详见 MainActivity.setupWindowBackground()。
          */
         uiMode = resources.configuration.uiMode
-
-        if (Build.VERSION.SDK_INT >= 35) {
-            ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { _, insets ->
-                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                val top = bars.top
-                findViewById<AppBarLayout>(R.id.appbar)?.apply {
-                    updatePadding(top = top)
-                }
-                // Liquid Glass：底部状态坞要浮在手势条之上，不能被系统导航区压住
-                findViewById<android.view.View>(R.id.stats)?.let { stats ->
-                    val lp = stats.layoutParams as? android.view.ViewGroup.MarginLayoutParams
-                    if (lp != null) {
-                        val margin = bars.bottom + (10 * resources.displayMetrics.density).toInt()
-                        if (lp.bottomMargin != margin) {
-                            lp.bottomMargin = margin
-                            stats.layoutParams = lp
-                        }
-                    }
-                }
-                // 抽屉同样要避开状态栏/导航栏，否则玻璃面板会被系统栏切掉一截
-                findViewById<android.view.View>(R.id.nav_view)?.let { nav ->
-                    val lp = nav.layoutParams as? android.view.ViewGroup.MarginLayoutParams
-                    if (lp != null) {
-                        val base = (10 * resources.displayMetrics.density).toInt()
-                        val topMargin = bars.top + base
-                        val bottomMargin = bars.bottom + base
-                        if (lp.topMargin != topMargin || lp.bottomMargin != bottomMargin) {
-                            lp.topMargin = topMargin
-                            lp.bottomMargin = bottomMargin
-                            nav.layoutParams = lp
-                        }
-                    }
-                }
-                insets
-            }
-        }
     }
 
     override fun setTheme(resId: Int) {
@@ -103,20 +70,30 @@ abstract class ThemedActivity : AppCompatActivity {
      * 自己的 PopupWindow，没有统一的创建入口，逐个替换必然漏。
      * 焦点是系统替我们统一发出的唯一信号。
      *
-     * 例外：下拉通知栏、多任务卡片也会让 Activity 失焦，此时背景会短暂
-     * 虚化一下，属可接受的副作用（本就离开了页面）。
-     * 抽屉（DrawerLayout）不是独立窗口、不失焦，单独在 MainActivity 处理。
+     * 但「失焦」也发生在：切后台、进最近任务、别的 App 开小窗压上来、
+     * 下拉通知栏。这些场景本页要么已经不可见，要么只是被别人盖住，
+     * 再把本页糊掉就是 bug。所以：
+     *   1. 延迟 [POPUP_BLUR_DELAY] 再判断 —— 真正切后台时 onPause 早已执行；
+     *   2. 判断时要求 Activity 仍 RESUMED、不在多窗口、窗口仍可见；
+     *   3. onPause / onStop 无条件清空**所有**模糊（含 Spinner 轮询持有的那层）。
+     *
+     * 抽屉（DrawerLayout）不是独立窗口、不失焦，也不做模糊（见 MainActivity）。
      */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
 
         if (isDialog || !GlassBlur.isSupported) return
 
+        val decor = window?.decorView ?: return
         if (hasFocus) {
-            releasePopupBlur()
+            // 弹窗关闭、回到本页：把任何残留（包括轮询路径）一次清干净，
+            // 避免「关掉弹窗后背景还是糊的」。
+            popupBlurHeld = false
+            GlassBlur.clear(decor)
         } else {
-            // 焦点变化会先于弹窗真正 attach，等一帧再判断，避免误糊
-            window?.decorView?.postDelayed({
+            // 焦点变化会先于弹窗真正 attach，也会先于 onPause；
+            // 等一小段再判断，避免把「正在切后台」误判成「有弹窗」。
+            decor.postDelayed({
                 if (shouldBlurForPopup()) acquirePopupBlur()
             }, POPUP_BLUR_DELAY)
         }
@@ -128,6 +105,7 @@ abstract class ThemedActivity : AppCompatActivity {
      *
      * - 切到后台 / 最近任务：Activity 已经不在 RESUMED，onPause 里会撤模糊
      * - 小窗、分屏（多窗口模式）：本页还在屏幕上，只是没拿到焦点
+     * - 别的 App 的小窗压在本页上：本页窗口仍然 VISIBLE，但没有弹窗
      *
      * 排除掉之后，剩下的失焦基本就是 PopupMenu / Dialog / BottomSheet
      * 这类真正盖在本页上的浮层。
@@ -136,17 +114,44 @@ abstract class ThemedActivity : AppCompatActivity {
         if (hasWindowFocus() || isFinishing || isDestroyed) return false
         if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return false
+        // 窗口已经不可见（被切走/被系统收起）就不要再糊了
+        val decor = window?.decorView ?: return false
+        if (decor.windowVisibility != View.VISIBLE) return false
+        /*
+         * 最后一道闸：本页最近必须真的被点过。
+         *
+         * 「别的 App 开小窗压在本页上」这个场景很讨厌 —— 本页仍是全屏、
+         * 仍是 RESUMED、也不在多窗口里，上面三个判断全都拦不住，但它
+         * 根本没有弹窗，只是被别人的浮窗盖住了。
+         *
+         * 唯一的区别是：弹窗一定是用户刚点了本页某个控件才弹出来的，
+         * 而小窗/切后台时用户在点别的 App，本页收不到任何触摸。
+         */
+        if (SystemClock.uptimeMillis() - lastTouchAt > POPUP_TOUCH_WINDOW) return false
         return true
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP -> {
+                lastTouchAt = SystemClock.uptimeMillis()
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onPause() {
-        releasePopupBlur()
+        clearPopupBlur()
         super.onPause()
     }
 
+    override fun onStop() {
+        clearPopupBlur()
+        super.onStop()
+    }
+
     override fun onDestroy() {
-        releasePopupBlur()
-        GlassBlur.clear(window?.decorView)
+        clearPopupBlur()
         super.onDestroy()
     }
 
@@ -156,13 +161,21 @@ abstract class ThemedActivity : AppCompatActivity {
         GlassBlur.acquire(window?.decorView)
     }
 
-    private fun releasePopupBlur() {
-        if (!popupBlurHeld) return
+    /**
+     * 无条件清空：不按引用计数逐层 release。
+     * Spinner 下拉那条 [GlassBlur.watchWhile] 路径持有的是同一块 DecorView，
+     * 只 release 自己那层的话，它那层会一直挂着 —— 用户切到后台/小窗回来
+     * 就发现「整个 App 还是糊的」。
+     */
+    private fun clearPopupBlur() {
         popupBlurHeld = false
-        GlassBlur.release(window?.decorView)
+        GlassBlur.clear(window?.decorView)
     }
 
     private var popupBlurHeld = false
+
+    /** 本页最后一次收到触摸的时间（uptimeMillis），用来区分「弹窗」和「别人盖上来」。 */
+    private var lastTouchAt = 0L
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -183,8 +196,18 @@ abstract class ThemedActivity : AppCompatActivity {
     internal open fun snackbarInternal(text: CharSequence): Snackbar = throw NotImplementedError()
 
     private companion object {
-        /** 弹窗弹出动画约 200ms，48ms 后宿主还没拿到焦点就认定「被浮层盖住了」。 */
-        const val POPUP_BLUR_DELAY = 48L
-    }
+        /**
+         * 弹窗弹出动画约 200ms。48ms 太激进 —— 切后台、进最近任务时
+         * onWindowFocusChanged(false) 会先到，onPause 往往 100ms 后才执行，
+         * 在那个时间窗里判断就会把「离开页面」误认成「有弹窗」，整页糊一下。
+         */
+        const val POPUP_BLUR_DELAY = 180L
 
+        /**
+         * 失焦后多久之内还认为「这个浮层是本页弹出来的」。
+         * 长按菜单、二次确认弹窗都在这个范围内；而别人家的小窗、
+         * 切后台操作时本页早已收不到触摸，自然就被排除了。
+         */
+        const val POPUP_TOUCH_WINDOW = 2500L
+    }
 }

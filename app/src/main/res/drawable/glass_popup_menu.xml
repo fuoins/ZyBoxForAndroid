@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass · Spinner 下拉（分组类型 / 排序 / 布局 / 卡片样式）
+
+    和三点菜单的 glass_popup 是两种东西：
+    - 三点菜单浮在页面空白处，用 97% 实底保证文字绝对清晰；
+    - Spinner 下拉永远贴着触发它的那一行展开，实底会变成一块「白色长方形」，
+      看起来像按钮被盖住了。
+
+    所以这里只给 60% 的白（夜间 60% 的深墨），剩下 40% 交给背景高斯模糊去填。
+    没有模糊的低版本上仍能看清字，只是通透度差一点。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/glass_popup_menu_solid" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+
+    <!-- 顶部镜面高光：让浮层有一道「玻璃边缘」的光 -->
+    <item
+        android:gravity="top"
+        android:left="16dp"
+        android:right="16dp">
+        <shape android:shape="rectangle">
+            <size android:height="1dp" />
+            <gradient
+                android:angle="0"
+                android:centerColor="@color/glass_highlight"
+                android:endColor="@android:color/transparent"
+                android:startColor="@android:color/transparent" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/glass_stroke" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+
+</layer-list>

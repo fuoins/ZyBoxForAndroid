@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Liquid Glass · 主界面
-    底层是缓慢流动的光源，所有控件都是浮在光上的玻璃。
+    底层光斑与背景图不在这里 —— 它们画进 Window 背景
+    （LiquidGlassWindowBackground），才能铺满整个窗口（含状态栏/导航栏区域）。
+    任何铺在内容区里的 View 都只能覆盖状态栏下沿到导航栏上沿那一块矩形，
+    和窗口背景之间会出现一圈亮度断层，看起来就是「主页上有个长方形」。
 -->
 <androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -17,32 +20,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipChildren="false">
-
-        <!-- 流体光源层：整个界面的「液态」来源 -->
-        <io.nekohasekai.sagernet.widget.LiquidGlassBackdrop
-            android:id="@+id/glass_backdrop"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-        <!--
-            自定义背景图：盖在光斑层之上。
-            日间/夜间各存一张，由 MainActivity.applyAppearanceBackground() 决定显示哪张。
-        -->
-        <ImageView
-            android:id="@+id/appearance_background"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:contentDescription="@null"
-            android:scaleType="centerCrop"
-            android:visibility="gone" />
-
-        <!-- 背景暗化层：保证前景玻璃与文字在亮图上也读得清 -->
-        <View
-            android:id="@+id/appearance_scrim"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#000000"
-            android:visibility="gone" />
 
         <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:id="@+id/fragment_holder"

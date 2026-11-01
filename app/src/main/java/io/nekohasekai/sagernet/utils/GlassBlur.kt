@@ -63,10 +63,16 @@ object GlassBlur {
         }
     }
 
-    /** 无条件清除（页面销毁、切后台时调用，避免残留）。 */
+    /**
+     * 无条件清除（页面销毁、切后台时调用，避免残留）。
+     *
+     * 同时摘掉 [watchWhile] 的轮询登记 —— 否则轮询下一轮看到浮层还在，
+     * 又会把刚清掉的模糊重新加回去，表现为「切后台回来整页还是糊的」。
+     */
     fun clear(view: View?) {
         val target = view ?: return
         holders.remove(target)
+        watchers.remove(target)
         clearEffect(target)
     }
 
@@ -113,6 +119,27 @@ object GlassBlur {
             private var waited = 0L
 
             override fun run() {
+                /*
+                 * 三条退出路径，缺一不可：
+                 * 1. 宿主被 clear() 摘掉登记 —— 用户切了后台/小窗，别再抢回来；
+                 * 2. 宿主窗口已经不可见 —— 浮层即使还"开着"也看不见了；
+                 * 3. 浮层自己收起 —— 正常路径。
+                 */
+                if (watchers[target] != true) {
+                    if (held) {
+                        held = false
+                        release(target)
+                    }
+                    return
+                }
+                if (!target.isAttachedToWindow || target.windowVisibility != View.VISIBLE) {
+                    if (held) {
+                        held = false
+                        release(target)
+                    }
+                    watchers.remove(target)
+                    return
+                }
                 val showing = try {
                     isShowing()
                 } catch (_: Throwable) {
@@ -128,6 +155,7 @@ object GlassBlur {
                 }
                 // 收起（或从未弹出）：先还掉模糊，再决定要不要继续等
                 if (held) {
+                    held = false
                     release(target)
                     watchers.remove(target)
                     return

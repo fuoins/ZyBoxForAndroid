@@ -6,7 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.SwitchPreferenceCompat
+import androidx.preference.TwoStatePreference
 import com.google.android.material.snackbar.Snackbar
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
@@ -75,7 +75,11 @@ class AppearancePreferenceFragment : PreferenceFragmentCompat() {
 
         // 开关/滑杆不在这里实时重绘背景（拖动时会反复解码大图），
         // 回主页时 MainActivity.onResume 统一应用。
-        findPreference<SwitchPreferenceCompat>(Key.APPEARANCE_BG_ENABLED)?.apply {
+        //
+        // 注意：XML 里写的是 androidx.preference.SwitchPreference，
+        // 强转成 SwitchPreferenceCompat 会 ClassCastException（上一版崩在这里），
+        // 用两者的共同父类 TwoStatePreference 才安全。
+        findPreference<TwoStatePreference>(Key.APPEARANCE_BG_ENABLED)?.apply {
             isChecked = DataStore.appearanceBgEnabled
             setOnPreferenceChangeListener { _, newValue ->
                 DataStore.appearanceBgEnabled = newValue as Boolean
@@ -93,7 +97,7 @@ class AppearancePreferenceFragment : PreferenceFragmentCompat() {
     private fun refresh() {
         findPreference<Preference>("appearance_bg_day")?.summary = backgroundSummary(false)
         findPreference<Preference>("appearance_bg_night")?.summary = backgroundSummary(true)
-        findPreference<SwitchPreferenceCompat>(Key.APPEARANCE_BG_ENABLED)?.isChecked =
+        findPreference<TwoStatePreference>(Key.APPEARANCE_BG_ENABLED)?.isChecked =
             DataStore.appearanceBgEnabled
     }
 

@@ -23,6 +23,11 @@
     <color name="glass_surface_sunken">#5CDFE6F0</color>
     <!-- 弹出菜单专用：必须挡住底下的正文，否则菜单字叠在列表字上完全看不清 -->
     <color name="glass_popup_solid">#F7FBFDFF</color>
+    <!--
+        Spinner 下拉专用：贴着触发它的那一行展开，97% 实底会变成一块白板。
+        60% 的不透明度 + 背景模糊，才是「浮在糊掉的页面上的一片薄玻璃」。
+    -->
+    <color name="glass_popup_menu_solid">#99FFFFFF</color>
 
     <!--
         大块承重面板（抽屉 / 底部状态坞 / 对话框）。

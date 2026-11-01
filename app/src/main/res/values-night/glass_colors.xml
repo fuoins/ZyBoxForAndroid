@@ -20,6 +20,8 @@
     <color name="glass_surface_sunken">#1A0A0E16</color>
     <!-- 夜间同样要给足不透明度，玻璃感交给背景模糊 -->
     <color name="glass_popup_solid">#F70A0F17</color>
+    <!-- Spinner 下拉：见 values/glass_colors.xml 同名注释 -->
+    <color name="glass_popup_menu_solid">#990A0F17</color>
 
     <!--
         夜间的大块承重面板：不是「白色的低透明度」，而是**深色实底**。

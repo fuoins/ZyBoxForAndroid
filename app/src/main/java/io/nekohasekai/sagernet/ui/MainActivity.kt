@@ -57,7 +57,7 @@ import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.parseProxies
 import io.nekohasekai.sagernet.ktx.readableMessage
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
-import io.nekohasekai.sagernet.utils.GlassBlur
+import io.nekohasekai.sagernet.widget.LiquidGlassWindowBackground
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -76,6 +76,7 @@ class MainActivity : ThemedActivity(),
         super.onCreate(savedInstanceState)
 
         binding = LayoutMainBinding.inflate(layoutInflater)
+        setupWindowBackground()
         binding.fab.initProgress(binding.fabProgress)
         // Liquid Glass：只保留一套玻璃抽屉（旧的「纯黑主题专用抽屉」已移除）
         navigation = binding.navView
@@ -539,25 +540,52 @@ class MainActivity : ThemedActivity(),
     }
 
     /**
+     * Liquid Glass · 窗口背景。
+     *
+     * 底色、四盏流体光、自定义背景图全部画在这张 [LiquidGlassWindowBackground]
+     * 上，再挂到 `Window.setBackgroundDrawable()`。
+     *
+     * 关键点：窗口背景由 DecorView 绘制，**天然铺满整个窗口**（含状态栏、
+     * 导航栏、刘海区域）。而 AppCompat 的 subDecor 会给内容区加一层系统栏
+     * 高度的 padding，任何铺在内容区里的 View 都只能覆盖中间那块矩形 ——
+     * 两者亮度对不上，屏幕上就会出现「从顶栏上方到底栏底部的一个长方形」。
+     * 把光斑搬进窗口背景，这条接缝就彻底没有了。
+     */
+    private fun setupWindowBackground() {
+        val background = LiquidGlassWindowBackground(
+            ContextCompat.getColor(this, R.color.glass_bg),
+            intArrayOf(
+                ContextCompat.getColor(this, R.color.glass_glow_a),
+                ContextCompat.getColor(this, R.color.glass_glow_b),
+                ContextCompat.getColor(this, R.color.glass_glow_c),
+                ContextCompat.getColor(this, R.color.glass_glow_d)
+            )
+        )
+        glassBackground = background
+        window.setBackgroundDrawable(background)
+    }
+
+    /**
      * Liquid Glass · 自定义背景图。
      *
      * 日间与夜间各存一张（[io.nekohasekai.sagernet.utils.AppearanceBackground]），
-     * 按当前 uiMode 取对应那张。图片盖在动态光斑层之上，再压一层可调暗化，
+     * 按当前 uiMode 取对应那张，画在光斑之上，再压一层可调暗化，
      * 保证前景玻璃和文字在任何图上都读得清。
+     *
+     * 图片同样在窗口背景里绘制，所以它也铺满整屏，不会只盖住内容区。
      */
     fun applyAppearanceBackground() {
-        val image = binding.appearanceBackground
-        val scrim = binding.appearanceScrim
+        val background = glassBackground
         val file = io.nekohasekai.sagernet.utils.AppearanceBackground.file(
             io.nekohasekai.sagernet.utils.GlassUi.isNight(this)
         )
 
         if (!DataStore.appearanceBgEnabled || !file.isFile) {
             appliedBackgroundKey = null
-            image.visibility = View.GONE
-            image.setImageDrawable(null)
-            scrim.visibility = View.GONE
-            binding.glassBackdrop.setAnimated(true)
+            dropBackgroundBitmap()
+            background.setPhoto(null, 0)
+            // 没有照片就不糊：光斑本身是柔和的径向渐变，糊了只会变灰
+            applyWindowBackgroundBlur(0)
             return
         }
 
@@ -568,9 +596,9 @@ class MainActivity : ThemedActivity(),
             append(':').append(DataStore.appearanceBgDim)
             append(':').append(DataStore.appearanceBgBlur)
         }
-        if (key == appliedBackgroundKey && image.visibility == View.VISIBLE) {
-            scrim.alpha = (DataStore.appearanceBgDim.coerceIn(0, 80)) / 100f
-            applyBackgroundBlur(image)
+        if (key == appliedBackgroundKey && backgroundBitmap != null) {
+            background.setPhoto(backgroundBitmap, DataStore.appearanceBgDim)
+            applyWindowBackgroundBlur(DataStore.appearanceBgBlur)
             return
         }
 
@@ -588,29 +616,33 @@ class MainActivity : ThemedActivity(),
                 }
                 if (bitmap == null) {
                     appliedBackgroundKey = null
-                    image.visibility = View.GONE
-                    scrim.visibility = View.GONE
-                    binding.glassBackdrop.setAnimated(true)
+                    dropBackgroundBitmap()
+                    background.setPhoto(null, 0)
+                    applyWindowBackgroundBlur(0)
                     return@withContext
                 }
                 appliedBackgroundKey = key
-                image.setImageBitmap(bitmap)
-                image.visibility = View.VISIBLE
-                applyBackgroundBlur(image)
-                scrim.alpha = (DataStore.appearanceBgDim.coerceIn(0, 80)) / 100f
-                scrim.visibility = View.VISIBLE
-                // 图已经盖满，光斑动画没有意义，停掉省电
-                binding.glassBackdrop.setAnimated(false)
+                dropBackgroundBitmap()
+                backgroundBitmap = bitmap
+                background.setPhoto(bitmap, DataStore.appearanceBgDim)
+                applyWindowBackgroundBlur(DataStore.appearanceBgBlur)
             }
         }
     }
 
-    private fun applyBackgroundBlur(image: android.widget.ImageView) {
+    /**
+     * 背景模糊直接作用在窗口背景这张 Drawable 上（API 31+ 的
+     * [android.graphics.drawable.Drawable.setRenderEffect]）。
+     *
+     * 光斑本来就是柔和渐变，一起糊掉几乎看不出差别；背景图则正好被糊成
+     * 毛玻璃。不能再用 View.setRenderEffect —— 那一层已经不存在了。
+     */
+    private fun applyWindowBackgroundBlur(radiusDp: Int) {
+        val background = glassBackground
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         try {
-            val radius = DataStore.appearanceBgBlur.coerceIn(0, 40) *
-                    resources.displayMetrics.density
-            image.setRenderEffect(
+            val radius = radiusDp.coerceIn(0, 40) * resources.displayMetrics.density
+            background.setRenderEffect(
                 if (radius <= 0f) null
                 else android.graphics.RenderEffect.createBlurEffect(
                     radius, radius, android.graphics.Shader.TileMode.CLAMP
@@ -620,6 +652,14 @@ class MainActivity : ThemedActivity(),
         }
     }
 
+    private fun dropBackgroundBitmap() {
+        val old = backgroundBitmap ?: return
+        backgroundBitmap = null
+        if (!old.isRecycled) old.recycle()
+    }
+
+    private lateinit var glassBackground: LiquidGlassWindowBackground
+    private var backgroundBitmap: android.graphics.Bitmap? = null
     private var backgroundGeneration = 0
     private var appliedBackgroundKey: String? = null
 
@@ -1026,47 +1066,23 @@ class MainActivity : ThemedActivity(),
     }
 
     /**
-     * Liquid Glass · 抽屉背景模糊。
+     * Liquid Glass · 抽屉。
      *
-     * 抽屉（NavigationView）不是独立窗口，它和内容区是 DrawerLayout 的兄弟节点，
-     * 所以不能糊整个 DecorView（会连抽屉一起糊）。这里只糊内容区那一层
-     * CoordinatorLayout —— 抽屉自己保持锐利，滑出来的过程就是
-     * 「一块玻璃压在糊掉的桌面上」。
+     * 抽屉滑出时**不做背景模糊**：DrawerLayout 的抽屉和内容区是兄弟节点，
+     * 想只糊内容区就得单独作用在 CoordinatorLayout 上，结果是一边模糊一边
+     * 锐利，滑动过程中还会因为反复 acquire/release 出现明暗跳动 ——
+     * 关闭时那一瞬间的"回清晰"更会被误认为卡顿。
      *
-     * 同时把 scrim 调轻：默认 60% 的黑会把模糊压得看不见，玻璃就没质感了。
+     * 这里只保留一层很轻的 scrim，靠抽屉自身的玻璃材质把层次做出来。
      */
     private fun setupDrawerGlass() {
         val drawer = binding.drawerLayout
         drawer.setScrimColor(ContextCompat.getColor(this, R.color.glass_scrim))
-        drawer.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
-            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-                // 阈值留 3%：抽屉快合上时立刻恢复清晰，不要等到动画彻底结束
-                setDrawerBlur(slideOffset > 0.03f)
-            }
-
-            override fun onDrawerClosed(drawerView: View) {
-                setDrawerBlur(false)
-            }
-        })
     }
-
-    private fun setDrawerBlur(enable: Boolean) {
-        if (drawerBlurred == enable) return
-        drawerBlurred = enable
-        if (enable) GlassBlur.acquire(binding.coordinator) else GlassBlur.release(binding.coordinator)
-    }
-
-    private var drawerBlurred = false
 
 
     @SuppressLint("CommitTransaction")
     fun displayFragment(fragment: ToolbarFragment) {
-        /*
-         * 先撤掉抽屉模糊，再关抽屉。
-         * 旧版只在 onDrawerClosed 里撤，抽屉还有 250ms 关闭动画，
-         * 期间新页面已经切好却仍然是糊的 —— 用户会以为「切页很慢」。
-         */
-        setDrawerBlur(false)
         if (fragment is ConfigurationFragment) {
             binding.stats.allowShow = true
             binding.fab.show()
