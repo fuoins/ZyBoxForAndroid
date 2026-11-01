@@ -1,0 +1,772 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">ZyBox</string>
+    <string name="app_name_long" translatable="false">ZyBox for Android</string>
+    <string name="app_desc">The universal proxy toolchain for Android, written in Kotlin.</string>
+    <string name="project">Project</string>
+    <string name="github">Source code</string>
+    <string name="telegram">Telegram update channel</string>
+    <string name="oss_licenses">Open source licenses</string>
+    <string name="app_version">Version</string>
+    <string name="version_x">Version (%s)</string>
+    <string name="logcat">Export debug information</string>
+    <string name="menu_configuration">Configuration</string>
+    <string name="menu_group">Group</string>
+    <string name="menu_about">About</string>
+<string name="layout">Layout</string>
+    <string name="layout_single_column">Single column</string>
+    <string name="layout_double_column">Double column</string>
+    <string name="sort_and_layout">Sort and Appearance</string>
+    <string name="card_style">Card</string>
+    <string name="card_style_classic">Classic</string>
+    <string name="card_style_stroke">Stroke</string>
+    <string name="global_mode">Global Mode</string>
+    <string name="global_mode_summary">Bypass all routing rules and proxy all traffic through current node</string>
+    <string name="vpn_hotspot">VPN Hotspot</string>
+    <string name="zybox_optimization">ZyBox Optimizations</string>
+    <string name="zybox_opt_title">ZyBox Optimizations</string>
+    <string name="zybox_opt_desc">All improvements built into this build, based on the official NekoBox.</string>
+    <string name="zybox_opt_auto_update">Auto Update</string>
+    <string name="zybox_opt_auto_update_sum">Subscription update; each subscription in a group updates independently, only replacing its own nodes.</string>
+    <string name="zybox_opt_dedupe_strict">Deduplicate (Strict)</string>
+    <string name="zybox_opt_dedupe_strict_sum">Nodes are considered duplicates only when every setting except the name is identical. TLS / SNI / path differences are all preserved.</string>
+    <string name="zybox_opt_multi_sub">Multi-Subscription Groups</string>
+    <string name="zybox_opt_multi_sub_sum">One group can hold multiple subscriptions; all nodes are merged and shown together.</string>
+    <string name="zybox_opt_group_test">Group Speed Test</string>
+    <string name="zybox_opt_group_test_sum">Speed test all nodes in the current group with one tap.</string>
+    <string name="zybox_opt_auto_test">Auto Speed Test on Connect</string>
+    <string name="zybox_opt_auto_test_sum">Latency is measured automatically right after connecting, shown as "Latency xx ms".</string>
+    <string name="zybox_opt_bulk_import">Large File Batch Import</string>
+    <string name="zybox_opt_bulk_import_sum">Tens of thousands of nodes can be imported in one transaction without hanging.</string>
+    <string name="zybox_opt_export_ping">Export with Ping</string>
+    <string name="zybox_opt_export_ping_sum">Export nodes together with their speed-test results (|ping=marker); import on another ZyBox and the latency is restored immediately.</string>
+    <string name="zybox_opt_manage_sub">Subscription Management</string>
+    <string name="zybox_opt_manage_sub_sum">Each subscription in a group can be updated or removed individually; nodes can be deleted one by one.</string>
+    <string name="zybox_opt_ping_persist">Persistent Speed-Test Results</string>
+    <string name="zybox_opt_ping_persist_sum">Speed-test latency is written to the database and survives restarts / node switches; delay sorting never rolls back.</string>
+    <string name="zybox_opt_toolbar">Enhanced Toolbar</string>
+    <string name="zybox_opt_toolbar_sum">Back-to-top and Refresh buttons on the toolbar; refresh re-reads the list and re-sorts by the current order (delay sort updates instantly).</string>
+    <string name="zybox_opt_default_group">Default Group YuShenShenLe</string>
+    <string name="zybox_opt_default_group_sum">Nodes imported from file / clipboard go to the default group "宇神神了".</string>
+    <string name="zybox_opt_ui_redesign">UI Redesign</string>
+    <string name="zybox_opt_ui_redesign_sum">"Tide" design: new palette (light background + white cards + large corners), rebuilt node/group card layouts, latency capsules and protocol badges, capsule tabs, immersive details (hidden scrollbars / no dividers), light &amp; dark themes.</string>
+    <string name="zybox_opt_stroke_selected">Selected Card Outline</string>
+    <string name="zybox_opt_stroke_selected_sum">The tapped/connected node card gets a full outline (theme color), so the current selection is always visible.</string>
+    <string name="zybox_opt_import_group_setting">Import Group Settings</string>
+    <string name="zybox_opt_import_group_setting_sum">Editing an imported group (宇神神了) no longer crashes: group type is locked to "Import", subscription/update settings hidden, rename only.</string>
+    <string name="zybox_opt_scroll_top">Instant Scroll-to-top</string>
+    <string name="zybox_opt_scroll_top_sum">Scroll-to-top jumps instantly with no animation; node names wrap automatically in small text; ZyBox title shown top-left.</string>
+    <string name="zybox_opt_theme_default">Default Pink Theme</string>
+    <string name="zybox_opt_theme_default_sum">Fresh installs default to the pink theme; 20+ color schemes switchable in Settings.</string>
+    <string name="zybox_opt_sort_layout">Sort &amp; Appearance</string>
+    <string name="zybox_opt_sort_layout_sum">Top-right ⋮ menu: sort (original/name/delay, new groups default to delay), layout (single/double column; actions collapse into ⋮ in double column), card (classic/stroke, stroke by default).</string>
+    <string name="zybox_opt_global_mode">Global Mode</string>
+    <string name="zybox_opt_global_mode_sum">Bypass all routing rules and proxy all traffic through the current node (off by default, LAN bypass optional).</string>
+    <string name="zybox_about">ZyBox About &amp; Update</string>
+    <string name="source_app_about">About Original App</string>
+    <string name="standard_with_ping">Standard + ping</string>
+    <string name="zybox_about_version">Version %1$s</string>
+    <string name="zybox_check_update">Check for updates</string>
+    <string name="zybox_checking_update">Checking for updates…</string>
+    <string name="zybox_update_available">New version %1$s available</string>
+    <string name="zybox_no_update">Already the latest version</string>
+    <string name="zybox_opt_donate">Tap here to donate</string>
+    <string name="zybox_opt_donate_sum">Donation button at the top of the drawer.</string>
+    <string name="zybox_opt_github">GitHub Source</string>
+    <string name="zybox_opt_github_sum">https://github.com/fuoins/ZyBoxForAndroid</string>
+    <string name="theme">Theme</string>
+    <string name="document">Document</string>
+    <string name="group_default">Ungrouped</string>
+    <string name="quick_toggle">Toggle</string>
+    <string name="quick_enable">Enable</string>
+    <string name="quick_disable">Disable</string>
+    <string name="tile_title">Switcher</string>
+    <string name="menu_traffic">Traffic</string>
+    <string name="menu_dashboard">sing-box Dashboard</string>
+    <!-- externel -->
+    <string name="action_copy">Copy</string>
+    <string name="action_open">Open</string>
+    <!-- group -->
+    <string name="group_name">Group name</string>
+    <string name="group_update">Update</string>
+    <string name="group_subscription_link">Subscription Link</string>
+    <string name="group_name_required">Group name required</string>
+    <string name="group_create">Create group</string>
+    <string name="group_create_subscription">Create subscription</string>
+    <string name="update_all_subscription">Update all subscriptions</string>
+    <string name="group_edit">Edit group</string>
+    <string name="group_edit_subscription">Edit subscription</string>
+    <string name="group_status_empty">Empty group</string>
+    <string name="group_status_empty_subscription">Not updated yet</string>
+    <string name="group_status_proxies">%d Proxies</string>
+    <string name="group_status_proxies_subscription">%d Proxies | Updated on %s</string>
+    <string name="group_no_difference">%s: No difference</string>
+    <string name="group_updated">%s: Updated %d proxies</string>
+    <string name="group_show_diff">Diff</string>
+    <string name="group_diff">Diff (%s)</string>
+    <string name="group_delete_confirm_prompt">Are you sure you want to remove this group?</string>
+    <string name="group_added">Added: \n%s</string>
+    <string name="group_changed">Updated: \n%s</string>
+    <string name="group_deleted">Deleted: \n%s</string>
+    <string name="group_duplicate">Duplicate: \n%s</string>
+    <!-- misc -->
+    <string name="service_mode">Service Mode</string>
+    <string name="service_mode_proxy">Proxy only</string>
+    <string name="service_mode_vpn" translatable="false">VPN</string>
+    <string name="port_proxy">Proxy Port</string>
+    <string name="port_http">HTTP Proxy Port</string>
+    <string name="port_transproxy">Transproxy Port</string>
+    <string name="cag_route">Route Settings</string>
+    <string name="allow_access">Allow Connections from the LAN</string>
+    <string name="allow_access_sum">Bind inbound servers to 0.0.0.0</string>
+    <string name="inbound_settings">Inbound Settings</string>
+    <string name="general_settings">App Settings</string>
+    <string name="require_http">Enable HTTP inbound</string>
+    <string name="cag_ws">WebSocket Settings</string>
+    <string name="ws_max_early_data" translatable="false">Max early data</string>
+    <string name="ws_browser_forwarding">Browser Forwarding</string>
+    <string name="ws_browser_forwarding_sum">Forward corresponding WebSockets through the browser.</string>
+    <string name="speed_interval">Speed Notification Update Interval</string>
+    <string name="cag_misc">Misc Settings</string>
+    <string name="show_stop">Show Stop Button</string>
+    <string name="show_stop_sum">If you don’t want to use Quick Tile as the switch</string>
+    <string name="show_direct_speed">Show Direct Speed</string>
+    <string name="show_direct_speed_sum">Show the traffic speed without proxy in the notification as
+        well</string>
+    <string name="security_settings">TLS Security Settings</string>
+    <string name="allow_insecure">Allow Insecure</string>
+    <string name="allow_insecure_sum">Disable certificate checking. When enabled, this configuration
+        is as secure as plaintext</string>
+    <string name="traffic" translatable="false">%1$s↑ %2$s↓</string>
+    <string name="speed_detail">Proxy： %1$s↑ %2$s↓\nDirect： %3$s↑ %4$s↓</string>
+    <string name="speed">%s/s</string>
+    <string name="connection_test_testing">Testing…</string>
+    <string name="connection_test_available">Latency %dms</string>
+    <string name="connection_test_available_http">Latency %dms</string>
+    <string name="connection_test_error">Failed: %s</string>
+    <string name="connection_test_fail">Internet Unavailable</string>
+    <string name="connection_test_error_status_code">Error code: #%d</string>
+    <string name="cag_dns">DNS Settings</string>
+    <string name="remote_dns">Remote DNS</string>
+    <string name="direct_dns">Direct DNS</string>
+    <string name="enable_dns_routing">Enable DNS Routing</string>
+    <string name="dns_routing_message">Resolve domains in bypass routes with Direct DNS. Be aware of
+        potential DNS leaks</string>
+    <string name="enable_fakedns">Enable FakeDNS</string>
+    <string name="fakedns_message">May cause other applications need to be restarted to reconnect to
+        the network after proxy stopped</string>
+    <string name="dns_hosts">Domain rewrite</string>
+    <string name="port_local_dns">Local DNS Port</string>
+    <string name="require_transproxy">Enable Transproxy Inbound</string>
+    <string name="transproxy_mode">Transproxy Mode</string>
+    <string name="connection_test_url">Connection Test URL</string>
+    <!-- proxy category -->
+    <string name="profile_name">Profile Name</string>
+    <string name="server_address">Server</string>
+    <string name="server_port">Remote Port</string>
+    <string name="username">Username</string>
+    <string name="username_opt">Username (Optional)</string>
+    <string name="password_opt">Password (Optional)</string>
+    <string name="key_opt">Key (Optional)</string>
+    <string name="password">Password</string>
+    <string name="enc_method">Encrypt Method</string>
+    <string name="protocol">Protocol</string>
+    <string name="protocol_param">Protocol Param</string>
+    <string name="obfs">Obfs</string>
+    <string name="obfs_param">Obfs Param</string>
+    <string name="uuid">User ID</string>
+    <string name="alter_id">Alter ID</string>
+    <string name="security">Transport layer encryption</string>
+    <string name="network">Network</string>
+    <string name="header_type">Header Type</string>
+    <string name="ws_host">WebSocket Host</string>
+    <string name="ws_path">WebSocket Path</string>
+    <string name="http_host">HTTP Host</string>
+    <string name="http_path">HTTP Path</string>
+    <string name="grpc_service_name">gRPC ServiceName</string>
+    <string name="tls">Use TLS</string>
+    <string name="sni">Server Name Indication</string>
+    <string name="alpn">Application-Layer Protocol Negotiation</string>
+    <string name="certificates">Certificates</string>
+    <string name="early_data_header_name">Early Data Header Name</string>
+    <string name="encryption">Encryption</string>
+    <string name="extra_headers">Extra Headers</string>
+    <string name="config_type">Config Type</string>
+    <string name="edit_config">Edit Config</string>
+    <!-- feature category -->
+    <string name="ipv6">IPv6 Route</string>
+    <string name="prefer">Prefer</string>
+    <string name="only">Only</string>
+    <string name="metered">Metered Hint</string>
+    <string name="metered_summary">Hint system to treat VPN as metered</string>
+    <string name="menu_route">Route</string>
+    <string name="route_add">Create Route</string>
+    <string name="delete_route_prompt">Are you sure you want to remove this route?</string>
+    <string name="route_name">Route Name</string>
+    <string name="route_proxy">Proxy</string>
+    <string name="route_bypass">Bypass</string>
+    <string name="route_block">Block</string>
+    <string name="route_profile">Select Profile…</string>
+    <string name="empty_route">Empty Route</string>
+    <string name="empty_route_notice">Set some rules before saving</string>
+    <string name="route_bypass_domain">Domain rule for %s</string>
+    <string name="route_play_store">Play store rule for %s</string>
+    <string name="route_bypass_ip">IP rule for %s</string>
+    <string name="route_reset">Reset</string>
+    <string name="route_manage_assets">Manage Route Assets</string>
+    <string name="route_assets">Assets</string>
+    <string name="route_rules_provider">Rule Assets Provider</string>
+    <string name="route_rules_official">Official</string>
+    <string name="route_asset_status">Local version: %s</string>
+    <string name="route_asset_no_update">No update</string>
+    <string name="route_asset_updated">Updated</string>
+    <string name="route_not_asset">Not an asset file: excepted .db, but %s</string>
+    <string name="route_opt_bypass_lan">Bypass LAN</string>
+    <string name="route_opt_block_ads">Block ADs</string>
+    <string name="route_opt_block_analysis">Block analysis</string>
+    <string name="route_opt_block_quic">Block QUIC</string>
+    <string name="domain_strategy">Domain Resolution Strategy</string>
+    <string name="traffic_sniffing">Enable Traffic Sniffing</string>
+    <string name="enable_mux">Enable Multiplexer</string>
+    <string name="mux_sum">Mux is designed to reduce TCP handshake latency, not to increase
+        connection throughput. Using Mux to watch videos, download or speed test is usually counter
+        productive. If the server does not support it, you will not be able to access the Internet.</string>
+    <string name="mux_concurrency">Mux Concurrent Connections</string>
+    <string name="tcp_keep_alive_interval">TCP keep active packet delivery interval</string>
+    <string name="proxied_apps">Apps VPN mode</string>
+    <string name="proxied_apps_summary">Configure VPN mode for selected apps</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="search_apps">Search…</string>
+    <string name="scanning">Scanning…</string>
+    <string name="invert_selections">Invert selections</string>
+    <string name="clear_selections">Clear selections</string>
+    <string name="bypass_apps">Bypass</string>
+    <string name="show_system_apps">Show system apps</string>
+    <string name="auto_connect">Auto Connect</string>
+    <string name="auto_connect_summary">Enable proxy on startup/app update if it was running before</string>
+    <string name="direct_boot_aware">Allow Toggling in Lock Screen</string>
+    <string name="direct_boot_aware_summary">Your selected profile information will be less
+        protected</string>
+    <!-- notification category -->
+    <string name="service_vpn">VPN Service</string>
+    <string name="service_proxy">Proxy Service</string>
+    <string name="forward_success">Proxy started.</string>
+    <string name="invalid_server">Invalid server name</string>
+    <string name="service_failed">Failed: </string>
+    <string name="stop">Stop</string>
+    <string name="stopping">Shutting down…</string>
+    <string name="vpn_error">%s</string>
+    <string name="vpn_permission_denied">Permission denied to create a VPN service</string>
+    <string name="reboot_required">Failed to start VPN service. You might need to reboot your
+        device.</string>
+    <!-- alert category -->
+    <string name="profile_empty">Please select a profile</string>
+    <string name="connect">Connect</string>
+    <string name="clipboard_empty">Clipboard is empty</string>
+    <!-- menu category -->
+    <string name="settings">Settings</string>
+    <string name="edit">Edit</string>
+    <string name="share">Share</string>
+    <string name="add_profile">Add Profile</string>
+    <string name="select_profile">Select Profile</string>
+    <string name="action_socks" translatable="false">SOCKS</string>
+    <string name="action_http" translatable="false">HTTP</string>
+    <string name="action_shadowsocks" translatable="false">Shadowsocks</string>
+    <string name="action_shadowsocksr" translatable="false">ShadowsocksR</string>
+    <string name="action_vmess" translatable="false">VMess</string>
+    <string name="action_trojan" translatable="false">Trojan</string>
+    <string name="action_trojan_go" translatable="false">Trojan Go</string>
+    <string name="action_mieru" translatable="false">Mieru</string>
+    <string name="action_naive" translatable="false">Naïve</string>
+    <string name="action_anytls" translatable="false">AnyTLS</string>
+    <string name="action_hysteria" translatable="false">Hysteria</string>
+    <string name="action_ssh" translatable="false">SSH</string>
+    <string name="action_wireguard" translatable="false">WireGuard</string>
+    <string name="action_tuic" translatable="false">TUIC</string>
+    <string name="proxy_chain">Proxy Chain</string>
+    <string name="custom_config">Custom Config</string>
+    <string name="balancer">Balancer</string>
+    <string name="balancer_settings">Balancer Settings</string>
+    <string name="balancer_type">Type</string>
+    <string name="balancer_strategy">Strategy</string>
+    <string name="chain_settings">Chain Settings</string>
+    <string name="config_settings">Config Settings</string>
+    <string name="circular_reference">Circular reference</string>
+    <string name="circular_reference_sum">The route cannot contain itself.</string>
+    <string name="clear_profiles">Clear</string>
+    <string name="action_create_group">Empty group</string>
+    <string name="action_from_link">From subscription</string>
+    <string name="action_scan_china_apps">Scan China apps</string>
+    <string name="action_export_file">Export to file</string>
+    <string name="action_export_ping_clipboard">Zy export with ping to clipboard</string>
+    <string name="action_export_ping_file">Zy export with ping to file</string>
+    <string name="action_export_clipboard">Export to Clipboard</string>
+    <string name="action_refresh">Refresh list</string>
+    <string name="action_scroll_top">Back to top</string>
+    <string name="action_scroll_top_done">Back to top</string>
+    <string name="action_refresh_done">Refreshed (re-sorted by current order, incl. synced speed-test latency)</string>
+    <string name="action_export">Export</string>
+    <string name="action_import">Import from clipboard to current group</string>
+    <string name="action_import_file">Import from file to current group</string>
+    <string name="action_export_msg">Successfully export!</string>
+    <string name="action_export_err">Failed to export.</string>
+    <string name="action_import_msg">Successfully import!</string>
+    <string name="action_import_err">Failed to import.</string>
+    <string name="file_manager_missing">Your device lacks an Android standard file selector, please
+        install one, such as Material Files.</string>
+    <!-- share -->
+    <!-- profile -->
+    <string name="profile_config">Profile config</string>
+    <string name="delete">Remove</string>
+    <string name="delete_confirm_prompt">Are you sure you want to remove this profile?</string>
+    <string name="share_qr_nfc">QR code</string>
+    <string name="add_profile_methods_scan_qr_code">Scan QR code to current group</string>
+    <string name="add_profile_methods_manual_settings">Manual input to current group</string>
+    <plurals name="removed">
+        <item quantity="one">Removed</item>
+        <item quantity="other">%d items removed</item>
+    </plurals>
+    <plurals name="added">
+        <item quantity="one">Added</item>
+        <item quantity="other">%d proxies added</item>
+    </plurals>
+    <string name="undo">Undo</string>
+    <string name="insecure">Insecure</string>
+    <string name="deprecated">Deprecated</string>
+    <!-- tasker -->
+    <!-- status -->
+    <string name="connecting">Connecting…</string>
+    <string name="vpn_connected">Connected, tap to check connection</string>
+    <string name="not_connected">Not connected</string>
+    <!-- subscriptions -->
+    <string name="subscriptions">Subscriptions</string>
+    <string name="cleartext_http_warning">Cleartext HTTP traffic is insecure</string>
+    <string name="error_title">Error</string>
+    <string name="no_proxies_found">No proxies found in the link</string>
+    <string name="no_proxies_found_in_subscription">No proxies found in the subscription</string>
+    <string name="no_proxies_found_in_file">No proxies found in the file</string>
+    <string name="no_proxies_found_in_clipboard">No proxies found in the clipboard</string>
+    <string name="deduplication">Deduplication</string>
+    <string name="zybox_donate">捐赠</string>
+    <string name="donate">Donate</string>
+    <string name="donate_info">I love money</string>
+    <string name="ignore_battery_optimizations">Ignore battery optimizations</string>
+    <string name="ignore_battery_optimizations_sum">Remove some restrictions</string>
+    <!-- plugin -->
+    <string name="plugin">Plugin</string>
+    <string name="plugin_configure">Configure…</string>
+    <string name="plugin_disabled">Disabled</string>
+    <string name="plugin_unknown">Unknown plugin %s</string>
+    <string name="plugin_untrusted">Warning: This plugin does not seem to come from a known trusted
+        source.</string>
+    <string name="plugin_auto_connect_unlock_only">This plugin might not work with Auto Connect</string>
+    <string name="proxy_cat">Server Settings</string>
+    <string name="ss_cat">Shadowsocks Settings</string>
+    <string name="unsaved_changes_prompt">Changes not saved. Do you want to save?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="apply">Apply</string>
+    <string name="need_reload">Reload proxy service to apply changes</string>
+    <string name="license">License</string>
+    <string name="route_warn">Make sure you have read the documentation before adding custom rules,
+        otherwise you may not be able to connect to the Internet.</string>
+    <string name="lines">%d Lines</string>
+    <string name="night_mode">Night Mode</string>
+    <string name="follow_system">Follow System</string>
+    <string name="enable">Enable</string>
+    <string name="disable">Disable</string>
+    <string name="auto">Auto</string>
+    <string name="enable_log">Enable Log</string>
+    <string name="enable_log_sum">For debugging purposes</string>
+    <string name="list">List</string>
+    <string name="random">Random</string>
+    <string name="leastPing" translatable="false">Ping</string>
+    <string name="api_port">API Port</string>
+    <string name="probe_interval">Balancer observation interval</string>
+    <string name="standard">Standard</string>
+    <string name="v2rayn" translatable="false">V2RayN</string>
+    <string name="available" translatable="false">%dms</string>
+    <string name="unavailable">Unavailable</string>
+    <string name="always_show_address">Always Show Address</string>
+    <string name="always_show_address_sum">Always display the server address on the configuration
+        card</string>
+    <string name="clear_traffic_statistics">Clear traffic statistics</string>
+    <string name="connection_test">Connection test</string>
+    <string name="connection_test_clear_results">Clear test results</string>
+    <string name="connection_test_tcp_ping" translatable="false">TCPing</string>
+    <string name="connection_test_tcp_ping_unavailable">TCPing unavailable</string>
+    <string name="connection_test_icmp_ping" translatable="false">ICMPing</string>
+    <string name="connection_test_icmp_ping_unavailable">ICMPing unavailable</string>
+    <string name="connection_test_url_test" translatable="false">URL Test</string>
+    <string name="connection_test_domain_not_found">Domain not found</string>
+    <string name="connection_test_refused">Connection refused</string>
+    <string name="connection_test_unreachable">Unreachable</string>
+    <string name="connection_test_timeout">Timeout</string>
+    <string name="append_http_proxy">Append HTTP Proxy to VPN</string>
+    <string name="append_http_proxy_sum">HTTP proxy will be used directly from (browser/ some
+        supported apps), without going through the virtual NIC device (Android 10+)</string>
+    <string name="protocol_settings">Protocol Settings</string>
+    <string name="trojan_provider">Trojan Provider</string>
+    <string name="group_basic">Basic</string>
+    <string name="group_settings">Group Settings</string>
+    <string name="subscription">Subscription</string>
+    <string name="subscription_settings">Subscription Settings</string>
+    <string name="group_type">Group Type</string>
+    <string name="group_type_import">Import</string>
+    <string name="import_group_hint">This is an import group</string>
+    <string name="import_group_hint_sum">Subscription and update settings are not available.</string>
+    <string name="subscription_type">Subscription Type</string>
+    <string name="delete_group_prompt">Are you sure you want to remove this group?</string>
+    <string name="force_resolve">Force Resolve</string>
+    <string name="force_resolve_sum">Resolve all domain names to IP addresses when updating. Host
+        and SNI will be automatically appended if possible</string>
+    <string name="deduplication_sum">Remove duplicate configurations when updating</string>
+    <string name="raw">Raw</string>
+    <string name="update_settings">Update Settings</string>
+    <string name="auto_update">Auto Update</string>
+    <string name="auto_update_delay">Auto Update Delay (In minutes)</string>
+    <string name="update_when_connected_only">Update only when connected</string>
+    <string name="update_when_connected_only_sum">Prevent IP address leakage</string>
+    <string name="subscription_user_agent">UserAgent</string>
+    <string name="confirm">Confirm</string>
+    <string name="missing_plugin">Missing Plugin</string>
+    <string name="profile_requiring_plugin">Profile %s requires the %s plugin to be installed, but
+        it was not found.</string>
+    <string name="action_learn_more">LEARN MORE</string>
+    <string name="action_download">DOWNLOAD</string>
+    <string name="install_from_play_store">Install from Play Store</string>
+    <string name="install_from_fdroid">Install from F-Droid</string>
+    <string name="download">Download</string>
+    <string name="ooc_subscription_token" translatable="false">OOCv1 API Token</string>
+    <string name="ooc_subscription_token_invalid">Invalid OOCv1 Token</string>
+    <string name="update_subscription_warning">Proxy is not connected, are you sure you want to
+        continue updating?</string>
+    <string name="ooc_warning">Warning</string>
+    <string name="ooc_missing_protocol">The subscription requires support for protocol %s, but it
+        cannot be found. Unsupported profiles will be ignored.</string>
+    <string name="service_subscription">Subscription Update Service</string>
+    <string name="subscription_update">Subscription Update</string>
+    <string name="subscription_update_message">Updating %s …</string>
+    <string name="group_filter">Filter</string>
+    <string name="subscription_used">%s Used</string>
+    <string name="subscription_traffic">%s Used / %s Remaining</string>
+    <string name="subscription_expire">Expire: %s</string>
+    <string name="subscription_import">Import subscription</string>
+    <string name="subscription_import_message">Confirm you want to import subscription %s? If you
+        are coming from an untrusted source, doing this may result in your IP and this behavior
+        being leaked.</string>
+    <string name="profile_import">Import profile</string>
+    <string name="profile_import_message">Confirm you want to import profile %s?</string>
+    <string name="clear_profiles_message">Are you sure you want to clear this group?</string>
+    <string name="apps">Applications</string>
+    <string name="select_apps">Select Applications</string>
+    <string name="apps_message">%d Applications</string>
+    <string name="hysteria_obfs">Obfuscation Password</string>
+    <string name="hysteria_auth_type">Authentication Type</string>
+    <string name="hysteria_auth_payload">Authentication Payload</string>
+    <string name="hysteria_upload_mbps">Max Upload Speed (in Mbps)</string>
+    <string name="hysteria_download_mbps">Max Download Speed (in Mbps)</string>
+    <string name="experimental_settings">Experimental</string>
+    <string name="hysteria_stream_receive_window">QUIC Stream Receive Window</string>
+    <string name="hysteria_connection_receive_window">QUIC Connection Receive Window</string>
+    <string name="hysteria_disable_mtu_discovery">Disable Path MTU Discovery</string>
+    <string name="group_order">Order</string>
+    <string name="group_order_origin">Origin</string>
+    <string name="group_order_by_name">By Name</string>
+    <string name="group_order_by_delay">By Delay</string>
+    <string name="plugin_exists_but_on_shit_system">Profile %s requires the %s plugin, but your
+        proprietary equipment vendor (usually surveillance capital giants and malware maker)
+        tampered with your Android, making the plugin unusable.</string>
+
+    <string name="shadowsocks_plugin_simple_obfs">Simple Obfs (Shadowsocks Android Plugin)</string>
+    <string name="shadowsocks_plugin_v2ray">V2Ray (Shadowsocks Android Plugin)</string>
+
+    <string name="traffic_uplink" translatable="false">%s | %s/s ↑</string>
+    <string name="traffic_downlink" translatable="false">%s | %s/s ↓</string>
+
+    <string name="traffic_uplink_total" translatable="false">%s ↑</string>
+    <string name="traffic_downlink_total" translatable="false">%s ↓</string>
+
+    <string name="tcp_connections">%d TCP connections</string>
+    <string name="udp_connections">%d UDP connections</string>
+
+    <string name="copy_label">Copy Name</string>
+    <string name="copy_package_name">Copy Package Name</string>
+    <string name="open_app">Open App</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="open_market">Open Market</string>
+    <string name="create_rule">Create Rule</string>
+
+    <string name="copy_success">Copy success!</string>
+    <string name="copy_failed">Copy failed.</string>
+    <string name="app_no_launcher">The app has no interface.</string>
+    <string name="route_for">Rule for %s</string>
+
+    <string name="route_need_vpn">Routing rule %s relies on the VPN to be in effect, so it is
+        ignored.</string>
+
+    <string name="profile_traffic_statistics">Profile Traffic Statistics</string>
+    <string name="profile_traffic_statistics_summary">When disabled, the used traffic will not be
+        counted</string>
+    <string name="no_statistics">No statistics yet</string>
+    <string name="app_statistics_disabled">App Traffic statistics disabled</string>
+    <string name="ssh_auth_type_none">None</string>
+    <string name="ssh_public_key">Public Key</string>
+    <string name="ssh_private_key">Private Key</string>
+    <string name="ssh_private_key_passphrase">Private Key Passphrase</string>
+    <string name="translate_platform">Translate Platform</string>
+    <string name="menu_tools">Tools</string>
+    <string name="menu_log">Logs</string>
+    <string name="clear_logcat">Clear Logcat</string>
+    <string name="wireguard_local_address">Local Address</string>
+    <string name="wireguard_public_key">Peer Public Key</string>
+    <string name="wireguard_psk">Peer Pre-Shared Key</string>
+
+    <string name="cloudflare_wrap" translatable="false">Cloudflare Warp</string>
+    <string name="warp_license">CloudFlare Warp is a free WireGuard VPN provider. By using it, you
+        agree to the TOS.</string>
+    <string name="warp_generate">Generate Configuration</string>
+    <string name="generating">Generating…</string>
+    <string name="tun_implementation">TUN Implementation</string>
+    <string name="destination_override">Override Destination</string>
+    <string name="destination_override_summary">Use the sniffed domain to overwrite the destination
+        address, not just for routing</string>
+    <string name="resolve_destination">Resolve Destination</string>
+    <string name="resolve_destination_summary">If the destination address is a domain, it is then
+        passed out based on the IPv6 strategy (conflicts with FakeDNS)</string>
+    <string name="pcap" translatable="false">Pcap</string>
+    <string name="pcap_notice">Pcap files will be saved to %s</string>
+    <string name="naive_insecure_concurrency">Insecure Concurrency</string>
+    <string name="naive_insecure_concurrency_summary">Use N concurrent tunnel connections to be more
+        robust under bad network conditions. More connections make the tunneling easier to detect
+        and less secure. This project strives for the strongest security against traffic analysis.
+        Using it in an insecure way defeats its purpose. \n\nIf you must use this, try N=2 first to
+        see if it solves your issues. Strongly recommend against using more than 4 connections here.</string>
+
+    <string name="stun_test">NAT behaviour discovery</string>
+    <string name="stun_test_summary">Determine the client\'s NAT mapping behaviour and the NAT
+        filtering behaviour defined in RFC 3478 using STUN.</string>
+    <string name="start">Start</string>
+    <string name="stun_attest_loading">This may take a few minutes…</string>
+    <string name="nat_stun_server_hint">Stun server</string>
+    <string name="nat_result_hint">NAT check result</string>
+    <string name="tools_network">Network</string>
+    <string name="mtu" translatable="false">MTU</string>
+
+    <string name="backup">Backup</string>
+    <string name="backup_groups_and_configurations">Groups and configurations</string>
+    <string name="backup_rules">Routing rules</string>
+    <string name="backup_settings">Settings</string>
+    <string name="backup_summary">If the routing settings are not backed up with configurations,
+        then custom outbounds will be lost.</string>
+    <string name="backup_not_file">Not an backup file: excepted .json, but %s</string>
+    <string name="invalid_backup_file">Invalid backup file</string>
+    <string name="backup_import">Import</string>
+    <string name="backup_import_summary">Importing will overwrite the existing data.</string>
+    <string name="backup_importing">Importing…</string>
+
+    <string name="packet_encoding">Packet Encoding</string>
+    <string name="acquire_wake_lock">Acquire WakeLock</string>
+    <string name="release_wake_lock">Release WakeLock</string>
+    <string name="acquire_wake_lock_summary">Keep the CPU on</string>
+    <string name="action_switch">Switch</string>
+
+    <string name="tuic_udp_relay_mode">UDP Relay Mode</string>
+    <string name="tuic_congestion_controller">Congestion Controller</string>
+    <string name="tuic_disable_sni">Disable SNI</string>
+    <string name="tuic_reduce_rtt">Enable 0-RTT QUIC handshake</string>
+
+    <string name="please_update">Your APP is too old (%s). And will stop working at %s. Please
+        update!</string>
+    <string name="please_update_force">Your APP is too old (%s). And has been stopped working at %s.
+        Please update!</string>
+    <string name="connection_test_delete_unavailable">Clear unavailable</string>
+    <string name="move">Move</string>
+    <string name="exe_prefer_provider">Plugin Preferred Provider</string>
+    <string name="create_shortcut">Create Shortcut</string>
+    <string name="app_tls_version">Subscription Min TLS Version</string>
+    <string name="hop_interval">Port Hopping Interval(second)</string>
+    <string name="domain_strategy_for_remote">Domain strategy for Remote</string>
+    <string name="domain_strategy_for_direct">Domain strategy for Direct</string>
+    <string name="domain_strategy_for_server">Domain strategy for Server address</string>
+    <string name="show_bottom_bar">Show bottom bar like SagerNet</string>
+    <string name="utls_fingerprint">uTLS fingerprint</string>
+    <string name="custom_outbound_json">Custom outbound JSON</string>
+    <string name="custom_config_json">Custom config JSON</string>
+    <string name="is_outbound_only">The JSON set is outbound</string>
+    <string name="save">Save</string>
+    <string name="set_panel_url">Set panel URL</string>
+    <string name="enable_clash_api">Enable Clash API</string>
+    <string name="log_level">Log Level</string>
+    <string name="enable_clash_api_summary">Provide clash api and yacd dashboard at 127.0.0.1:9090</string>
+    <string name="xtls_flow">Flow (VLESS Sub-protocol)</string>
+    <string name="ads">Ads</string>
+    <string name="bypass_lan_in_core">Bypass LAN in Core</string>
+    <string name="need_restart">Restart APP to apply changes</string>
+    <string name="use_selector">Use selector</string>
+    <string name="front_proxy">Front proxy</string>
+    <string name="landing_proxy">Landing Proxy</string>
+    <string name="action_shadowtls" translatable="false">ShadowTLS</string>
+    <string name="protocol_version">Protocol Version</string>
+    <string name="share_subscription">Share Subscription</string>
+    <string name="show_group_in_notification">Show group name in notification</string>
+    <string name="reset_connections">Reset Connections</string>
+    <string name="remove_duplicate">Remove duplicate servers</string>
+    <string name="remove_duplicate_strict">Remove duplicates (Strict)</string>
+    <string name="mtu_help">Long press the preference to set custom MTU.</string>
+    <string name="log_level_help">Long press the preference to set the buffer size.</string>
+    <string name="tls_camouflage_settings">TLS Camouflage Settings</string>
+    <string name="test_concurrency">Test concurrency</string>
+    <string name="mux_type">Mux protocol</string>
+    <string name="sniff_routing">Sniff result for routing</string>
+    <string name="sniff_override">Sniff result for destination</string>
+    <string name="resolve_server">Resolve the server address according to the IPv6 policy</string>
+    <string name="auto_select_proxy_apps">Auto select proxy apps</string>
+    <string name="auto_select_proxy_apps_message">Auto select proxy apps, this will clear your
+        current selection.</string>
+    <string name="enable_ech">Enable ECH</string>
+    <string name="enable_ech_sum">Enable Encrypted Client Hello</string>
+    <string name="ech_settings">ECH Settings</string>
+    <string name="ech_config">ECH Config</string>
+    <string name="http_upgrade_host">HTTPUpgrade Host</string>
+    <string name="http_upgrade_path">HTTPUpgrade Path</string>
+    <string name="update_current_subscription">Update current Group\'s subscription</string>
+    <string name="toggle_auto_test">Auto speed test on connect</string>
+    <string name="auto_test_delay_tip">Less wait time makes it easier for the tunnel to be unstable and time out; the node may actually be usable. Increase the wait time, or tap the bottom-left latency again after auto test</string>
+    <string name="auto_test_delay_title">Auto-test wait time</string>
+    <string name="auto_test_delay_format">Wait time: %1$dms</string>
+    <string name="auto_test_retry">Retry once on first failure</string>
+    <string name="auto_test_retry_first_fail">First test timed out, testing again</string>
+    <string name="auto_test_retry_success">Second test succeeded</string>
+    <string name="toggle_sync_ping">Persist sync speed-test latency</string>
+    <string name="toggle_sync_ping_fail">Same as above + keep failed (red)</string>
+    <string name="action_import_clipboard_ping">Import from clipboard +ping to current group</string>
+    <string name="action_import_file_ping">Import from file +ping to current group</string>
+    <string name="action_import_clipboard_new_group">Import from clipboard to new group</string>
+    <string name="action_import_file_new_group">Import from file to new group</string>
+    <string name="action_import_clipboard_ping_new_group">Import from clipboard +ping to new group</string>
+    <string name="action_import_file_ping_new_group">Import from file +ping to new group</string>
+    <string name="action_scan_qr_new_group">Scan QR to new group</string>
+    <string name="manual_new_group">Manual input to new group</string>
+    <string name="multi_file_group">Export selected to file</string>
+    <string name="connection_tcp_ping_untested">TCPing untested nodes</string>
+    <string name="connection_url_test_untested">URL test untested nodes</string>
+    <string name="multi_file_standard">Export selected to file (standard)</string>
+    <string name="multi_file_ping">Export selected to file +ping</string>
+    <string name="group_not_subscription">Group type is not subscription</string>
+    <string name="allow_insecure_on_request_sum">Disable certificate checking when updating
+        subscriptions</string>
+    <string name="global_allow_insecure">Always allow insecure</string>
+    <string name="mux_preference">Mulitplex</string>
+    <string name="padding">Padding</string>
+    <string name="network_change_reset_connections">Reset outbound connections when network changes</string>
+    <string name="wake_reset_connections">Reset outbound connections when device wake from sleep</string>
+    <string name="preview_version_hint">This application is a preview version and may contain many problems. If you do not want to test it, please go to GitHub to download the Release version!</string>
+    <string name="check_update_preview">Check for preview version updates</string>
+    <string name="check_update_release">Check for release version updates</string>
+    <string name="update_dialog_title">New version available</string>
+    <string name="update_dialog_message">Current version: %1$s\nAvailable version: %2$s\nDo you want to download it?</string>
+    <string name="check_update_no">Check successful, but no updates.</string>
+    <string name="reset_settings">Restore default settings</string>
+    <string name="reset_settings_message">Restore default settings, but data such as nodes and groups will be retained. To completely clear data, clear application data directly in the system settings.</string>
+    <string name="minimize">Minimize</string>
+    <string name="app_list_permission_denied">Unable to read installed apps.\nThis is usually because the system has restricted app read permissions.\nPlease grant permissions in the system settings.</string>
+    <string name="open_app_settings">Open System Settings</string>
+    <string name="add_subscription_to_group">Add subscription to this group</string>
+    <string name="manage_subscriptions">Manage subscriptions</string>
+    <string name="merge_to_other_group">Merge into another group</string>
+    <string name="subscription_name">Subscription name (optional)</string>
+    <string name="subscription_link">Subscription link</string>
+    <string name="subscription_auto_update">Auto update</string>
+    <string name="subscription_link_empty">Please enter a subscription link</string>
+    <string name="no_subscriptions">No subscriptions in this group</string>
+    <string name="update_subscription">Update</string>
+    <string name="edit_subscription">Edit subscription</string>
+    <string name="delete_subscription">Delete subscription</string>
+    <string name="delete_subscription_confirm">Delete this subscription and all its proxies?</string>
+    <string name="no_groups_to_merge">No other groups to merge into</string>
+    <string name="merge_confirm_message">Merge \"%1$s\" into \"%2$s\"?\nIts subscriptions and proxies will be moved into the target group, and this group will be deleted.</string>
+    <string name="group_status_proxies_subscriptions">%1$d nodes · %2$d extra subscriptions</string>
+    <string name="subscription_updated_at">Updated %1$s</string>
+    <string name="subscription_never_updated">Never updated</string>
+    <string name="zybox_init_title">ZyBox 初始化</string>
+    <string name="zybox_init_auto">自动初始化</string>
+    <string name="zybox_init_start">开始</string>
+    <string name="zybox_init_grant">授权</string>
+    <string name="zybox_init_desc_section">描述</string>
+    <string name="zybox_init_required_section">必须项</string>
+    <string name="zybox_oneclick_required">一键必须</string>
+    <string name="zybox_oneclick_processing">正在一键处理中 请勿乱动</string>
+    <string name="zybox_oneclick_all">一键必须+可选</string>
+    <string name="zybox_init_enter">进入</string>
+    <string name="zybox_init_enter_pending">进入 %1$d/4(必选项待完成🔒)</string>
+    <string name="zybox_init_enter_done">进入 4/4(必选项已完成✓)</string>
+    <string name="zybox_init_enter_doing">初始化中… 请勿退出</string>
+    <string name="zybox_init_notif">通知权限</string>
+    <string name="zybox_init_vpn">VPN 权限</string>
+    <string name="zybox_init_auto_sum">[自动初始化] 自动申请所需权限，自动进入一次设置页完成速度显示初始化，然后返回主页。</string>
+    <string name="zybox_init_notif_sum">[通知权限] 在通知栏显示实时直连/代理上传下载速度。</string>
+    <string name="zybox_init_vpn_sum">[VPN 权限] 必须授权，否则无法使用本软件。</string>
+    <string name="zybox_permission_title">权限与初始化查询</string>
+    <string name="zybox_permission_root">Root 权限</string>
+    <string name="zybox_permission_root_sum">[Root 权限] 开启热点和 VPN 后，连接热点的用户可以共用代理；不给予 Root 权限不影响 VPN 单独功能使用</string>
+    <string name="zybox_vpn_hotspot_section">VPN 热点权限</string>
+    <string name="zybox_init_apps">应用列表权限</string>
+    <string name="zybox_init_apps_sum">[应用列表权限] 用于分应用代理：读取已安装应用列表，选择绕过代理的应用。</string>
+    <string name="zybox_opt_section">可选（非必须）</string>
+    <string name="zybox_init_route_all">路由规则一键开启</string>
+    <string name="zybox_init_route_all_sum">[路由规则一键开启] 切换到路由页，将所有规则全部打开，然后回到主页。</string>
+    <string name="zybox_init_apps_import">分应用代理绕过配置一键设置</string>
+    <string name="zybox_init_apps_import_sum">[分应用代理绕过配置一键设置] 作者自用配置，可在设置里进行修改；列表内应用全部走直连。</string>
+    <string name="zybox_init_enter_locked">完成全部 4 项后可进入</string>
+    <string name="zybox_init_required_incomplete">必须权限申请不全 请手动授权后再试</string>
+    <string name="zybox_oneclick_required_sum">[一键必须] 自动完成 4 项必须权限：自动初始化、通知、VPN、应用列表。</string>
+    <string name="zybox_oneclick_all_sum">[一键必须+可选] 先完成 4 项必须权限，再执行分应用代理绕过配置与路由规则全开。</string>
+    <string name="zybox_apps_permission_granted">应用列表权限已授予</string>
+    <string name="zybox_apps_permission_needed">请先授予已安装应用信息权限，再使用分应用代理一键配置</string>
+    <string name="zybox_route_all_done">所有路由规则已全部开启</string>
+    <string name="zybox_route_no_rules">未找到可开启的路由规则</string>
+    <string name="zybox_apps_import_done">分应用代理绕过配置已导入</string>
+    <string name="zybox_permission_hint">在此查询权限状态与初始化进度，点击右侧按钮完成未授权的项。</string>
+    <string name="zybox_permission_query">Permissions &amp; Init Query</string>
+    <string name="zybox_init_incomplete">Some items pending. Continue in Menu → Permissions &amp; Init Query.</string>
+    <string name="multi_select">Multi select</string>
+    <string name="multi_select_all">Select all</string>
+    <string name="multi_select_invert">Invert</string>
+    <string name="multi_select_exit">Exit</string>
+    <string name="multi_clear_traffic">Clear traffic of selected</string>
+    <string name="multi_remove_duplicate">Remove duplicate of selected</string>
+    <string name="multi_remove_duplicate_strict">Strict dedup of selected</string>
+    <string name="multi_tcp_ping">TCPing selected</string>
+    <string name="multi_url_test">URL Test selected</string>
+    <string name="multi_clear_results">Clear results of selected</string>
+    <string name="multi_delete_unavailable">Delete unavailable of selected</string>
+    <string name="multi_qr_group">QR of selected</string>
+    <string name="multi_qr_standard">QR standard</string>
+    <string name="multi_qr_standard_ping">QR standard+ping</string>
+    <string name="multi_qr_sn">QR SN Link</string>
+    <string name="multi_clipboard_group">Clipboard of selected</string>
+    <string name="multi_clipboard_standard">Clipboard standard</string>
+    <string name="multi_clipboard_standard_ping">Clipboard standard+ping</string>
+    <string name="multi_clipboard_sn">Clipboard SN Link</string>
+    <string name="multi_select_hint">Multi-select mode: tap nodes to select</string>
+    <string name="multi_range_hint">Long-press two nodes to select range (inclusive)</string>
+    <string name="multi_range_btn">Range</string>
+    <string name="multi_range_cancel">Cancel</string>
+    <string name="multi_range_tip">Tap two nodes to select the range and the two nodes</string>
+    <string name="zybox_opt_multi_select">Multi-select mode</string>
+    <string name="zybox_opt_multi_select_sum">Top-right ⋮ → Multi-select: tap nodes to select; select-all/invert/exit on top bar; batch clear traffic, remove duplicates / strict dedup, TCPing, URL Test, clear results, delete unavailable, batch QR &amp; clipboard export (standard / standard+ping / SN Link).</string>
+    <string name="zybox_opt_init_dialog">First-run init wizard</string>
+    <string name="zybox_opt_init_dialog_sum">First launch shows an init dialog: auto initialize (auto-grant permissions and enter Settings once to finish speed-display init), grant notification or VPN permission individually, with live progress. A menu page lets you finish any pending item later.</string>
+    <string name="zybox_opt_import_refresh">Instant refresh on import</string>
+    <string name="zybox_opt_import_refresh_sum">Importing nodes/files that create a new group refreshes the group bar and node list immediately.</string>
+    <string name="zybox_opt_about_update">ZyBox About &amp; Update</string>
+    <string name="zybox_opt_about_update_sum">New menu page: fetches latest GitHub release, version check and one-tap update; includes donate button.</string>
+    <string name="zybox_opt_classic_selected">Classic card selected style</string>
+    <string name="zybox_opt_classic_selected_sum">Classic card style now highlights the selected node (light pink tint) just like the stroke style.</string>
+    <string name="no_duplicate">No duplicate servers</string>
+    <string name="no_duplicate_strict">No duplicate nodes (zy)</string>
+    <string name="multi_delete">Delete selected</string>
+    <string name="subscription_added_count">Subscription added, %d added in this group</string>
+</resources>

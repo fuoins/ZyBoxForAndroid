@@ -1,0 +1,352 @@
+package zy.hotspot.app.net
+
+import android.annotation.SuppressLint
+import android.net.MacAddress
+import android.net.RouteInfo
+import android.provider.Settings
+import androidx.collection.MutableObjectList
+import androidx.collection.MutableScatterMap
+import androidx.collection.MutableScatterSet
+import androidx.collection.ScatterMap
+import androidx.collection.ScatterSet
+import androidx.collection.toScatterSet
+import zy.hotspot.app.App.Companion.app
+import zy.hotspot.app.net.monitor.TrafficRecorder
+import zy.hotspot.app.net.monitor.Upstream
+import zy.hotspot.app.net.monitor.Upstreams
+import zy.hotspot.app.room.AppDatabase
+import zy.hotspot.app.root.IpSecForwardPolicyCommand
+import zy.hotspot.app.root.RootManager
+import zy.hotspot.app.root.daemon.ClientConfig
+import zy.hotspot.app.root.daemon.DaemonController
+import zy.hotspot.app.root.daemon.Ipv6NatConfig
+import zy.hotspot.app.root.daemon.Ipv6Prefix
+import zy.hotspot.app.root.daemon.MasqueradeMode
+import zy.hotspot.app.root.daemon.SessionConfig
+import zy.hotspot.app.util.allInterfaceNames
+import zy.hotspot.app.util.allRoutes
+import zy.hotspot.app.widget.SmartSnackbar
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okio.ByteString.Companion.toByteString
+import timber.log.Timber
+import java.io.IOException
+import java.net.Inet4Address
+import java.net.Inet6Address
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * Builds and updates a root routing session for one downstream interface.
+ */
+class Routing(private val caller: Any, private val downstream: String) {
+    companion object {
+        private val ipv6NatPrefixSeed: String
+            @SuppressLint("HardwareIds")
+            get() = "${app.packageName}\u0000${
+                Settings.Secure.getString(app.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
+            }"
+
+        suspend fun clean() {
+            TrafficRecorder.clean()
+            DaemonController.cleanRouting(ipv6NatPrefixSeed)
+        }
+    }
+
+    enum class Ipv6Mode {
+        System,
+        Block,
+        Nat,
+    }
+
+    /**
+     * This command is available since API 23 and also handles IPv6 forwarding.
+     * https://android.googlesource.com/platform/system/netd/+/android-6.0.0_r1/server/CommandListener.cpp#527
+     *
+     * `requester` set by system service is assumed to be `tethering`.
+     * https://android.googlesource.com/platform/frameworks/base/+/bd249a19bba38a29e617aa849b2f42c3c281eff5/services/core/java/com/android/server/NetworkManagementService.java#1241
+     *
+     * The fallback approach is consistent with legacy system's IP forwarding approach,
+     * but may be broken when system tethering shutdown before local-only interfaces.
+     */
+    var ipForward = false
+    var ipv6Mode = Ipv6Mode.System
+    var masqueradeMode: MasqueradeMode = MasqueradeMode.MASQUERADE_MODE_NONE
+
+    private val fallbackUpstream = UpstreamTracker()
+    private val primaryUpstream = UpstreamTracker()
+    private var upstreamGeneration = 0L
+    private val clients = MutableScatterMap<Inet4Address, MacAddress>()
+    private val allowedMacs = MutableScatterSet<MacAddress>()
+    private val started = AtomicBoolean()
+    private val job = Job()
+    /**
+     * Set by [stopForClean] so the routing coroutine leaves its daemon session open: [RoutingManager.clean]
+     * drains it through the daemon (CleanRouting tears down every session before it can fail), so the normal
+     * cancel path here must not also close it.
+     */
+    @Volatile
+    private var cleaning = false
+
+    private sealed class RoutingUpdate(val key: Any) {
+        class UpstreamSnapshot(val upstream: UpstreamTracker, val value: Upstream?) : RoutingUpdate(upstream)
+        class NeighboursSnapshot(val neighbours: Collection<NetlinkNeighbour>) : RoutingUpdate(NeighboursSnapshot) {
+            private companion object
+        }
+        class BlockedMacsSnapshot(val macs: ScatterSet<MacAddress>) : RoutingUpdate(BlockedMacsSnapshot) {
+            private companion object
+        }
+    }
+
+    fun start(): Boolean {
+        if (!started.compareAndSet(false, true)) return false
+        CoroutineScope(job + CoroutineExceptionHandler { _, e ->
+            Timber.w(e)
+            SmartSnackbar.make(e).show()
+        }).launch {
+            var session: DaemonController.SessionCall? = null
+            try {
+                val updates = Channel<RoutingUpdate>(Channel.UNLIMITED)
+                launch {
+                    Upstreams.primary.collect { updates.trySend(RoutingUpdate.UpstreamSnapshot(primaryUpstream, it)) }
+                }
+                launch {
+                    Upstreams.fallback.collect { updates.trySend(RoutingUpdate.UpstreamSnapshot(fallbackUpstream, it)) }
+                }
+                launch { NetlinkNeighbour.snapshots.collect { updates.trySend(RoutingUpdate.NeighboursSnapshot(it)) } }
+                val initialBlockedMacs = CompletableDeferred<ScatterSet<MacAddress>>()
+                launch {
+                    var first = true
+                    AppDatabase.instance.clientRecordDao.observeBlockedMacs().collect {
+                        val macs = it.toScatterSet()
+                        if (first) {
+                            first = false
+                            initialBlockedMacs.complete(macs)
+                        } else updates.trySend(RoutingUpdate.BlockedMacsSnapshot(macs))
+                    }
+                }
+                session = DaemonController.startSession(nextConfig())
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    session.events.collect { event ->
+                        val ipsecForwardPolicy = event.ipsec_forward_policy ?: throw IOException(
+                                "Unexpected session event $event")
+                        try {
+                            RootManager.use { server ->
+                                server.execute(IpSecForwardPolicyCommand(ipsecForwardPolicy.uid,
+                                    ipsecForwardPolicy.source_address, ipsecForwardPolicy.destination_address,
+                                    ipsecForwardPolicy.mark_value, ipsecForwardPolicy.xfrm_interface_id))
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.w(e)
+                            SmartSnackbar.make(e).show()
+                        }
+                    }
+                }
+                var blockedMacs = initialBlockedMacs.await()
+                var neighbours: Collection<NetlinkNeighbour> = emptyList()
+                Timber.i("Started routing for $downstream by $caller")
+                val pendingUpdates = MutableScatterMap<Any, RoutingUpdate>()
+                for (update in updates) {
+                    pendingUpdates[update.key] = update
+                    while (true) {
+                        val next = updates.tryReceive().getOrNull() ?: break
+                        pendingUpdates[next.key] = next
+                    }
+                    try {
+                        var upstreamChanged = false
+                        var clientPolicyChanged = false
+                        pendingUpdates.forEachValue { pending ->
+                            withContext(NonCancellable) {
+                                when (pending) {
+                                    is RoutingUpdate.UpstreamSnapshot -> {
+                                        upstreamChanged = pending.upstream.update(pending.value) || upstreamChanged
+                                    }
+                                    is RoutingUpdate.NeighboursSnapshot -> {
+                                        neighbours = pending.neighbours
+                                        clientPolicyChanged = true
+                                    }
+                                    is RoutingUpdate.BlockedMacsSnapshot -> if (blockedMacs != pending.macs) {
+                                        blockedMacs = pending.macs
+                                        clientPolicyChanged = true
+                                    }
+                                }
+                            }
+                        }
+                        if (upstreamChanged) ++upstreamGeneration
+                        var clientSnapshot: ScatterMap<Inet4Address, MacAddress> = clients
+                        var allowedMacSnapshot: ScatterSet<MacAddress> = allowedMacs
+                        var nextClients: ScatterMap<Inet4Address, MacAddress>? = null
+                        var nextAllowedMacs: ScatterSet<MacAddress>? = null
+                        var added = MutableObjectList<Inet4Address>(0)
+                        var removed = MutableObjectList<Inet4Address>(0)
+                        var addedMacs = MutableObjectList<MacAddress>(0)
+                        var removedMacs = MutableObjectList<MacAddress>(0)
+                        val clientsChanged = if (clientPolicyChanged) {
+                            val candidateClients = MutableScatterMap<Inet4Address, MacAddress>(neighbours.size)
+                            val candidateAllowedMacs = MutableScatterSet<MacAddress>()
+                            for (neighbour in neighbours) {
+                                val lladdr = neighbour.validClientMac ?: continue
+                                if (neighbour.dev != downstream || lladdr in blockedMacs) continue
+                                candidateAllowedMacs.add(lladdr)
+                                if (neighbour.ip is Inet4Address) candidateClients[neighbour.ip] = lladdr
+                            }
+                            if (candidateClients == clients && candidateAllowedMacs == allowedMacs) false else {
+                                removed = MutableObjectList(clients.size)
+                                clients.forEach { ip, mac -> if (candidateClients[ip] != mac) removed.add(ip) }
+                                removedMacs = MutableObjectList(allowedMacs.size)
+                                allowedMacs.forEach { mac -> if (mac !in candidateAllowedMacs) removedMacs.add(mac) }
+                                // record stats before removing rules to prevent stats losing
+                                if (removed.isNotEmpty() || removedMacs.isNotEmpty()) withContext(NonCancellable) {
+                                    TrafficRecorder.update()
+                                }
+                                added = MutableObjectList(candidateClients.size)
+                                candidateClients.forEach { ip, mac -> if (clients[ip] != mac) added.add(ip) }
+                                addedMacs = MutableObjectList(candidateAllowedMacs.size)
+                                candidateAllowedMacs.forEach { mac -> if (mac !in allowedMacs) addedMacs.add(mac) }
+                                clientSnapshot = candidateClients
+                                allowedMacSnapshot = candidateAllowedMacs
+                                nextClients = candidateClients
+                                nextAllowedMacs = candidateAllowedMacs
+                                true
+                            }
+                        } else false
+                        if (upstreamChanged || clientsChanged) try {
+                            withContext(NonCancellable) {
+                                DaemonController.replaceSession(
+                                    session.id,
+                                    nextConfig(clientSnapshot, allowedMacSnapshot),
+                                )
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.w(e)
+                            SmartSnackbar.make(e).show()
+                            continue
+                        }
+                        if (clientsChanged) withContext(NonCancellable) {
+                            val committedClients = nextClients!!
+                            // Removed MACs become retired daemon counters only after the session replacement commits.
+                            if (removedMacs.isNotEmpty()) TrafficRecorder.update()
+                            removed.forEach { TrafficRecorder.unregister(it, downstream) }
+                            removedMacs.forEach { TrafficRecorder.unregister(it, downstream) }
+                            addedMacs.forEach { TrafficRecorder.register(it, downstream) }
+                            added.forEach { ip ->
+                                try {
+                                    TrafficRecorder.register(ip, downstream, committedClients[ip]!!)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Timber.w(e)
+                                    SmartSnackbar.make(e).show()
+                                }
+                            }
+                            clients.clear()
+                            clients.putAll(committedClients)
+                            allowedMacs.clear()
+                            allowedMacs.addAll(nextAllowedMacs!!)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.w(e)
+                        SmartSnackbar.make(e).show()
+                    } finally {
+                        pendingUpdates.clear()
+                    }
+                }
+            } finally {
+                withContext(NonCancellable) {
+                    // Clean leaves the session open so the daemon drains it (withdraw_cleanup) during
+                    // CleanRouting, which disposes it even if Clean later fails; don't double-close here.
+                    if (!cleaning) {
+                        // record stats before exiting to prevent stats losing
+                        if (clients.isNotEmpty() || allowedMacs.isNotEmpty()) TrafficRecorder.update()
+                        session?.close()
+                    }
+                    Timber.i("Stopped routing for $downstream by $caller")
+                }
+            }
+        }
+        return true
+    }
+
+    private class UpstreamTracker {
+        private var interfaces = emptyList<String>()
+        var upstream: Upstream? = null
+            private set
+
+        fun update(value: Upstream?): Boolean {
+            if (upstream == value) return false
+            upstream = value
+            interfaces = value?.properties?.allInterfaceNames ?: emptyList()
+            return true
+        }
+
+        fun appendInterfaces(seen: MutableScatterSet<String>) = buildList(interfaces.size) {
+            interfaces.forEach { if (seen.add(it)) this += it }
+        }
+    }
+
+    private fun nextConfig(
+        clientSnapshot: ScatterMap<Inet4Address, MacAddress> = clients,
+        allowedMacSnapshot: ScatterSet<MacAddress> = allowedMacs,
+    ) = MutableScatterSet<String>().let { seen ->
+        val primaryInterfaces = primaryUpstream.appendInterfaces(seen)
+        val fallbackInterfaces = fallbackUpstream.appendInterfaces(seen)
+        SessionConfig(
+            downstream = downstream,
+            ip_forward = ipForward,
+            masquerade = masqueradeMode,
+            ipv6_block = ipv6Mode == Ipv6Mode.Block,
+            primary_network = primaryUpstream.upstream?.network?.networkHandle,
+            primary_routes = primaryUpstream.upstream?.properties?.allRoutes?.mapNotNull { route ->
+                val destination = route.destination
+                val address = destination.address
+                if (route.type == RouteInfo.RTN_UNICAST && address is Inet6Address) {
+                    Ipv6Prefix(address.address.toByteString(), destination.prefixLength)
+                } else null
+            } ?: emptyList(),
+            fallback_network = fallbackUpstream.upstream?.network?.networkHandle,
+            primary_upstream_interfaces = primaryInterfaces,
+            fallback_upstream_interfaces = fallbackInterfaces,
+            upstream_generation = upstreamGeneration,
+            clients = buildList(allowedMacSnapshot.size) {
+                allowedMacSnapshot.forEach { mac ->
+                    add(ClientConfig(
+                        mac = mac.toByteArray().toByteString(),
+                        ipv4 = buildList(clientSnapshot.size) {
+                            clientSnapshot.forEach { ip, clientMac ->
+                                if (clientMac == mac) add(ip.address.toByteString())
+                            }
+                        },
+                    ))
+                }
+            },
+            ipv6_nat = if (ipv6Mode == Ipv6Mode.Nat) Ipv6NatConfig(ipv6NatPrefixSeed) else null,
+        )
+    }
+
+    fun stopForClean() = job.apply {
+        cleaning = true
+        cancel()
+    }
+
+    suspend fun revert() = withContext(NonCancellable) {
+        job.cancelAndJoin()
+        clients.forEach { ip, _ -> TrafficRecorder.unregister(ip, downstream) }
+        allowedMacs.forEach { TrafficRecorder.unregister(it, downstream) }
+        clients.clear()
+        allowedMacs.clear()
+    }
+}

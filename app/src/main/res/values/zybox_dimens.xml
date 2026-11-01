@@ -1,0 +1,21 @@
+<resources>
+    <!-- ZyBox UI 2.0 设计 Token：圆角家族 -->
+    <dimen name="zybox_corner_small">8dp</dimen>
+    <dimen name="zybox_corner">16dp</dimen>
+    <dimen name="zybox_corner_large">20dp</dimen>
+    <dimen name="zybox_corner_extra">24dp</dimen>
+
+    <!-- 卡片间距（用户钦定 4dp） -->
+    <dimen name="zybox_card_gap">4dp</dimen>
+
+    <!-- 组件高度 -->
+    <dimen name="zybox_button_height">48dp</dimen>
+    <dimen name="zybox_chip_height">36dp</dimen>
+    <dimen name="zybox_tab_indicator_height">3dp</dimen>
+    <dimen name="zybox_tab_indicator_width">28dp</dimen>
+
+    <!-- 延迟胶囊 -->
+    <dimen name="zybox_ping_padding_h">10dp</dimen>
+    <dimen name="zybox_ping_padding_v">3dp</dimen>
+    <dimen name="zybox_ping_corner">10dp</dimen>
+</resources>

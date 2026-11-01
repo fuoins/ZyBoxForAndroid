@@ -1,0 +1,284 @@
+package io.nekohasekai.sagernet.database
+
+import android.os.Binder
+import androidx.preference.PreferenceDataStore
+import io.nekohasekai.sagernet.CONNECTION_TEST_URL
+import io.nekohasekai.sagernet.GroupType
+import io.nekohasekai.sagernet.IPv6Mode
+import io.nekohasekai.sagernet.Key
+import io.nekohasekai.sagernet.TunImplementation
+import io.nekohasekai.sagernet.bg.BaseService
+import io.nekohasekai.sagernet.bg.VpnService
+import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeListener
+import io.nekohasekai.sagernet.database.preference.PublicDatabase
+import io.nekohasekai.sagernet.database.preference.RoomPreferenceDataStore
+import io.nekohasekai.sagernet.ktx.boolean
+import io.nekohasekai.sagernet.ktx.int
+import io.nekohasekai.sagernet.ktx.long
+import io.nekohasekai.sagernet.ktx.parsePort
+import io.nekohasekai.sagernet.ktx.string
+import io.nekohasekai.sagernet.ktx.stringToInt
+import io.nekohasekai.sagernet.ktx.stringToIntIfExists
+import moe.matsuri.nb4a.TempDatabase
+
+object DataStore : OnPreferenceDataStoreChangeListener {
+
+    // share service state in main & bg process
+    @Volatile
+    var serviceState = BaseService.State.Idle
+
+    val configurationStore = RoomPreferenceDataStore(PublicDatabase.kvPairDao)
+    val profileCacheStore = RoomPreferenceDataStore(TempDatabase.profileCacheDao)
+
+    // last used, but may not be running
+    var currentProfile by configurationStore.long(Key.PROFILE_CURRENT)
+
+    var selectedProxy by configurationStore.long(Key.PROFILE_ID)
+    var selectedGroup by configurationStore.long(Key.PROFILE_GROUP) { currentGroupId() } // "ungrouped" group id = 1
+
+    // only in bg process
+    var vpnService: VpnService? = null
+    var baseService: BaseService.Interface? = null
+
+    // main
+
+    var runningTest = false
+
+    fun currentGroupId(): Long {
+        val currentSelected = configurationStore.getLong(Key.PROFILE_GROUP, -1)
+        if (currentSelected > 0L) return currentSelected
+        val groups = SagerDatabase.groupDao.allGroups()
+        if (groups.isNotEmpty()) {
+            val groupId = groups[0].id
+            selectedGroup = groupId
+            return groupId
+        }
+        val groupId = SagerDatabase.groupDao.createGroup(ProxyGroup(ungrouped = true))
+        selectedGroup = groupId
+        return groupId
+    }
+
+    fun currentGroup(): ProxyGroup {
+        var group: ProxyGroup? = null
+        val currentSelected = configurationStore.getLong(Key.PROFILE_GROUP, -1)
+        if (currentSelected > 0L) {
+            group = SagerDatabase.groupDao.getById(currentSelected)
+        }
+        if (group != null) return group
+        val groups = SagerDatabase.groupDao.allGroups()
+        if (groups.isEmpty()) {
+            group = ProxyGroup(ungrouped = true).apply {
+                id = SagerDatabase.groupDao.createGroup(this)
+            }
+        } else {
+            group = groups[0]
+        }
+        selectedGroup = group.id
+        return group
+    }
+
+    fun selectedGroupForImport(): Long {
+        val current = currentGroup()
+        // ZyBox: 导入到当前首页所处的分组（与普通分组无区别）；仅当当前是"未分组"（首次使用没有分组）才兜底
+        if (!current.ungrouped) return current.id
+        val groups = SagerDatabase.groupDao.allGroups()
+        val basic = groups.find { it.type == GroupType.BASIC && !it.ungrouped }
+        if (basic != null) return basic.id
+        // ZyBox: 完全没有任何命名分组时，才创建默认导入分组"宇神神了"
+        val created = ProxyGroup(type = GroupType.BASIC).apply {
+            name = "宇神神了"
+        }
+        return SagerDatabase.groupDao.createGroup(created)
+    }
+
+    var appTLSVersion by configurationStore.string(Key.APP_TLS_VERSION)
+    var enableClashAPI by configurationStore.boolean(Key.ENABLE_CLASH_API)
+    var showBottomBar by configurationStore.boolean(Key.SHOW_BOTTOM_BAR)
+    // ZyBox: 连接后自动测速 / 测速同步节点列表（默认开启，可在主页 ⋮ 菜单切换）
+    var autoTestOnConnect by configurationStore.boolean(Key.AUTO_TEST_ON_CONNECT) { true }
+    // ZyBox: 连接自动测速等待时间（毫秒），默认 1ms（最低 1ms）——等 VPN 隧道稳定后再测，避免刚连接超时
+    var autoTestDelay by configurationStore.int(Key.AUTO_TEST_DELAY) { 1 }
+    // ZyBox: 连接自动测速首次失败重试（默认开：首次超时再测一次，第二次还超时不再测；断开重连后仍是首次）
+    var autoTestRetry by configurationStore.boolean(Key.AUTO_TEST_RETRY) { true }
+    // ZyBox: VPN 热点开关（root 下把 VPN 流量桥接到共享接口）
+    var syncPingOnTest by configurationStore.boolean(Key.SYNC_PING_ON_TEST) { true }
+    // ZyBox: 同↑+红色保留——同步成功延迟的同时，把超时/不可用/连接重置的失败结果也持久化（节点延迟显示红色）
+    var syncPingFailed by configurationStore.boolean(Key.SYNC_PING_FAILED) { false }
+
+    var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
+    var groupLayoutMode by configurationStore.stringToInt(Key.GROUP_LAYOUT_MODE) { 0 }
+    var profileCardStyle by configurationStore.stringToInt(Key.PROFILE_CARD_STYLE) { 1 }
+    var globalMode by configurationStore.boolean(Key.GLOBAL_MODE)
+
+    var networkChangeResetConnections by configurationStore.boolean(Key.NETWORK_CHANGE_RESET_CONNECTIONS) { true }
+    var wakeResetConnections by configurationStore.boolean(Key.WAKE_RESET_CONNECTIONS)
+
+    //
+
+    var isExpert by configurationStore.boolean(Key.APP_EXPERT)
+    var appTheme by configurationStore.int(Key.APP_THEME)
+    var nightTheme by configurationStore.stringToInt(Key.NIGHT_THEME)
+    var serviceMode by configurationStore.string(Key.SERVICE_MODE) { Key.MODE_VPN }
+
+    var trafficSniffing by configurationStore.stringToInt(Key.TRAFFIC_SNIFFING) { 1 }
+    var resolveDestination by configurationStore.boolean(Key.RESOLVE_DESTINATION)
+
+    var mtu by configurationStore.stringToInt(Key.MTU) { 9000 }
+
+    var bypassLan by configurationStore.boolean(Key.BYPASS_LAN)
+    var bypassLanInCore by configurationStore.boolean(Key.BYPASS_LAN_IN_CORE)
+
+    var allowAccess by configurationStore.boolean(Key.ALLOW_ACCESS)
+    var speedInterval by configurationStore.stringToInt(Key.SPEED_INTERVAL)
+    var showGroupInNotification by configurationStore.boolean("showGroupInNotification")
+
+    var globalCustomConfig by configurationStore.string(Key.GLOBAL_CUSTOM_CONFIG) { "" }
+
+    var remoteDns by configurationStore.string(Key.REMOTE_DNS) { "https://dns.google/dns-query" }
+    var directDns by configurationStore.string(Key.DIRECT_DNS) { "https://223.5.5.5/dns-query" }
+    var enableDnsRouting by configurationStore.boolean(Key.ENABLE_DNS_ROUTING) { true }
+    var enableFakeDns by configurationStore.boolean(Key.ENABLE_FAKEDNS) { true }
+
+    var rulesProvider by configurationStore.stringToInt(Key.RULES_PROVIDER)
+    var logLevel by configurationStore.stringToInt(Key.LOG_LEVEL)
+    var logBufSize by configurationStore.int(Key.LOG_BUF_SIZE) { 0 }
+    var acquireWakeLock by configurationStore.boolean(Key.ACQUIRE_WAKE_LOCK)
+
+    // hopefully hashCode = mHandle doesn't change, currently this is true from KitKat to Nougat
+    private val userIndex by lazy { Binder.getCallingUserHandle().hashCode() }
+    var mixedPort: Int
+        get() = getLocalPort(Key.MIXED_PORT, 2080)
+        set(value) = saveLocalPort(Key.MIXED_PORT, value)
+
+    fun initGlobal() {
+        if (configurationStore.getString(Key.MIXED_PORT) == null) {
+            mixedPort = mixedPort
+        }
+    }
+
+
+    private fun getLocalPort(key: String, default: Int): Int {
+        return parsePort(configurationStore.getString(key), default + userIndex)
+    }
+
+    private fun saveLocalPort(key: String, value: Int) {
+        configurationStore.putString(key, "$value")
+    }
+
+    var ipv6Mode by configurationStore.stringToInt(Key.IPV6_MODE) { IPv6Mode.DISABLE }
+
+    var meteredNetwork by configurationStore.boolean(Key.METERED_NETWORK)
+    var proxyApps by configurationStore.boolean(Key.PROXY_APPS)
+    var bypass by configurationStore.boolean(Key.BYPASS_MODE) { true }
+    var individual by configurationStore.string(Key.INDIVIDUAL)
+    var showDirectSpeed by configurationStore.boolean(Key.SHOW_DIRECT_SPEED) { true }
+    // ZyBox: 首次启动初始化弹窗只显示一次（通知/VPN 权限检测 + 自动初始化）
+    var firstLaunchInitDone by configurationStore.boolean(Key.FIRST_LAUNCH_INIT_DONE) { false }
+    var autoInitDone by configurationStore.boolean(Key.AUTO_INIT_DONE) { false }
+    // ZyBox: 路由规则一键全开标志（初始化向导可选项完成判定）
+    var routeAllEnabled by configurationStore.boolean(Key.ROUTE_ALL_ENABLED) { false }
+
+    val persistAcrossReboot by configurationStore.boolean(Key.PERSIST_ACROSS_REBOOT) { false }
+
+    var appendHttpProxy by configurationStore.boolean(Key.APPEND_HTTP_PROXY)
+    var connectionTestURL by configurationStore.string(Key.CONNECTION_TEST_URL) { CONNECTION_TEST_URL }
+    var connectionTestConcurrent by configurationStore.int("connectionTestConcurrent") { 5 }
+    var alwaysShowAddress by configurationStore.boolean(Key.ALWAYS_SHOW_ADDRESS)
+
+    var tunImplementation by configurationStore.stringToInt(Key.TUN_IMPLEMENTATION) { TunImplementation.GVISOR }
+    var profileTrafficStatistics by configurationStore.boolean(Key.PROFILE_TRAFFIC_STATISTICS) { true }
+
+    var yacdURL by configurationStore.string("yacdURL") { "http://127.0.0.1:9090/ui" }
+
+    // protocol
+
+    var globalAllowInsecure by configurationStore.boolean(Key.GLOBAL_ALLOW_INSECURE) { false }
+
+    // old cache, DO NOT ADD
+
+    var dirty by profileCacheStore.boolean(Key.PROFILE_DIRTY)
+    var editingId by profileCacheStore.long(Key.PROFILE_ID)
+    var editingGroup by profileCacheStore.long(Key.PROFILE_GROUP)
+    var profileName by profileCacheStore.string(Key.PROFILE_NAME)
+    var serverAddress by profileCacheStore.string(Key.SERVER_ADDRESS)
+    var serverPort by profileCacheStore.stringToInt(Key.SERVER_PORT)
+    var serverPorts by profileCacheStore.string("serverPorts")
+    var serverUsername by profileCacheStore.string(Key.SERVER_USERNAME)
+    var serverPassword by profileCacheStore.string(Key.SERVER_PASSWORD)
+    var serverPassword1 by profileCacheStore.string(Key.SERVER_PASSWORD1)
+    var serverMethod by profileCacheStore.string(Key.SERVER_METHOD)
+
+    var sharedStorage by profileCacheStore.string("sharedStorage")
+
+    var serverProtocol by profileCacheStore.string(Key.SERVER_PROTOCOL)
+    var serverObfs by profileCacheStore.string(Key.SERVER_OBFS)
+
+    var serverNetwork by profileCacheStore.string(Key.SERVER_NETWORK)
+    var serverHost by profileCacheStore.string(Key.SERVER_HOST)
+    var serverPath by profileCacheStore.string(Key.SERVER_PATH)
+    var serverSNI by profileCacheStore.string(Key.SERVER_SNI)
+    var serverEncryption by profileCacheStore.string(Key.SERVER_ENCRYPTION)
+    var serverALPN by profileCacheStore.string(Key.SERVER_ALPN)
+    var serverCertificates by profileCacheStore.string(Key.SERVER_CERTIFICATES)
+    var serverMTU by profileCacheStore.stringToInt(Key.SERVER_MTU)
+    var serverHeaders by profileCacheStore.string(Key.SERVER_HEADERS)
+    var serverAllowInsecure by profileCacheStore.boolean(Key.SERVER_ALLOW_INSECURE)
+
+    var serverAuthType by profileCacheStore.stringToInt(Key.SERVER_AUTH_TYPE)
+    var serverUploadSpeed by profileCacheStore.stringToInt(Key.SERVER_UPLOAD_SPEED)
+    var serverDownloadSpeed by profileCacheStore.stringToInt(Key.SERVER_DOWNLOAD_SPEED)
+    var serverStreamReceiveWindow by profileCacheStore.stringToIntIfExists(Key.SERVER_STREAM_RECEIVE_WINDOW)
+    var serverConnectionReceiveWindow by profileCacheStore.stringToIntIfExists(Key.SERVER_CONNECTION_RECEIVE_WINDOW)
+    var serverDisableMtuDiscovery by profileCacheStore.boolean(Key.SERVER_DISABLE_MTU_DISCOVERY)
+    var serverHopInterval by profileCacheStore.stringToInt(Key.SERVER_HOP_INTERVAL) { 10 }
+
+    var protocolVersion by profileCacheStore.stringToInt(Key.PROTOCOL_VERSION) { 2 } // default is SOCKS5
+
+    var serverProtocolInt by profileCacheStore.stringToInt(Key.SERVER_PROTOCOL)
+    var serverPrivateKey by profileCacheStore.string(Key.SERVER_PRIVATE_KEY)
+    var serverInsecureConcurrency by profileCacheStore.stringToInt(Key.SERVER_INSECURE_CONCURRENCY)
+
+    var serverUDPRelayMode by profileCacheStore.string(Key.SERVER_UDP_RELAY_MODE)
+    var serverCongestionController by profileCacheStore.string(Key.SERVER_CONGESTION_CONTROLLER)
+    var serverDisableSNI by profileCacheStore.boolean(Key.SERVER_DISABLE_SNI)
+    var serverReduceRTT by profileCacheStore.boolean(Key.SERVER_REDUCE_RTT)
+
+    var routeName by profileCacheStore.string(Key.ROUTE_NAME)
+    var routeDomain by profileCacheStore.string(Key.ROUTE_DOMAIN)
+    var routeIP by profileCacheStore.string(Key.ROUTE_IP)
+    var routePort by profileCacheStore.string(Key.ROUTE_PORT)
+    var routeSourcePort by profileCacheStore.string(Key.ROUTE_SOURCE_PORT)
+    var routeNetwork by profileCacheStore.string(Key.ROUTE_NETWORK)
+    var routeSource by profileCacheStore.string(Key.ROUTE_SOURCE)
+    var routeProtocol by profileCacheStore.string(Key.ROUTE_PROTOCOL)
+    var routeOutbound by profileCacheStore.stringToInt(Key.ROUTE_OUTBOUND)
+    var routeOutboundRule by profileCacheStore.long(Key.ROUTE_OUTBOUND + "Long")
+    var routePackages by profileCacheStore.string(Key.ROUTE_PACKAGES)
+
+    var frontProxy by profileCacheStore.long(Key.GROUP_FRONT_PROXY + "Long")
+    var landingProxy by profileCacheStore.long(Key.GROUP_LANDING_PROXY + "Long")
+    var frontProxyTmp by profileCacheStore.stringToInt(Key.GROUP_FRONT_PROXY)
+    var landingProxyTmp by profileCacheStore.stringToInt(Key.GROUP_LANDING_PROXY)
+
+    var serverConfig by profileCacheStore.string(Key.SERVER_CONFIG)
+    var serverCustom by profileCacheStore.string(Key.SERVER_CUSTOM)
+    var serverCustomOutbound by profileCacheStore.string(Key.SERVER_CUSTOM_OUTBOUND)
+
+    var groupName by profileCacheStore.string(Key.GROUP_NAME)
+    var groupType by profileCacheStore.stringToInt(Key.GROUP_TYPE)
+    var groupOrder by profileCacheStore.stringToInt(Key.GROUP_ORDER)
+    var groupIsSelector by profileCacheStore.boolean(Key.GROUP_IS_SELECTOR)
+
+    var subscriptionLink by profileCacheStore.string(Key.SUBSCRIPTION_LINK)
+    var subscriptionForceResolve by profileCacheStore.boolean(Key.SUBSCRIPTION_FORCE_RESOLVE)
+    var subscriptionDeduplication by profileCacheStore.boolean(Key.SUBSCRIPTION_DEDUPLICATION)
+    var subscriptionUpdateWhenConnectedOnly by profileCacheStore.boolean(Key.SUBSCRIPTION_UPDATE_WHEN_CONNECTED_ONLY)
+    var subscriptionUserAgent by profileCacheStore.string(Key.SUBSCRIPTION_USER_AGENT)
+    var subscriptionAutoUpdate by profileCacheStore.boolean(Key.SUBSCRIPTION_AUTO_UPDATE)
+    var subscriptionAutoUpdateDelay by profileCacheStore.stringToInt(Key.SUBSCRIPTION_AUTO_UPDATE_DELAY) { 360 }
+
+    var rulesFirstCreate by profileCacheStore.boolean("rulesFirstCreate")
+
+    override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
+    }
+}

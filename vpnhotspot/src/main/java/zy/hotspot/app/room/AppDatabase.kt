@@ -1,0 +1,37 @@
+package zy.hotspot.app.room
+
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import zy.hotspot.app.App
+import zy.hotspot.app.App.Companion.app
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
+
+@Database(entities = [ClientRecord::class, TrafficRecord::class], version = 2)
+@TypeConverters(Converters::class)
+abstract class AppDatabase : RoomDatabase() {
+    companion object {
+        const val DB_NAME = "app.db"
+
+        val instance by lazy {
+            Room.databaseBuilder(App.deviceStorage, AppDatabase::class.java, DB_NAME).apply {
+                addMigrations(
+                        Migration2
+                )
+                setQueryExecutor(Dispatchers.IO.asExecutor())
+            }.build()
+        }
+    }
+
+    abstract val clientRecordDao: ClientRecord.Dao
+    abstract val trafficRecordDao: TrafficRecord.Dao
+
+    object Migration2 : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) =
+            db.execSQL("ALTER TABLE `ClientRecord` ADD COLUMN `macLookupPending` INTEGER NOT NULL DEFAULT 1")
+    }
+}

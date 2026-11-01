@@ -1,0 +1,374 @@
+package io.nekohasekai.sagernet;
+
+import android.content.Context;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * ZyBox RootHelper — 以 root 身份（app_process）反射系统服务实现完整 tethering。
+ * 用法: CLASSPATH=<apk> app_process /system/bin io.nekohasekai.sagernet.RootHelper <action> ...
+ * actions:
+ *   tether <wifi|usb|bluetooth|ethernet> <on|off>   系统级共享开关（带结果验证）
+ *   info                                            转发/NAT 诊断
+ * 结果约定: 打印 RH_RESULT=0(成功)/1(失败)/2(超时或异常)，并 System.exit 对应码
+ */
+public class RootHelper {
+
+    static Context ctx;
+
+    static void log(String s) {
+        System.out.println(s);
+        System.out.flush();
+    }
+
+    public static void main(String[] args) throws Exception {
+        log("RH_START pid=" + android.os.Process.myPid() + " args=" + java.util.Arrays.toString(args));
+        if (args.length < 1) { log("NO_ARGS"); System.exit(2); return; }
+        // 对齐 librootkotlinx RootProcessBootstrap：systemMain 前必须先 prepareMainLooper，否则 ActivityThread 初始化失败/挂起
+        try {
+            android.os.Looper.prepareMainLooper();
+        } catch (Throwable ignored) { }
+        log("LOOPER_OK");
+        ctx = rootContext(args.length >= 4 ? args[3] : "moe.nb4a");
+        log("CTX_OK" + (ctx == null ? "(null)" : " pkg=" + ctx.getPackageName()));
+        switch (args[0]) {
+            case "tether":
+                if (args.length < 3) { log("NO_ARGS"); System.exit(2); return; }
+                // args[3]=pkg, args[4]=exempt(true/false, 默认 true)
+                tether(args[1], args[2], args.length >= 4 ? args[3] : null,
+                    args.length >= 5 && args[4].equals("false") ? false : true);
+                break;
+            case "info":
+                info();
+                break;
+            case "softap_status":
+                softApStatus();
+                break;
+            case "softap_daemon":
+                softApDaemon();
+                break;
+            default:
+                log("UNKNOWN " + args[0]);
+                System.exit(2);
+        }
+    }
+
+    static Context systemContext() throws Exception {
+        Class<?> at = Class.forName("android.app.ActivityThread");
+        Object thread = at.getMethod("systemMain").invoke(null);
+        return (Context) at.getMethod("getSystemContext").invoke(thread);
+    }
+
+    // 对齐 librootkotlinx RootProcessBootstrap.createRootPackageContext：
+    // 用真实 app 包上下文（opPackageName=moe.nb4a）而非 systemContext("android")，
+    // 保证 stopTethering/connector 的 opPackageName 与调用 uid 语义正确（uid 0 + 包名一致）
+    static Context rootContext(String pkg) {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Object thread = at.getMethod("systemMain").invoke(null);
+            log("SYSTEMMAIN_OK");
+            Context sys = (Context) at.getMethod("getSystemContext").invoke(thread);
+            int userId = android.os.Process.myUid() / 100000;
+            Class<?> uh = Class.forName("android.os.UserHandle");
+            Object userHandle = uh.getMethod("of", int.class).invoke(null, userId);
+            return (Context) sys.getClass().getMethod(
+                "createPackageContextAsUser", String.class, int.class, uh)
+                .invoke(sys, pkg, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY, userHandle);
+        } catch (Throwable e) {
+            log("ROOTCTX_ERR " + e);
+            try { return systemContext(); } catch (Throwable ignored) { return null; }
+        }
+    }
+
+    static void fail(String msg) {
+        log(msg);
+        log("RH_RESULT=2");
+        System.exit(2);
+    }
+
+    static void tether(String type, String onOff, String opPackageName, boolean exempt) throws Exception {
+        int t;
+        switch (type) {
+            case "wifi": t = 0; break;          // TETHERING_WIFI
+            case "usb": t = 1; break;           // TETHERING_USB
+            case "bluetooth": t = 2; break;     // TETHERING_BLUETOOTH
+            case "ethernet": t = 5; break;      // TETHERING_ETHERNET
+            default: fail("UNKNOWN_TYPE"); return;
+        }
+        boolean on = onOff.equals("on");
+        log("TETHER_START type=" + type + " on=" + on + " pkg=" + opPackageName + " exempt=" + exempt);
+        Object tm = ctx.getSystemService("tethering");
+        if (tm == null) { fail("NO_TETHERING_SERVICE"); return; }
+        log("TM_OK " + tm.getClass().getName());
+        Class<?> cbCls = Class.forName("android.net.TetheringManager$StartTetheringCallback");
+        Executor exe = Executors.newSingleThreadExecutor();
+        if (on) {
+            // ===== 开启：startTethering + 回调验证（对齐 TetheringManagerCompat.startTethering）=====
+            final CountDownLatch latch = new CountDownLatch(1);
+            final int[] result = {-1};
+            Object cb = Proxy.newProxyInstance(cbCls.getClassLoader(), new Class[]{cbCls},
+                (p, m, a) -> {
+                    if (m.getName().equals("onTetheringStarted")) { result[0] = 0; log("STARTED"); latch.countDown(); }
+                    if (m.getName().equals("onTetheringFailed")) { result[0] = 1; log("FAILED" + (a != null && a.length > 0 ? " code=" + a[0] : "")); latch.countDown(); }
+                    return null;
+                });
+            Class<?> bCls = Class.forName("android.net.TetheringManager$TetheringRequest$Builder");
+            Object builder = bCls.getConstructor(int.class).newInstance(t);
+            try {
+                if (exempt) bCls.getMethod("setExemptFromEntitlementCheck", boolean.class).invoke(builder, true);
+            } catch (Throwable ignored) { }
+            try { bCls.getMethod("setShouldShowEntitlementUi", boolean.class).invoke(builder, true); } catch (Throwable ignored) { }
+            Object req = bCls.getMethod("build").invoke(builder);
+            log("CALLING_START");
+            try {
+                tm.getClass().getMethod("startTethering", req.getClass(), Executor.class, cbCls)
+                    .invoke(tm, req, exe, cb);
+            } catch (Throwable e) {
+                log("EXC " + e);
+                fail("START_EXC");
+                return;
+            }
+            log("CALLED_START");
+            if (!latch.await(2, TimeUnit.SECONDS)) {
+                // 回调未达（ColorOS 上 binder 回调不可靠）→ 查实际状态兜底
+                if (tetherActive(t)) {
+                    log("STATE_OK");
+                    log("RH_RESULT=0");
+                    System.exit(0);
+                }
+                log("TIMEOUT");
+                log("RH_RESULT=2");
+                System.exit(2);
+            }
+            log("RH_RESULT=" + result[0]);
+            System.exit(result[0] == 0 ? 0 : 1);
+        } else {
+            // ===== 关闭：ITetheringConnector.stopTethering + IIntResultListener 验证（对齐 TetheringManagerCompat.stopTethering）=====
+            stopViaConnector(tm, t, opPackageName != null ? opPackageName : ctx.getPackageName());
+        }
+    }
+
+    // 关闭：getConnector → ITetheringConnector.stopTethering(type, opPackageName[, attributionTag], resultListener)
+    // onResult(0)=成功（同 VPNHotspot 源码，不依赖不存在的 TetheringManager.stopTethering 签名）
+    static void stopViaConnector(Object tm, int t, String pkg) throws Exception {
+        try {
+            Class<?> itcCls = Class.forName("android.net.ITetheringConnector");
+            // 找 TetheringManager 内部 IConnectorConsumer（getConnector 的参数）
+            Class<?> consumerCls = null;
+            for (Class<?> c : tm.getClass().getDeclaredClasses()) {
+                if (c.getSimpleName().contains("ConnectorConsumer")) { consumerCls = c; break; }
+            }
+            if (consumerCls == null) { fail("NO_CONNECTOR_CONSUMER"); return; }
+            final Object[] connectorRef = new Object[1];
+            final CountDownLatch connLatch = new CountDownLatch(1);
+            Object consumer = Proxy.newProxyInstance(consumerCls.getClassLoader(), new Class[]{consumerCls},
+                (p, m, a) -> {
+                    if (m.getName().equals("onConnectorAvailable")) { connectorRef[0] = a[0]; connLatch.countDown(); }
+                    return null;
+                });
+            Method getConn = null;
+            for (Method m : tm.getClass().getDeclaredMethods()) {
+                if (m.getName().equals("getConnector")) { getConn = m; break; }
+            }
+            if (getConn == null) { fail("NO_GET_CONNECTOR"); return; }
+            getConn.setAccessible(true);
+            getConn.invoke(tm, consumer);
+            if (!connLatch.await(2, TimeUnit.SECONDS)) { fail("GET_CONNECTOR_TIMEOUT"); return; }
+            Object connector = connectorRef[0];
+            if (connector == null) { fail("CONNECTOR_NULL"); return; }
+            // IIntResultListener
+            Class<?> irlCls = Class.forName("android.net.IIntResultListener");
+            final int[] res = {-1};
+            Object listener = Proxy.newProxyInstance(irlCls.getClassLoader(), new Class[]{irlCls},
+                (p, m, a) -> {
+                    if (m.getName().equals("onResult")) res[0] = (Integer) a[0];
+                    return null;
+                });
+            Method stop = null;
+            try {
+                stop = itcCls.getMethod("stopTethering", int.class, String.class, String.class, irlCls);
+            } catch (NoSuchMethodException ignored) { }
+            if (stop == null) stop = itcCls.getMethod("stopTethering", int.class, String.class, irlCls);
+            if (stop.getParameterCount() == 4) {
+                String attr = null;
+                try { attr = ctx.getAttributionTag(); } catch (Throwable ignored) { }
+                stop.invoke(connector, t, pkg, attr, listener);
+            } else {
+                stop.invoke(connector, t, pkg, listener);
+            }
+            Thread.sleep(1500);
+            if (res[0] == 0 || !tetherActive(t)) {
+                log("CONNECTOR_RESULT=" + res[0]);
+                log("RH_RESULT=0");
+                System.exit(0);
+            }
+            log("CONNECTOR_RESULT=" + res[0]);
+            log("RH_RESULT=1");
+            System.exit(1);
+        } catch (Throwable e) {
+            fail("CONNECTOR_EXC " + e);
+        }
+    }
+
+    // 是否有活动的 tether 接口（热点/usb/蓝牙/以太网任一已建立）—— 回调不可靠时的状态兜底
+    static boolean tetherActive(int t) {
+        try {
+            Object cm = ctx.getSystemService("connectivity");
+            Method m = cm.getClass().getMethod("getTetheredIfaces");
+            String[] ifaces = (String[]) m.invoke(cm);
+            return ifaces != null && ifaces.length > 0;
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    static void info() throws Exception {
+        run("ip -o link show");
+        run("ip rule show");
+        run("iptables -t nat -L POSTROUTING -n --line-numbers");
+        run("iptables -L FORWARD -n --line-numbers");
+        run("ndc nat status");
+        run("settings get global tether_offload_disabled");
+    }
+
+    static void run(String cmd) throws Exception {
+        System.out.println("### " + cmd);
+        Process p = new ProcessBuilder("/system/bin/sh", "-c", cmd).start();
+        java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
+        String line;
+        while ((line = br.readLine()) != null) System.out.println(line);
+        java.io.BufferedReader er = new java.io.BufferedReader(new java.io.InputStreamReader(p.getErrorStream()));
+        while ((line = er.readLine()) != null) System.out.println("[err] " + line);
+        p.waitFor();
+    }
+
+    // ===== softap 回调注册（公共）：root 进程反射 IWifiManager.registerSoftApCallback 直连注册 =====
+    // 对齐 VPNHotspot WifiApManager.registerSoftApCallbackBinder：普通进程 WifiManager.registerSoftApCallback
+    // 在 ColorOS 上回调不触发 → root uid=0 无权限拦截。回调事件实时打印到 stdout（主进程流式读取）。
+    static Object registerSoftApCb() throws Exception {
+        Object wm = ctx.getSystemService("wifi");
+        if (wm == null) { log("SOFTAP_ERR NO_WIFI_SERVICE"); System.exit(2); return null; }
+        Object iWm = null;
+        try {
+            java.lang.reflect.Field f = wm.getClass().getDeclaredField("mService");
+            f.setAccessible(true);
+            iWm = f.get(wm);
+        } catch (Throwable ignored) { }
+        if (iWm == null) try {
+            Method gs = wm.getClass().getDeclaredMethod("getService");
+            gs.setAccessible(true);
+            iWm = gs.invoke(wm);
+        } catch (Throwable ignored) { }
+        if (iWm == null) { log("SOFTAP_ERR NO_IWIFI_MANAGER"); System.exit(2); return null; }
+        Class<?> iscCls = Class.forName("android.net.wifi.ISoftApCallback");
+        Object cb = Proxy.newProxyInstance(iscCls.getClassLoader(), new Class[]{iscCls}, (p, m, a) -> {
+            try {
+                switch (m.getName()) {
+                    case "onStateChanged":
+                        log("SOFTAP_STATE=" + (a != null && a.length > 0 ? a[0] : "?"));
+                        break;
+                    case "onNumClientsChanged":
+                        log("SOFTAP_NUMCLIENTS=" + (a != null && a.length > 0 ? a[0] : "?"));
+                        break;
+                    case "onConnectedClientsChanged":
+                        int n = 0;
+                        try { if (a != null && a.length > 0 && a[0] instanceof java.util.Collection)
+                            n = ((java.util.Collection<?>) a[0]).size(); } catch (Throwable ignored2) { }
+                        log("SOFTAP_CONNECTED=" + n);
+                        break;
+                    case "onInfoChanged":
+                        if (a != null && a.length > 0) {
+                            Object info = a[0];
+                            StringBuilder sb = new StringBuilder("SOFTAP_INFO");
+                            try {
+                                Object v = info.getClass().getMethod("getBssid").invoke(info);
+                                if (v != null) sb.append(" BSSID=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getFrequency").invoke(info);
+                                if (v != null) sb.append(" FREQ=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getBandwidth").invoke(info);
+                                if (v != null) sb.append(" BW=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getWifiStandard").invoke(info);
+                                if (v != null) sb.append(" STD=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getApInstanceIdentifier").invoke(info);
+                                if (v != null) sb.append(" APID=").append(v);
+                            } catch (Throwable ignored3) { }
+                            try {
+                                Object v = info.getClass().getMethod("getAutoShutdownTimeoutMillis").invoke(info);
+                                if (v != null) sb.append(" IDLE=").append(v);
+                            } catch (Throwable ignored3) { }
+                            log(sb.toString());
+                        }
+                        break;
+                    case "onCapabilityChanged":
+                        if (a != null && a.length > 0) {
+                            try {
+                                Object v = a[0].getClass().getMethod("getMaxSupportedClients").invoke(a[0]);
+                                log("SOFTAP_MAXCLIENTS=" + v);
+                            } catch (Throwable ignored3) { }
+                        }
+                        break;
+                }
+            } catch (Throwable ignored4) { }
+            return null;
+        });
+        // 双签名 fallback（对齐源码 registerSoftApCallbackBinder lazy）
+        try {
+            iWm.getClass().getMethod("registerSoftApCallback", iscCls).invoke(iWm, cb);
+        } catch (NoSuchMethodException e1) {
+            try {
+                Method reg2 = iWm.getClass().getMethod("registerSoftApCallback",
+                    android.os.IBinder.class, iscCls, Integer.TYPE);
+                int id = System.identityHashCode(cb);
+                reg2.invoke(iWm, cb, cb, id);
+            } catch (NoSuchMethodException e2) {
+                log("SOFTAP_ERR NO_REG_METHOD");
+                System.exit(2);
+                return null;
+            }
+        }
+        log("SOFTAP_REGISTERED");
+        return cb;
+    }
+
+    // ===== softap_status：一次性快照（注册后等 1.5s 收集即时回调后退出）=====
+    static void softApStatus() {
+        try {
+            registerSoftApCb();
+            Thread.sleep(1500);
+            log("SOFTAP_DONE");
+            System.exit(0);
+        } catch (Throwable e) {
+            log("SOFTAP_ERR " + e);
+            System.exit(2);
+        }
+    }
+
+    // ===== softap_daemon：常驻注册，回调事件实时打印（主进程流式读取解析），进程被杀即自动注销 =====
+    static void softApDaemon() {
+        try {
+            registerSoftApCb();
+            System.out.flush();
+            // 常驻：回调线程负责实时输出；主线程保持进程存活
+            for (;;) {
+                try { Thread.sleep(60000); } catch (InterruptedException e) { break; }
+            }
+            System.exit(0);
+        } catch (Throwable e) {
+            log("SOFTAP_ERR " + e);
+            System.exit(2);
+        }
+    }
+}
