@@ -3,10 +3,12 @@ package io.nekohasekai.sagernet.widget
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Outline
 import android.graphics.drawable.Drawable
 import android.text.format.Formatter
 import android.util.AttributeSet
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
@@ -60,6 +62,22 @@ class StatsBar @JvmOverloads constructor(
         backgroundTintList = null
         elevation = 0f
         setWillNotDraw(false)
+
+        // 把整个控件（含子 View 的点击水波纹）裁到与玻璃一致的圆角，
+        // 否则点在边缘时会看到方角的 ripple 溢出胶囊，像是外面套了个方框
+        clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                if (view.width <= 0 || view.height <= 0) {
+                    outline.setEmpty()
+                    return
+                }
+                outline.setRoundRect(
+                    0, 0, view.width, view.height,
+                    26f * resources.displayMetrics.density
+                )
+            }
+        }
     }
 
     override fun onDraw(canvas: Canvas) {

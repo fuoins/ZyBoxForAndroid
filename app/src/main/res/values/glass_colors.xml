@@ -24,6 +24,17 @@
     <!-- 弹出菜单专用：必须挡住底下的正文，否则菜单字叠在列表字上完全看不清 -->
     <color name="glass_popup_solid">#F7FBFDFF</color>
 
+    <!--
+        大块承重面板（抽屉 / 底部状态坞 / 对话框）。
+        这些区域背后压着整页内容，只靠 70~80% 的白会「透」得文字发飘；
+        配合高斯模糊后取 92~96% 的不透明度，才是毛玻璃而不是塑料膜。
+    -->
+    <color name="glass_panel">#EBFFFFFF</color>
+    <color name="glass_panel_soft">#DEFFFFFF</color>
+    <color name="glass_dock_top">#F2FFFFFF</color>
+    <color name="glass_dock_bottom">#E8FBFCFF</color>
+    <color name="glass_dialog_solid">#FAFCFDFF</color>
+
     <!-- 边缘与高光 -->
     <color name="glass_stroke">#A6FFFFFF</color>
     <color name="glass_stroke_outer">#170B1220</color>

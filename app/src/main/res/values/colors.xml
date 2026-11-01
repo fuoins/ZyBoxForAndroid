@@ -288,6 +288,11 @@
     <color name="color_ng_black_accent">#9E9E9E</color>
     <color name="color_ng_black_primary">#2B2B2B</color>
 
-    <color name="preference_simple_menu_background">#FAFAFA</color>
+    <!--
+        Liquid Glass：下拉项**不能自带底色**。
+        以前这里是 #FAFAFA 的实色块，每一项都把弹窗的玻璃底盖住，
+        整个下拉看起来就是一条白条。改成透明，让 glass_popup 透出来。
+    -->
+    <color name="preference_simple_menu_background">@android:color/transparent</color>
 
 </resources>

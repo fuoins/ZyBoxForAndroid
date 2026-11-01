@@ -97,6 +97,14 @@
         <item name="listPopupWindowStyle">@style/Widget.ZyBox.ListPopupWindow</item>
         <item name="actionOverflowMenuStyle">@style/Widget.ZyBox.PopupMenu.Overflow</item>
 
+        <!--
+            全局下拉浮层底色：Spinner（分组类型选择）、AutoCompleteTextView
+            等由 framework 直接创建的 PopupWindow 不经过上面的 style，
+            只能在这里统一给一块玻璃底。
+        -->
+        <item name="android:popupBackground">@drawable/glass_popup</item>
+        <item name="android:popupElevation">0dp</item>
+
     </style>
 
     <!-- 对话框窗口：透明底 + 玻璃面板（Kotlin 侧再叠加模糊） -->
@@ -151,6 +159,8 @@
         <item name="itemShapeAppearance">@style/ShapeAppearance.SagerNet.Medium</item>
         <item name="alertDialogTheme">@style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet</item>
+        <item name="android:popupBackground">@drawable/glass_popup</item>
+        <item name="android:popupElevation">0dp</item>
     </style>
 
     <!-- 旧「纯黑主题」引用兼容：映射为深色烟熏玻璃，不再有独立配色 -->
@@ -243,8 +253,10 @@
     <style name="ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
         <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Dialog</item>
         <item name="android:background">@android:color/transparent</item>
-        <item name="backgroundTint">@color/glass_surface_strong</item>
-        <item name="colorSurface">@color/glass_surface_strong</item>
+        <item name="backgroundTint">@color/glass_dialog_solid</item>
+        <item name="colorSurface">@color/glass_dialog_solid</item>
+        <!-- 背后的页面已经高斯模糊，再压 32% 黑就糊成一块，收到 18% -->
+        <item name="android:windowDimAmount">0.18</item>
         <item name="buttonBarPositiveButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary</item>
         <item name="buttonBarNegativeButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary</item>
         <item name="buttonBarNeutralButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary</item>
@@ -253,12 +265,13 @@
     <style name="ThemeOverlay.MaterialComponents.BottomSheetDialog.ZyBox" parent="ThemeOverlay.MaterialComponents.BottomSheetDialog">
         <item name="bottomSheetStyle">@style/Widget.MaterialComponents.BottomSheet.ZyBox</item>
         <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="backgroundTint">@color/glass_surface_strong</item>
+        <item name="backgroundTint">@color/glass_dialog_solid</item>
+        <item name="android:windowDimAmount">0.18</item>
     </style>
 
     <style name="Widget.MaterialComponents.BottomSheet.ZyBox" parent="Widget.MaterialComponents.BottomSheet.Modal">
         <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.BottomSheet</item>
-        <item name="backgroundTint">@color/glass_surface_strong</item>
+        <item name="backgroundTint">@color/glass_dialog_solid</item>
     </style>
 
     <style name="ShapeAppearance.ZyBox.BottomSheet" parent="">
@@ -292,21 +305,37 @@
         <item name="android:textColorSecondary">@color/glass_text_secondary</item>
         <item name="android:textColor">@color/glass_text_primary</item>
         <item name="colorControlNormal">@color/glass_text_primary</item>
+        <item name="android:popupElevation">0dp</item>
+        <!--
+            Toolbar 的溢出菜单是在 popupTheme 这个 ContextThemeWrapper 里
+            解析 actionOverflowMenuStyle 的。不在这里声明，右上角三点会回落到
+            AppCompat 自带的 abc_popup_background（半透明黑），玻璃主题对它无效。
+        -->
+        <item name="popupMenuStyle">@style/Widget.ZyBox.PopupMenu</item>
+        <item name="actionOverflowMenuStyle">@style/Widget.ZyBox.PopupMenu.Overflow</item>
+        <item name="listPopupWindowStyle">@style/Widget.ZyBox.ListPopupWindow</item>
     </style>
 
     <!-- ===== 弹出菜单 ===== -->
     <style name="Widget.ZyBox.PopupMenu" parent="Widget.AppCompat.PopupMenu">
         <item name="android:popupBackground">@drawable/glass_popup</item>
-        <item name="android:overlapAnchor">true</item>
+        <item name="android:popupElevation">0dp</item>
+        <!-- 贴边会让人分不清菜单和触发它的按钮，留 4dp 缝隙更像浮起来的玻璃片 -->
+        <item name="android:overlapAnchor">false</item>
+        <item name="android:dropDownVerticalOffset">4dp</item>
     </style>
 
     <style name="Widget.ZyBox.ListPopupWindow" parent="Widget.AppCompat.ListPopupWindow">
         <item name="android:popupBackground">@drawable/glass_popup</item>
+        <item name="android:popupElevation">0dp</item>
     </style>
 
     <!-- 工具栏右上角三点：同样是玻璃，不能回落到 AppCompat 的半透明黑 -->
     <style name="Widget.ZyBox.PopupMenu.Overflow" parent="Widget.AppCompat.PopupMenu.Overflow">
         <item name="android:popupBackground">@drawable/glass_popup</item>
+        <item name="android:popupElevation">0dp</item>
+        <item name="android:overlapAnchor">false</item>
+        <item name="android:dropDownVerticalOffset">4dp</item>
     </style>
 
     <!-- ===== 文本 ===== -->
