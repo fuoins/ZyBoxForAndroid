@@ -42,15 +42,14 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
-                <com.google.android.material.card.MaterialCardView
+                <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="16dp"
                     android:layout_marginTop="16dp"
                     android:layout_marginRight="16dp"
                     android:clickable="true"
-                    android:focusable="true"
-                    app:cardElevation="2dp">
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -73,17 +72,16 @@
                             android:text="stun.voipgate.com:3478" />
 
                     </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
-                <com.google.android.material.card.MaterialCardView
+                <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="16dp"
                     android:layout_marginTop="16dp"
                     android:layout_marginRight="16dp"
                     android:clickable="true"
-                    android:focusable="true"
-                    app:cardElevation="2dp">
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -104,7 +102,7 @@
 
                     </LinearLayout>
 
-                </com.google.android.material.card.MaterialCardView>
+                </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
 
                 <LinearLayout

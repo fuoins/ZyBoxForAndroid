@@ -1,550 +1,334 @@
-<resources>
-    <!-- Base application theme. -->
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        ═══════════════════════════════════════════════════════════════
+        Liquid Glass · 主题根
+        ───────────────────────────────────────────────────────────────
+        设计原则：
+        1. 全应用只有一套主题。没有红/蓝/绿/粉…… 没有主题色可选。
+        2. 所有层次由「底层流体光斑 + 半透明玻璃面 + 边缘高光」构成。
+        3. 强调态使用中性「深墨玻璃 / 亮白玻璃」，不使用品牌色。
+        ═══════════════════════════════════════════════════════════════
+    -->
     <style name="Theme.SagerNet" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- ZyBox UI 3.0：柔和浅色背景 -->
-        <item name="android:windowBackground">@color/zybox_bg</item>
-        <item name="android:colorBackground">@color/zybox_bg</item>
-        <item name="android:statusBarColor">?attr/colorPrimary</item>
-        <!-- ZyBox UI 3.0: 沉浸细节 —— 隐藏滚动条 / 去分隔线 / 去边缘光晕 -->
+
+        <!-- ===== 窗口：透明系统栏 + 玻璃底色 ===== -->
+        <item name="android:windowBackground">@drawable/glass_window_background</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/glass_light_system_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/glass_light_system_bars</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
+
+        <!-- 沉浸细节：无滚动条 / 无分隔线 / 无边缘光晕 -->
         <item name="android:scrollbarSize">0.0dip</item>
         <item name="android:listDivider">@null</item>
         <item name="android:colorEdgeEffect">@null</item>
-        <item name="actionBarStyle">@style/Widget.MaterialComponents.ActionBar.Solid</item>
-        <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
-        <item name="colorButtonNormal">?colorAccent</item>
-        <item name="android:navigationBarColor">@color/zybox_bg</item>
-        <item name="colorPrimary">@color/material_pink_500</item>
-        <item name="colorPrimaryDark">@color/material_pink_700</item>
-        <item name="colorAccent">@color/material_pink_accent_200</item>
-
-        <item name="colorMaterial100">@color/material_pink_100</item>
-        <item name="colorMaterial300">@color/material_pink_300</item>
-
-        <item name="accentOrTextSecondary">?colorAccent</item>
-        <item name="accentOrTextPrimary">?colorAccent</item>
-        <item name="primaryOrTextSecondary">?colorPrimary</item>
-        <item name="primaryOrTextPrimary">?colorPrimary</item>
-
-        <item name="fabColorBackground">?colorPrimary</item>
-        <item name="selectedColorPrimary">?colorPrimary</item>
-        <item name="actionBarTheme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
-        <item name="tabTextColor">#99FFFFFF</item>
-        <item name="tabSelectedTextColor">@color/white</item>
-        <item name="tabIndicatorColor">@color/white</item>
-        <item name="tabRippleColor">@color/white</item>
-        <item name="whiteOrTextPrimary">@color/white</item>
-
-        <item name="windowActionModeOverlay">true</item>
-
-        <!-- Remove ActionBar but keep styles and themes -->
+        <item name="android:windowActionModeOverlay">true</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
 
-        <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice.SagerNet</item>
+        <!-- ===== 色彩：只有中性玻璃 ===== -->
+        <item name="colorPrimary">@color/glass_accent</item>
+        <item name="colorPrimaryDark">@color/glass_accent</item>
+        <item name="colorAccent">@color/glass_accent</item>
+        <item name="colorOnPrimary">@color/glass_on_accent</item>
+        <item name="colorSecondary">@color/glass_accent</item>
+        <item name="colorOnSecondary">@color/glass_on_accent</item>
+        <item name="colorSurface">@color/glass_surface_strong</item>
+        <item name="colorOnSurface">@color/glass_text_primary</item>
+        <item name="colorError">@color/glass_danger</item>
+        <item name="colorOnError">@color/white</item>
+        <item name="android:textColorPrimary">@color/glass_text_primary</item>
+        <item name="android:textColorSecondary">@color/glass_text_secondary</item>
+        <item name="android:textColorTertiary">@color/glass_text_tertiary</item>
+        <item name="android:textColorHint">@color/glass_text_tertiary</item>
+        <item name="colorControlActivated">@color/glass_accent</item>
+        <item name="colorControlNormal">@color/glass_text_secondary</item>
+        <item name="colorButtonNormal">@color/glass_surface_strong</item>
+        <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
+        <item name="actionBarStyle">@style/Widget.MaterialComponents.ActionBar.Solid</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.ZyBox.Toolbar</item>
+
+        <!-- 玻璃语义属性（自定义 View 读取） -->
+        <item name="glassSurfaceColor">@color/glass_surface</item>
+        <item name="glassSurfaceSoftColor">@color/glass_surface_soft</item>
+        <item name="glassSurfaceStrongColor">@color/glass_surface_strong</item>
+        <item name="glassStrokeColor">@color/glass_stroke</item>
+        <item name="glassHighlightColor">@color/glass_highlight</item>
+        <item name="glassAccentColor">@color/glass_accent</item>
+        <item name="glassOnAccentColor">@color/glass_on_accent</item>
+        <item name="glassTextPrimaryColor">@color/glass_text_primary</item>
+        <item name="glassTextSecondaryColor">@color/glass_text_secondary</item>
+
+        <!-- 兼容旧属性（原 ZyBox 主题依赖） -->
+        <item name="colorMaterial100">@color/glass_highlight</item>
+        <item name="colorMaterial300">@color/glass_surface_strong</item>
+        <item name="accentOrTextSecondary">@color/glass_text_secondary</item>
+        <item name="accentOrTextPrimary">@color/glass_text_primary</item>
+        <item name="primaryOrTextSecondary">@color/glass_text_secondary</item>
+        <item name="primaryOrTextPrimary">@color/glass_text_primary</item>
+        <item name="fabColorBackground">@color/glass_accent</item>
+        <item name="selectedColorPrimary">@color/glass_accent</item>
+        <item name="whiteOrTextPrimary">@color/glass_text_primary</item>
+        <item name="tabTextColor">@color/glass_text_secondary</item>
+        <item name="tabSelectedTextColor">@color/glass_text_primary</item>
+        <item name="tabIndicatorColor">@color/glass_highlight</item>
+        <item name="tabRippleColor">@color/glass_highlight_soft</item>
+
+        <!-- ===== 组件：全部走玻璃样式 ===== -->
         <item name="materialCardViewStyle">@style/Widget.MaterialComponents.CardView.ZyBox</item>
         <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button.ZyBox</item>
-
-        <item name="itemShapeAppearance">
-            @style/ShapeAppearance.SagerNet.Medium
-        </item>
-
-        <item name="alertDialogTheme">
-            @style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet
-        </item>
-
-        <item name="materialAlertDialogTheme">
-            @style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet
-        </item>
+        <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice.SagerNet</item>
+        <item name="itemShapeAppearance">@style/ShapeAppearance.SagerNet.Medium</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.MaterialComponents.BottomSheetDialog.ZyBox</item>
+        <item name="snackbarStyle">@style/Widget.MaterialComponents.Snackbar.ZyBox</item>
+        <item name="popupMenuStyle">@style/Widget.ZyBox.PopupMenu</item>
+        <item name="listPopupWindowStyle">@style/Widget.ZyBox.ListPopupWindow</item>
 
     </style>
 
+    <!-- 对话框窗口：透明底 + 玻璃面板（Kotlin 侧再叠加模糊） -->
     <style name="Theme.SagerNet.Dialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
-        <item name="actionBarStyle">@style/Widget.MaterialComponents.ActionBar.Solid</item>
-        <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
-        <item name="colorButtonNormal">?colorAccent</item>
-        <item name="android:navigationBarColor">@color/zybox_bg</item>
-        <item name="colorPrimary">@color/material_pink_500</item>
-        <item name="colorPrimaryDark">@color/material_pink_700</item>
-        <item name="colorAccent">@color/material_pink_accent_200</item>
-
-        <item name="colorMaterial100">@color/material_pink_100</item>
-        <item name="colorMaterial300">@color/material_pink_300</item>
-
-        <item name="accentOrTextSecondary">?colorAccent</item>
-        <item name="accentOrTextPrimary">?colorAccent</item>
-        <item name="primaryOrTextSecondary">?colorPrimary</item>
-        <item name="primaryOrTextPrimary">?colorPrimary</item>
-
-        <item name="fabColorBackground">?colorPrimary</item>
-        <item name="selectedColorPrimary">?colorPrimary</item>
-        <item name="actionBarTheme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
-        <item name="tabTextColor">#99FFFFFF</item>
-        <item name="tabSelectedTextColor">@color/white</item>
-        <item name="tabIndicatorColor">@color/white</item>
-        <item name="tabRippleColor">@color/white</item>
-        <item name="whiteOrTextPrimary">@color/white</item>
-
-        <item name="windowActionModeOverlay">true</item>
-
-        <!-- Remove ActionBar but keep styles and themes -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/glass_light_system_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/glass_light_system_bars</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowMinWidthMajor">86%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+        <item name="android:windowFixedHeightMajor" type="dimen">95%</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
 
-        <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice.SagerNet</item>
+        <item name="colorPrimary">@color/glass_accent</item>
+        <item name="colorPrimaryDark">@color/glass_accent</item>
+        <item name="colorAccent">@color/glass_accent</item>
+        <item name="colorOnPrimary">@color/glass_on_accent</item>
+        <item name="colorSurface">@color/glass_surface_strong</item>
+        <item name="colorOnSurface">@color/glass_text_primary</item>
+        <item name="android:textColorPrimary">@color/glass_text_primary</item>
+        <item name="android:textColorSecondary">@color/glass_text_secondary</item>
+        <item name="colorControlActivated">@color/glass_accent</item>
+        <item name="colorControlNormal">@color/glass_text_secondary</item>
+
+        <item name="glassSurfaceColor">@color/glass_surface</item>
+        <item name="glassSurfaceSoftColor">@color/glass_surface_soft</item>
+        <item name="glassSurfaceStrongColor">@color/glass_surface_strong</item>
+        <item name="glassStrokeColor">@color/glass_stroke</item>
+        <item name="glassHighlightColor">@color/glass_highlight</item>
+        <item name="glassAccentColor">@color/glass_accent</item>
+        <item name="glassOnAccentColor">@color/glass_on_accent</item>
+        <item name="glassTextPrimaryColor">@color/glass_text_primary</item>
+        <item name="glassTextSecondaryColor">@color/glass_text_secondary</item>
+
+        <item name="colorMaterial100">@color/glass_highlight</item>
+        <item name="colorMaterial300">@color/glass_surface_strong</item>
+        <item name="accentOrTextSecondary">@color/glass_text_secondary</item>
+        <item name="accentOrTextPrimary">@color/glass_text_primary</item>
+        <item name="primaryOrTextSecondary">@color/glass_text_secondary</item>
+        <item name="primaryOrTextPrimary">@color/glass_text_primary</item>
+        <item name="fabColorBackground">@color/glass_accent</item>
+        <item name="selectedColorPrimary">@color/glass_accent</item>
+        <item name="whiteOrTextPrimary">@color/glass_text_primary</item>
+
         <item name="materialCardViewStyle">@style/Widget.MaterialComponents.CardView.ZyBox</item>
         <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button.ZyBox</item>
-
-        <item name="itemShapeAppearance">
-            @style/ShapeAppearance.SagerNet.Medium
-        </item>
-
-        <item name="alertDialogTheme">
-            @style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet
-        </item>
-
-        <item name="materialAlertDialogTheme">
-            @style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet
-        </item>
-
-        <item name="windowFixedHeightMajor" type="dimen">95%</item>
-
+        <item name="chipStyle">@style/Widget.MaterialComponents.Chip.Choice.SagerNet</item>
+        <item name="itemShapeAppearance">@style/ShapeAppearance.SagerNet.Medium</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet</item>
     </style>
 
-    <style name="ShapeAppearance.SagerNet.Medium" parent="ShapeAppearance.MaterialComponents.MediumComponent">
-        <item name="cornerSize">16dp</item>
-    </style>
+    <!-- 旧「纯黑主题」引用兼容：映射为深色烟熏玻璃，不再有独立配色 -->
+    <style name="Theme.SagerNet.Black" parent="Theme.SagerNet" />
 
-    <style name="Widget.MaterialComponents.CardView.ZyBox" parent="Widget.MaterialComponents.CardView">
-        <item name="cardCornerRadius">16dp</item>
-        <item name="cardElevation">2dp</item>
-    </style>
-
-    <style name="Widget.MaterialComponents.Button.ZyBox" parent="Widget.MaterialComponents.Button">
-        <item name="cornerRadius">16dp</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="android:textSize">14sp</item>
-    </style>
-
-    <style name="Widget.MaterialComponents.Button.ZyBox.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
-        <item name="cornerRadius">16dp</item>
-        <item name="android:minHeight">44dp</item>
-        <item name="android:textSize">13sp</item>
-        <item name="strokeColor">@color/material_pink_500</item>
-        <item name="android:textColor">@color/material_pink_500</item>
-    </style>
-
-    <style name="AppearanceFoundation.Title" parent="TextAppearance.AppCompat.Title">
-        <item name="android:textColor">?attr/colorOnSurface</item>
-        <item name="android:textStyle">bold</item>
-    </style>
-
-    <style name="ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet">
-        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Dialog</item>
-        <item name="buttonBarPositiveButtonStyle">
-            @style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary
-        </item>
-        <item name="buttonBarNegativeButtonStyle">
-            @style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary
-        </item>
-        <item name="buttonBarNeutralButtonStyle">
-            @style/Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary
-        </item>
-    </style>
-
-    <!-- ZyBox UI 2.0：对话框大圆角 -->
-    <style name="ShapeAppearance.ZyBox.Dialog" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">@dimen/zybox_corner_large</item>
-    </style>
-
-    <!-- ZyBox UI 2.0：Snackbar 大圆角 -->
-    <style name="Widget.MaterialComponents.Snackbar.ZyBox" parent="Widget.MaterialComponents.Snackbar">
-        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Snackbar</item>
-    </style>
-
-    <style name="ShapeAppearance.ZyBox.Snackbar" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">@dimen/zybox_corner</item>
-    </style>
-
-    <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Primary">
-        <item name="android:textColor">?primaryOrTextPrimary</item>
-    </style>
-
-    <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary">
-        <item name="android:textColor">?primaryOrTextPrimary</item>
-    </style>
-
-    <style name="Widget.MaterialComponents.Chip.Choice.SagerNet">
-        <item name="textStartPadding">30dp</item>
-        <item name="textEndPadding">30dp</item>
-        <item name="chipBackgroundColor">@color/chip_background</item>
-        <item name="android:textColor">@color/chip_text_color</item>
-        <item name="checkedIconTint">?primaryOrTextPrimary</item>
-        <item name="rippleColor">@color/chip_ripple_color</item>
-        <item name="chipCornerRadius">@dimen/zybox_corner</item>
-    </style>
-
-    <style name="Theme.SagerNet.Pink_SSR">
-        <item name="colorPrimary">@color/color_pink_ssr</item>
-        <item name="colorPrimaryDark">@color/color_pink_ssr</item>
-        <item name="colorAccent">@color/material_pink_accent_200</item>
-        <item name="colorMaterial100">@color/material_pink_accent_100</item>
-        <item name="colorMaterial300">@color/color_pink_ssr</item>
-    </style>
-
-    <style name="Theme.SagerNet.Amber">
-        <item name="colorPrimary">@color/material_amber_500</item>
-        <item name="colorPrimaryDark">@color/material_amber_700</item>
-        <item name="colorAccent">@color/material_amber_accent_200</item>
-        <item name="colorMaterial100">@color/material_amber_100</item>
-        <item name="colorMaterial300">@color/material_amber_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Blue">
-        <item name="colorPrimary">@color/material_blue_500</item>
-        <item name="colorPrimaryDark">@color/material_blue_700</item>
-        <item name="colorAccent">@color/material_blue_accent_200</item>
-        <item name="colorMaterial100">@color/material_blue_100</item>
-        <item name="colorMaterial300">@color/material_blue_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.BlueGrey">
-        <item name="colorPrimary">@color/material_blue_grey_500</item>
-        <item name="colorPrimaryDark">@color/material_blue_grey_700</item>
-        <item name="colorAccent">@color/material_blue_grey_200</item>
-        <item name="colorMaterial100">@color/material_blue_grey_100</item>
-        <item name="colorMaterial300">@color/material_blue_grey_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Brown">
-        <item name="colorPrimary">@color/material_brown_500</item>
-        <item name="colorPrimaryDark">@color/material_brown_700</item>
-        <item name="colorAccent">@color/material_brown_200</item>
-        <item name="colorMaterial100">@color/material_brown_100</item>
-        <item name="colorMaterial300">@color/material_brown_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Cyan">
-        <item name="colorPrimary">@color/material_cyan_500</item>
-        <item name="colorPrimaryDark">@color/material_cyan_700</item>
-        <item name="colorAccent">@color/material_cyan_accent_200</item>
-        <item name="colorMaterial100">@color/material_cyan_100</item>
-        <item name="colorMaterial300">@color/material_cyan_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.DeepOrange">
-        <item name="colorPrimary">@color/material_deep_orange_500</item>
-        <item name="colorPrimaryDark">@color/material_deep_orange_700</item>
-        <item name="colorAccent">@color/material_deep_orange_accent_200</item>
-        <item name="colorMaterial100">@color/material_deep_orange_100</item>
-        <item name="colorMaterial300">@color/material_deep_orange_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.DeepPurple">
-        <item name="colorPrimary">@color/material_deep_purple_500</item>
-        <item name="colorPrimaryDark">@color/material_deep_purple_700</item>
-        <item name="colorAccent">@color/material_deep_purple_accent_200</item>
-        <item name="colorMaterial100">@color/material_deep_purple_100</item>
-        <item name="colorMaterial300">@color/material_deep_purple_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Green">
-        <item name="colorPrimary">@color/material_green_500</item>
-        <item name="colorPrimaryDark">@color/material_green_700</item>
-        <item name="colorAccent">@color/material_green_accent_200</item>
-        <item name="colorMaterial100">@color/material_green_100</item>
-        <item name="colorMaterial300">@color/material_green_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Grey">
-        <item name="colorPrimary">@color/material_grey_500</item>
-        <item name="colorPrimaryDark">@color/material_grey_700</item>
-        <item name="colorAccent">@color/material_grey_200</item>
-        <item name="colorMaterial100">@color/material_grey_100</item>
-        <item name="colorMaterial300">@color/material_grey_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Indigo">
-        <item name="colorPrimary">@color/zybox_primary</item>
-        <item name="colorPrimaryDark">@color/zybox_primary_dark</item>
-        <item name="colorAccent">@color/zybox_accent</item>
-        <item name="colorMaterial100">@color/zybox_primary_light</item>
-        <item name="colorMaterial300">@color/zybox_primary</item>
-    </style>
-
-    <style name="Theme.SagerNet.LightBlue">
-        <item name="colorPrimary">@color/material_light_blue_500</item>
-        <item name="colorPrimaryDark">@color/material_light_blue_700</item>
-        <item name="colorAccent">@color/material_light_blue_accent_200</item>
-        <item name="colorMaterial100">@color/material_light_blue_100</item>
-        <item name="colorMaterial300">@color/material_light_blue_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.LightGreen">
-        <item name="colorPrimary">@color/material_light_green_500</item>
-        <item name="colorPrimaryDark">@color/material_light_green_700</item>
-        <item name="colorAccent">@color/material_light_green_accent_200</item>
-        <item name="colorMaterial100">@color/material_light_green_100</item>
-        <item name="colorMaterial300">@color/material_light_green_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Lime">
-        <item name="colorPrimary">@color/material_lime_500</item>
-        <item name="colorPrimaryDark">@color/material_lime_700</item>
-        <item name="colorAccent">@color/material_lime_accent_200</item>
-        <item name="colorMaterial100">@color/material_lime_100</item>
-        <item name="colorMaterial300">@color/material_lime_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Orange">
-        <item name="colorPrimary">@color/material_orange_500</item>
-        <item name="colorPrimaryDark">@color/material_orange_700</item>
-        <item name="colorAccent">@color/material_orange_accent_200</item>
-        <item name="colorMaterial100">@color/material_orange_100</item>
-        <item name="colorMaterial300">@color/material_orange_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Purple">
-        <item name="colorPrimary">@color/material_purple_500</item>
-        <item name="colorPrimaryDark">@color/material_purple_700</item>
-        <item name="colorAccent">@color/material_purple_accent_200</item>
-        <item name="colorMaterial100">@color/material_purple_100</item>
-        <item name="colorMaterial300">@color/material_purple_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Red">
-        <item name="colorPrimary">@color/material_red_500</item>
-        <item name="colorPrimaryDark">@color/material_red_700</item>
-        <item name="colorAccent">@color/material_red_accent_200</item>
-        <item name="colorMaterial100">@color/material_red_100</item>
-        <item name="colorMaterial300">@color/material_red_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Teal">
-        <item name="colorPrimary">@color/material_teal_500</item>
-        <item name="colorPrimaryDark">@color/material_teal_700</item>
-        <item name="colorAccent">@color/material_teal_accent_200</item>
-        <item name="colorMaterial100">@color/material_teal_100</item>
-        <item name="colorMaterial300">@color/material_teal_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Yellow">
-        <item name="colorPrimary">@color/material_yellow_500</item>
-        <item name="colorPrimaryDark">@color/material_yellow_700</item>
-        <item name="colorAccent">@color/material_yellow_accent_200</item>
-        <item name="colorMaterial100">@color/material_yellow_100</item>
-        <item name="colorMaterial300">@color/material_yellow_300</item>
-        <item name="colorOnPrimarySurface">@color/black</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Amber">
-        <item name="colorPrimary">@color/material_amber_500</item>
-        <item name="colorPrimaryDark">@color/material_amber_700</item>
-        <item name="colorAccent">@color/material_amber_accent_200</item>
-        <item name="colorMaterial100">@color/material_amber_100</item>
-        <item name="colorMaterial300">@color/material_amber_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Blue">
-        <item name="colorPrimary">@color/material_blue_500</item>
-        <item name="colorPrimaryDark">@color/material_blue_700</item>
-        <item name="colorAccent">@color/material_blue_accent_200</item>
-        <item name="colorMaterial100">@color/material_blue_100</item>
-        <item name="colorMaterial300">@color/material_blue_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.BlueGrey">
-        <item name="colorPrimary">@color/material_blue_grey_500</item>
-        <item name="colorPrimaryDark">@color/material_blue_grey_700</item>
-        <item name="colorAccent">@color/material_blue_grey_200</item>
-        <item name="colorMaterial100">@color/material_blue_grey_100</item>
-        <item name="colorMaterial300">@color/material_blue_grey_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Brown">
-        <item name="colorPrimary">@color/material_brown_500</item>
-        <item name="colorPrimaryDark">@color/material_brown_700</item>
-        <item name="colorAccent">@color/material_brown_200</item>
-        <item name="colorMaterial100">@color/material_brown_100</item>
-        <item name="colorMaterial300">@color/material_brown_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Cyan">
-        <item name="colorPrimary">@color/material_cyan_500</item>
-        <item name="colorPrimaryDark">@color/material_cyan_700</item>
-        <item name="colorAccent">@color/material_cyan_accent_200</item>
-        <item name="colorMaterial100">@color/material_cyan_100</item>
-        <item name="colorMaterial300">@color/material_cyan_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.DeepOrange">
-        <item name="colorPrimary">@color/material_deep_orange_500</item>
-        <item name="colorPrimaryDark">@color/material_deep_orange_700</item>
-        <item name="colorAccent">@color/material_deep_orange_accent_200</item>
-        <item name="colorMaterial100">@color/material_deep_orange_100</item>
-        <item name="colorMaterial300">@color/material_deep_orange_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.DeepPurple">
-        <item name="colorPrimary">@color/material_deep_purple_500</item>
-        <item name="colorPrimaryDark">@color/material_deep_purple_700</item>
-        <item name="colorAccent">@color/material_deep_purple_accent_200</item>
-        <item name="colorMaterial100">@color/material_deep_purple_100</item>
-        <item name="colorMaterial300">@color/material_deep_purple_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Green">
-        <item name="colorPrimary">@color/material_green_500</item>
-        <item name="colorPrimaryDark">@color/material_green_700</item>
-        <item name="colorAccent">@color/material_green_accent_200</item>
-        <item name="colorMaterial100">@color/material_green_100</item>
-        <item name="colorMaterial300">@color/material_green_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Grey">
-        <item name="colorPrimary">@color/material_grey_500</item>
-        <item name="colorPrimaryDark">@color/material_grey_700</item>
-        <item name="colorAccent">@color/material_grey_200</item>
-        <item name="colorMaterial100">@color/material_grey_100</item>
-        <item name="colorMaterial300">@color/material_grey_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Indigo">
-        <item name="colorPrimary">@color/material_indigo_500</item>
-        <item name="colorPrimaryDark">@color/material_indigo_700</item>
-        <item name="colorAccent">@color/material_indigo_accent_200</item>
-        <item name="colorMaterial100">@color/material_indigo_100</item>
-        <item name="colorMaterial300">@color/material_indigo_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.LightBlue">
-        <item name="colorPrimary">@color/material_light_blue_500</item>
-        <item name="colorPrimaryDark">@color/material_light_blue_700</item>
-        <item name="colorAccent">@color/material_light_blue_accent_200</item>
-        <item name="colorMaterial100">@color/material_light_blue_100</item>
-        <item name="colorMaterial300">@color/material_light_blue_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.LightGreen">
-        <item name="colorPrimary">@color/material_light_green_500</item>
-        <item name="colorPrimaryDark">@color/material_light_green_700</item>
-        <item name="colorAccent">@color/material_light_green_accent_200</item>
-        <item name="colorMaterial100">@color/material_light_green_100</item>
-        <item name="colorMaterial300">@color/material_light_green_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Lime">
-        <item name="colorPrimary">@color/material_lime_500</item>
-        <item name="colorPrimaryDark">@color/material_lime_700</item>
-        <item name="colorAccent">@color/material_lime_accent_200</item>
-        <item name="colorMaterial100">@color/material_lime_100</item>
-        <item name="colorMaterial300">@color/material_lime_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Orange">
-        <item name="colorPrimary">@color/material_orange_500</item>
-        <item name="colorPrimaryDark">@color/material_orange_700</item>
-        <item name="colorAccent">@color/material_orange_accent_200</item>
-        <item name="colorMaterial100">@color/material_orange_100</item>
-        <item name="colorMaterial300">@color/material_orange_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Purple">
-        <item name="colorPrimary">@color/material_purple_500</item>
-        <item name="colorPrimaryDark">@color/material_purple_700</item>
-        <item name="colorAccent">@color/material_purple_accent_200</item>
-        <item name="colorMaterial100">@color/material_purple_100</item>
-        <item name="colorMaterial300">@color/material_purple_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Red">
-        <item name="colorPrimary">@color/material_red_500</item>
-        <item name="colorPrimaryDark">@color/material_red_700</item>
-        <item name="colorAccent">@color/material_red_accent_200</item>
-        <item name="colorMaterial100">@color/material_red_100</item>
-        <item name="colorMaterial300">@color/material_red_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Pink_SSR">
-        <item name="colorPrimary">@color/color_pink_ssr</item>
-        <item name="colorPrimaryDark">@color/color_pink_ssr</item>
-        <item name="colorAccent">@color/material_pink_accent_200</item>
-        <item name="colorMaterial100">@color/material_pink_accent_100</item>
-        <item name="colorMaterial300">@color/color_pink_ssr</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Teal">
-        <item name="colorPrimary">@color/material_teal_500</item>
-        <item name="colorPrimaryDark">@color/material_teal_700</item>
-        <item name="colorAccent">@color/material_teal_accent_200</item>
-        <item name="colorMaterial100">@color/material_teal_100</item>
-        <item name="colorMaterial300">@color/material_teal_300</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Yellow">
-        <item name="colorPrimary">@color/material_yellow_500</item>
-        <item name="colorPrimaryDark">@color/material_yellow_700</item>
-        <item name="colorAccent">@color/material_yellow_accent_200</item>
-        <item name="colorMaterial100">@color/material_yellow_100</item>
-        <item name="colorMaterial300">@color/material_yellow_300</item>
-        <item name="colorOnPrimarySurface">@color/black</item>
-    </style>
-
-    <style name="Theme.SagerNet.Black">
-        <item name="colorPrimary">@color/color_ng_black_primary</item>
-        <item name="colorPrimaryDark">@color/color_ng_black_primary</item>
-        <item name="colorAccent">@color/color_ng_black_accent</item>
-        <item name="colorMaterial100">@color/color_ng_black_primary</item>
-        <item name="colorMaterial300">@color/color_ng_black_primary</item>
-
-        <item name="selectedColorPrimary">@color/color_ng_black_accent</item>
-        <item name="fabColorBackground">@color/color_ng_black_accent</item>
-        <item name="itemShapeFillColor">@color/color_ng_black_accent</item>
-
-        <item name="accentOrTextSecondary">?android:textColorSecondary</item>
-        <item name="accentOrTextPrimary">?android:textColorPrimary</item>
-        <item name="primaryOrTextSecondary">?android:textColorSecondary</item>
-        <item name="primaryOrTextPrimary">?android:textColorPrimary</item>
-    </style>
-
-    <style name="Theme.SagerNet.Dialog.Black">
-        <item name="colorPrimary">@color/color_ng_black_primary</item>
-        <item name="colorPrimaryDark">@color/color_ng_black_primary</item>
-        <item name="colorAccent">@color/color_ng_black_accent</item>
-        <item name="colorMaterial100">@color/color_ng_black_primary</item>
-        <item name="colorMaterial300">@color/color_ng_black_primary</item>
-
-        <item name="selectedColorPrimary">@color/color_ng_black_accent</item>
-        <item name="fabColorBackground">@color/color_ng_black_accent</item>
-        <item name="itemShapeFillColor">@color/color_ng_black_accent</item>
-
-        <item name="accentOrTextSecondary">?android:textColorSecondary</item>
-        <item name="accentOrTextPrimary">?android:textColorPrimary</item>
-        <item name="primaryOrTextSecondary">?android:textColorSecondary</item>
-        <item name="primaryOrTextPrimary">?android:textColorPrimary</item>
-    </style>
-
+    <!-- 启动窗口：透明，让玻璃底第一时间出现 -->
     <style name="Theme.Start" parent="Theme.MaterialComponents.DayNight">
+        <item name="android:windowBackground">@drawable/glass_window_background</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="colorPrimary">@android:color/transparent</item>
-        <item name="colorPrimaryDark">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="colorPrimary">@color/glass_accent</item>
+        <item name="colorPrimaryDark">@color/glass_accent</item>
+        <item name="colorAccent">@color/glass_accent</item>
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
 
-    <!-- ZyBox: 分组 Tab 文字（选中加粗） -->
-    <style name="ZyBoxTabText" parent="TextAppearance.MaterialComponents.Button">
+    <!-- ===== 形状 ===== -->
+    <style name="ShapeAppearance.SagerNet.Medium" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerSize">@dimen/glass_corner_item</item>
+    </style>
+
+    <style name="ShapeAppearance.ZyBox.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/glass_corner_dialog</item>
+    </style>
+
+    <style name="ShapeAppearance.ZyBox.Snackbar" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/glass_corner_pill</item>
+    </style>
+
+    <!-- ===== 卡片 ===== -->
+    <style name="Widget.MaterialComponents.CardView.ZyBox" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">@dimen/glass_corner_card</item>
+        <item name="cardElevation">0dp</item>
+        <item name="cardBackgroundColor">@android:color/transparent</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="rippleColor">@color/glass_ripple</item>
+    </style>
+
+    <!-- ===== 按钮 ===== -->
+    <style name="Widget.MaterialComponents.Button.ZyBox" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">@dimen/glass_corner_pill</item>
+        <item name="android:minHeight">@dimen/zybox_button_height</item>
+        <item name="android:minWidth">0dp</item>
         <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingStart">18dp</item>
+        <item name="android:paddingEnd">18dp</item>
+        <item name="backgroundTint">@null</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/glass_stroke</item>
+        <item name="rippleColor">@color/glass_ripple</item>
+        <item name="android:textColor">@color/glass_text_primary</item>
+    </style>
+
+    <style name="Widget.MaterialComponents.Button.ZyBox.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="cornerRadius">@dimen/glass_corner_pill</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/glass_stroke</item>
+        <item name="android:textColor">@color/glass_text_primary</item>
+        <item name="rippleColor">@color/glass_ripple</item>
+        <item name="backgroundTint">@null</item>
+    </style>
+
+    <!-- ===== Chip ===== -->
+    <style name="Widget.MaterialComponents.Chip.Choice.SagerNet">
+        <item name="textStartPadding">18dp</item>
+        <item name="textEndPadding">18dp</item>
+        <item name="chipBackgroundColor">@color/glass_chip_background</item>
+        <item name="android:textColor">@color/glass_chip_text</item>
+        <item name="checkedIconTint">@color/glass_text_primary</item>
+        <item name="rippleColor">@color/glass_ripple</item>
+        <item name="chipCornerRadius">@dimen/glass_corner_pill</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipStrokeColor">@color/glass_chip_stroke</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
+    <!-- ===== 对话框 ===== -->
+    <style name="ThemeOverlay.MaterialComponents.MaterialAlertDialog.SagerNet" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Dialog</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="backgroundTint">@color/glass_surface_strong</item>
+        <item name="colorSurface">@color/glass_surface_strong</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Primary</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary</item>
+    </style>
+
+    <style name="ThemeOverlay.MaterialComponents.BottomSheetDialog.ZyBox" parent="ThemeOverlay.MaterialComponents.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.MaterialComponents.BottomSheet.ZyBox</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="backgroundTint">@color/glass_surface_strong</item>
+    </style>
+
+    <style name="Widget.MaterialComponents.BottomSheet.ZyBox" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.BottomSheet</item>
+        <item name="backgroundTint">@color/glass_surface_strong</item>
+    </style>
+
+    <style name="ShapeAppearance.ZyBox.BottomSheet" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">@dimen/glass_corner_dialog</item>
+        <item name="cornerSizeTopRight">@dimen/glass_corner_dialog</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <!-- ===== Snackbar ===== -->
+    <style name="Widget.MaterialComponents.Snackbar.ZyBox" parent="Widget.MaterialComponents.Snackbar">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ZyBox.Snackbar</item>
+        <item name="backgroundTint">@color/glass_snackbar_background</item>
+        <item name="actionTextColorAlpha">1.0</item>
+    </style>
+
+    <!-- 工具栏主题：浅色玻璃上的深墨图标（旧版是白色图标，浅玻璃上会消失） -->
+    <style name="ThemeOverlay.ZyBox.Toolbar" parent="ThemeOverlay.AppCompat.Light.ActionBar">
+        <item name="colorControlNormal">@color/glass_text_primary</item>
+        <item name="android:textColorPrimary">@color/glass_text_primary</item>
+        <item name="android:textColorSecondary">@color/glass_text_secondary</item>
+        <item name="actionMenuTextColor">@color/glass_text_primary</item>
+    </style>
+
+    <!-- ===== 弹出菜单 ===== -->
+    <style name="Widget.ZyBox.PopupMenu" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:popupBackground">@drawable/glass_popup</item>
+        <item name="android:overlapAnchor">true</item>
+    </style>
+
+    <style name="Widget.ZyBox.ListPopupWindow" parent="Widget.AppCompat.ListPopupWindow">
+        <item name="android:popupBackground">@drawable/glass_popup</item>
+    </style>
+
+    <!-- ===== 文本 ===== -->
+    <style name="AppearanceFoundation.Title" parent="TextAppearance.AppCompat.Title">
+        <item name="android:textColor">@color/glass_text_primary</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- ZyBox: 工具栏标题小字号，避免被右侧按钮挤成省略号 -->
-    <style name="ZyBoxToolbarTitle" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
+    <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Primary">
+        <item name="android:textColor">@color/glass_text_primary</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="Widget.MaterialComponents.Button.TextButton.Dialog.Flush.Primary">
+        <item name="android:textColor">@color/glass_text_secondary</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 分组 Tab 文字（选中加粗） -->
+    <style name="ZyBoxTabText" parent="TextAppearance.MaterialComponents.Button">
         <item name="android:textSize">13sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 工具栏标题：小字号，避免被右侧按钮挤成省略号 -->
+    <style name="ZyBoxToolbarTitle" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/glass_text_primary</item>
+    </style>
+
+    <!-- 玻璃列表项容器（无卡片描边，仅高光分隔） -->
+    <style name="Widget.ZyBox.GlassList">
+        <item name="android:divider">@drawable/glass_divider</item>
+        <item name="android:dividerHeight">1px</item>
+        <item name="android:listDivider">@drawable/glass_divider</item>
     </style>
 
 </resources>

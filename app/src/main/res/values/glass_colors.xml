@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass 设计系统 · 日间
+    中性玻璃材质：不携带任何品牌色，所有层次由「光」与「透明度」构成。
+-->
+<resources>
+
+    <!-- 背景基底：冷银白，模拟玻璃后的磨砂层 -->
+    <color name="glass_bg">#EDF1F7</color>
+    <color name="glass_bg_deep">#E2E8F1</color>
+    <color name="glass_bg_veil">#F7F9FC</color>
+
+    <!-- 背景光斑（流体玻璃的光源） -->
+    <color name="glass_glow_a">#F2FFFFFF</color>
+    <color name="glass_glow_b">#A8D7E2F2</color>
+    <color name="glass_glow_c">#D9FFFFFF</color>
+    <color name="glass_glow_d">#66C9D6E8</color>
+
+    <!-- 玻璃表面 -->
+    <color name="glass_surface">#B8FFFFFF</color>
+    <color name="glass_surface_soft">#7AFFFFFF</color>
+    <color name="glass_surface_strong">#D6FFFFFF</color>
+    <color name="glass_surface_sunken">#5CDFE6F0</color>
+
+    <!-- 边缘与高光 -->
+    <color name="glass_stroke">#A6FFFFFF</color>
+    <color name="glass_stroke_outer">#170B1220</color>
+    <color name="glass_highlight">#F2FFFFFF</color>
+    <color name="glass_highlight_soft">#66FFFFFF</color>
+    <color name="glass_shadow">#260B1220</color>
+    <color name="glass_scrim">#33070B12</color>
+
+    <!-- 文本 -->
+    <color name="glass_text_primary">#0C1421</color>
+    <color name="glass_text_secondary">#5C6675</color>
+    <color name="glass_text_tertiary">#8A94A3</color>
+    <color name="glass_text_inverse">#F7FAFF</color>
+
+    <!-- 中性格强调：深墨玻璃（FAB / 主按钮 / 选中态），替代原先的品牌色 -->
+    <color name="glass_accent">#121A28</color>
+    <color name="glass_accent_pressed">#253044</color>
+    <color name="glass_accent_soft">#1F121A28</color>
+    <color name="glass_on_accent">#FFFFFF</color>
+
+    <!-- 状态色：仅用于语义（延迟 / 连接 / 错误），不参与主题 -->
+    <color name="glass_success">#1F9D66</color>
+    <color name="glass_warning">#B67B24</color>
+    <color name="glass_danger">#BE4045</color>
+
+    <!-- 兼容层：原 ZyBox Token 全部映射到玻璃体系 -->
+    <color name="zybox_primary">@color/glass_accent</color>
+    <color name="zybox_primary_dark">@color/glass_accent_pressed</color>
+    <color name="zybox_primary_light">@color/glass_surface_soft</color>
+    <color name="zybox_accent">@color/glass_accent</color>
+    <color name="zybox_bg">@color/glass_bg</color>
+    <color name="zybox_card">@color/glass_surface_strong</color>
+    <color name="zybox_text_primary">@color/glass_text_primary</color>
+    <color name="zybox_text_secondary">@color/glass_text_secondary</color>
+    <color name="zybox_ping_bg">@color/glass_surface_soft</color>
+    <color name="zybox_ping_text">@color/glass_text_secondary</color>
+    <color name="zybox_divider">@color/glass_stroke</color>
+    <color name="card_selected_bg">@color/glass_accent_soft</color>
+    <color name="card_stroke">@color/glass_stroke</color>
+    <color name="zybox_enter_blue">@color/glass_accent</color>
+
+</resources>

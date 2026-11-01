@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Liquid Glass · 抽屉面板：右侧大圆角，顶部一条镜面光 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:endColor="@color/glass_surface_soft"
+                android:startColor="@color/glass_surface_strong" />
+            <corners
+                android:bottomLeftRadius="6dp"
+                android:bottomRightRadius="@dimen/glass_corner_panel"
+                android:topLeftRadius="6dp"
+                android:topRightRadius="@dimen/glass_corner_panel" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/glass_stroke" />
+        </shape>
+    </item>
+    <item
+        android:gravity="top"
+        android:left="18dp"
+        android:right="18dp"
+        android:top="0dp">
+        <shape android:shape="rectangle">
+            <size android:height="1dp" />
+            <gradient
+                android:angle="0"
+                android:centerColor="@color/glass_highlight"
+                android:endColor="@android:color/transparent"
+                android:startColor="@android:color/transparent" />
+        </shape>
+    </item>
+</layer-list>

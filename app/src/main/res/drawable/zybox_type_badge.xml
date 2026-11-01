@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox UI 3.0: 协议类型徽章（靛蓝浅底） -->
+<!-- Liquid Glass: 协议类型徽章（更轻的玻璃片） -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/zybox_ping_bg" />
-    <corners android:radius="6dp" />
+    <gradient
+        android:angle="270"
+        android:endColor="@color/glass_surface_soft"
+        android:startColor="@color/glass_surface_strong" />
+    <corners android:radius="9dp" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/glass_stroke" />
 </shape>

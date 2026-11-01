@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox: 小项粉色圆点 -->
+<!-- Liquid Glass: 列表小圆点（中性墨，不再使用品牌粉） -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="#E91E63" />
+    <solid android:color="@color/glass_accent" />
 </shape>

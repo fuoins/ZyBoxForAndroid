@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.view.View
 import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
+import androidx.core.content.ContextCompat
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.whenStarted
@@ -38,6 +39,13 @@ class StatsBar @JvmOverloads constructor(
     private lateinit var behavior: YourBehavior
 
     var allowShow = true
+
+    init {
+        // Liquid Glass：底部状态坞是一块独立的厚玻璃，而不是贴边的实色底栏
+        backgroundTintList = null
+        background = ContextCompat.getDrawable(context, R.drawable.glass_bottom_dock)
+        elevation = 0f
+    }
 
     override fun getBehavior(): YourBehavior {
         if (!this::behavior.isInitialized) behavior = YourBehavior { allowShow }

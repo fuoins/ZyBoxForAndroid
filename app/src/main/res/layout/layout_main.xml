@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass · 主界面
+    底层是缓慢流动的光源，所有控件都是浮在光上的玻璃。
+-->
 <androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:scrimColor="@color/glass_scrim"
     tools:openDrawer="start">
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -12,6 +18,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipChildren="false">
+
+        <!-- 流体光源层：整个界面的「液态」来源 -->
+        <io.nekohasekai.sagernet.widget.LiquidGlassBackdrop
+            android:id="@+id/glass_backdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
         <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:id="@+id/fragment_holder"
@@ -25,10 +37,11 @@
             android:layout_height="wrap_content"
             android:max="1"
             android:visibility="invisible"
-            app:indicatorColor="?colorMaterial100"
+            app:indicatorColor="?glassHighlightColor"
             app:layout_anchor="@+id/fab"
             app:layout_anchorGravity="center"
             app:layout_behavior="io.nekohasekai.sagernet.widget.FabProgressBehavior"
+            app:trackColor="@color/glass_stroke_outer"
             app:trackCornerRadius="@dimen/mtrl_progress_track_thickness"
             app:trackThickness="8dp" />
 
@@ -36,11 +49,11 @@
             android:id="@+id/fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:elevation="8dp"
+            android:elevation="0dp"
             android:nextFocusDown="@+id/stats"
-            app:backgroundTint="?fabColorBackground"
+            app:backgroundTint="@android:color/transparent"
             app:layout_anchor="@id/stats"
-            app:pressedTranslationZ="10dp"
+            app:pressedTranslationZ="0dp"
             app:srcCompat="@drawable/ic_service_idle" />
 
         <io.nekohasekai.sagernet.widget.StatsBar
@@ -48,18 +61,25 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="10dp"
             android:nextFocusUp="@+id/fab"
-            app:backgroundTint="?colorMaterial300"
-            app:contentInsetStart="0dp">
+            app:backgroundTint="@android:color/transparent"
+            app:contentInsetStart="0dp"
+            android:elevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="?android:attr/selectableItemBackground"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:paddingStart="18dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="14dp">
 
-                <!-- ZyBox: 上传速度 + 出口 IP 同一行（IP 右对齐，与速度同高） -->
+                <!-- 上传速度 + 出口 IP 同一行 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -72,7 +92,7 @@
                         android:layout_weight="1"
                         android:ellipsize="marquee"
                         android:singleLine="true"
-                        android:textColor="?whiteOrTextPrimary"
+                        android:textColor="@color/glass_text_primary"
                         android:textSize="14sp" />
 
                     <TextView
@@ -81,7 +101,7 @@
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:textColor="?android:textColorSecondary"
+                        android:textColor="@color/glass_text_secondary"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -91,13 +111,14 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="marquee"
                     android:singleLine="true"
-                    android:textColor="?whiteOrTextPrimary"
+                    android:textColor="@color/glass_text_primary"
                     android:textSize="14sp" />
 
-                <!-- ZyBox: 延迟 + geoip 国家同一行（国家右对齐，中文名，与延迟同字号同高） -->
+                <!-- 延迟 + 国家 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:orientation="horizontal">
 
                     <TextView
@@ -107,7 +128,7 @@
                         android:layout_weight="1"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:textColor="?whiteOrTextPrimary"
+                        android:textColor="@color/glass_text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         tools:text="@string/connection_test_available" />
@@ -118,8 +139,8 @@
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:textColor="?android:textColorSecondary"
-                        android:textSize="18sp"
+                        android:textColor="@color/glass_text_secondary"
+                        android:textSize="16sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -129,28 +150,24 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+    <!-- 抽屉：一整块磨砂玻璃 -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         style="@style/Widget.Design.NavigationView"
-        android:layout_width="wrap_content"
+        android:layout_width="296dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/glass_drawer"
+        android:clipToOutline="true"
+        android:elevation="0dp"
         app:headerLayout="@layout/layout_nav_header"
         app:itemIconTint="@color/navigation_icon"
-        app:itemTextColor="@color/navigation_icon"
-        app:menu="@menu/main_drawer_menu" />
-
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view_black"
-        style="@style/Widget.Design.NavigationView"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:itemIconTint="@color/navigation_icon"
-        app:itemShapeAppearance="@style/ShapeAppearance.MaterialComponents.MediumComponent"
+        app:itemShapeAppearance="@style/ShapeAppearance.SagerNet.Medium"
         app:itemShapeFillColor="@color/navigation_item"
         app:itemTextColor="@color/navigation_icon"
-        app:headerLayout="@layout/layout_nav_header"
         app:menu="@menu/main_drawer_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

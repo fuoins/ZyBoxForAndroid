@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass 设计系统 · 夜间
+    同一套材质在暗环境中转为「烟熏玻璃」：极低透明度的白 + 冷灰光斑。
+-->
+<resources>
+
+    <color name="glass_bg">#070910</color>
+    <color name="glass_bg_deep">#04060A</color>
+    <color name="glass_bg_veil">#0C1018</color>
+
+    <color name="glass_glow_a">#24FFFFFF</color>
+    <color name="glass_glow_b">#1A2A3B57</color>
+    <color name="glass_glow_c">#12FFFFFF</color>
+    <color name="glass_glow_d">#0F1B2A40</color>
+
+    <color name="glass_surface">#1CFFFFFF</color>
+    <color name="glass_surface_soft">#12FFFFFF</color>
+    <color name="glass_surface_strong">#26FFFFFF</color>
+    <color name="glass_surface_sunken">#1A0A0E16</color>
+
+    <color name="glass_stroke">#33FFFFFF</color>
+    <color name="glass_stroke_outer">#4D000000</color>
+    <color name="glass_highlight">#59FFFFFF</color>
+    <color name="glass_highlight_soft">#24FFFFFF</color>
+    <color name="glass_shadow">#66000000</color>
+    <color name="glass_scrim">#6603050A</color>
+
+    <color name="glass_text_primary">#F4F7FC</color>
+    <color name="glass_text_secondary">#A6B0C0</color>
+    <color name="glass_text_tertiary">#78828F</color>
+    <color name="glass_text_inverse">#0A0F18</color>
+
+    <color name="glass_accent">#EAF0FA</color>
+    <color name="glass_accent_pressed">#CBD6E6</color>
+    <color name="glass_accent_soft">#2EEAF0FA</color>
+    <color name="glass_on_accent">#0A0F18</color>
+
+    <color name="glass_success">#4CD39A</color>
+    <color name="glass_warning">#E0AE5A</color>
+    <color name="glass_danger">#E86A6E</color>
+
+    <color name="fab_color_progress">@color/glass_highlight</color>
+    <color name="preference_simple_menu_background">@color/glass_surface_strong</color>
+
+</resources>

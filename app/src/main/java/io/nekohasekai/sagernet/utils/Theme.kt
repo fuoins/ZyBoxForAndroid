@@ -7,103 +7,39 @@ import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.app
 
+/**
+ * 主题入口。
+ *
+ * 旧的「21 套配色主题」已被整体移除：应用只有一套 Liquid Glass 主题，
+ * 日间 = 冷银玻璃，夜间 = 烟熏玻璃，由系统深色模式或「夜间模式」偏好驱动。
+ *
+ * 保留本类是为了不破坏既有调用点（ThemedActivity / 设置页 / 对话框）。
+ */
 object Theme {
 
-    const val RED = 1
-    const val PINK_SSR = 2
-    const val PINK = 3
-    const val PURPLE = 4
-    const val DEEP_PURPLE = 5
-    const val INDIGO = 6
-    const val BLUE = 7
-    const val LIGHT_BLUE = 8
-    const val CYAN = 9
-    const val TEAL = 10
-    const val GREEN = 11
-    const val LIGHT_GREEN = 12
-    const val LIME = 13
-    const val YELLOW = 14
-    const val AMBER = 15
-    const val ORANGE = 16
-    const val DEEP_ORANGE = 17
-    const val BROWN = 18
-    const val GREY = 19
-    const val BLUE_GREY = 20
-    const val BLACK = 21
-
-    private fun defaultTheme() = PINK_SSR
-
     fun apply(context: Context) {
-        context.setTheme(getTheme())
+        context.setTheme(R.style.Theme_SagerNet)
     }
 
     fun applyDialog(context: Context) {
-        context.setTheme(getDialogTheme())
+        context.setTheme(R.style.Theme_SagerNet_Dialog)
     }
 
-    fun getTheme(): Int {
-        return getTheme(DataStore.appTheme)
-    }
+    fun getTheme(): Int = R.style.Theme_SagerNet
 
-    fun getDialogTheme(): Int {
-        return getDialogTheme(DataStore.appTheme)
-    }
+    fun getDialogTheme(): Int = R.style.Theme_SagerNet_Dialog
 
-    fun getTheme(theme: Int): Int {
-        return when (theme) {
-            RED -> R.style.Theme_SagerNet_Red
-            PINK -> R.style.Theme_SagerNet
-            PINK_SSR -> R.style.Theme_SagerNet_Pink_SSR
-            PURPLE -> R.style.Theme_SagerNet_Purple
-            DEEP_PURPLE -> R.style.Theme_SagerNet_DeepPurple
-            INDIGO -> R.style.Theme_SagerNet_Indigo
-            BLUE -> R.style.Theme_SagerNet_Blue
-            LIGHT_BLUE -> R.style.Theme_SagerNet_LightBlue
-            CYAN -> R.style.Theme_SagerNet_Cyan
-            TEAL -> R.style.Theme_SagerNet_Teal
-            GREEN -> R.style.Theme_SagerNet_Green
-            LIGHT_GREEN -> R.style.Theme_SagerNet_LightGreen
-            LIME -> R.style.Theme_SagerNet_Lime
-            YELLOW -> R.style.Theme_SagerNet_Yellow
-            AMBER -> R.style.Theme_SagerNet_Amber
-            ORANGE -> R.style.Theme_SagerNet_Orange
-            DEEP_ORANGE -> R.style.Theme_SagerNet_DeepOrange
-            BROWN -> R.style.Theme_SagerNet_Brown
-            GREY -> R.style.Theme_SagerNet_Grey
-            BLUE_GREY -> R.style.Theme_SagerNet_BlueGrey
-            BLACK -> R.style.Theme_SagerNet_Black
-            else -> getTheme(defaultTheme())
-        }
-    }
+    /**
+     * 兼容旧签名：无论传入哪个历史主题 id，都只有液态玻璃主题。
+     * 这样即使旧数据里残留 appTheme 值，也不会崩溃或回退到彩色主题。
+     */
+    fun getTheme(@Suppress("UNUSED_PARAMETER") theme: Int): Int = R.style.Theme_SagerNet
 
-    fun getDialogTheme(theme: Int): Int {
-        return when (theme) {
-            RED -> R.style.Theme_SagerNet_Dialog_Red
-            PINK -> R.style.Theme_SagerNet_Dialog
-            PINK_SSR -> R.style.Theme_SagerNet_Dialog_Pink_SSR
-            PURPLE -> R.style.Theme_SagerNet_Dialog_Purple
-            DEEP_PURPLE -> R.style.Theme_SagerNet_Dialog_DeepPurple
-            INDIGO -> R.style.Theme_SagerNet_Dialog_Indigo
-            BLUE -> R.style.Theme_SagerNet_Dialog_Blue
-            LIGHT_BLUE -> R.style.Theme_SagerNet_Dialog_LightBlue
-            CYAN -> R.style.Theme_SagerNet_Dialog_Cyan
-            TEAL -> R.style.Theme_SagerNet_Dialog_Teal
-            GREEN -> R.style.Theme_SagerNet_Dialog_Green
-            LIGHT_GREEN -> R.style.Theme_SagerNet_Dialog_LightGreen
-            LIME -> R.style.Theme_SagerNet_Dialog_Lime
-            YELLOW -> R.style.Theme_SagerNet_Dialog_Yellow
-            AMBER -> R.style.Theme_SagerNet_Dialog_Amber
-            ORANGE -> R.style.Theme_SagerNet_Dialog_Orange
-            DEEP_ORANGE -> R.style.Theme_SagerNet_Dialog_DeepOrange
-            BROWN -> R.style.Theme_SagerNet_Dialog_Brown
-            GREY -> R.style.Theme_SagerNet_Dialog_Grey
-            BLUE_GREY -> R.style.Theme_SagerNet_Dialog_BlueGrey
-            BLACK -> R.style.Theme_SagerNet_Dialog_Black
-            else -> getDialogTheme(defaultTheme())
-        }
-    }
+    fun getDialogTheme(@Suppress("UNUSED_PARAMETER") theme: Int): Int =
+        R.style.Theme_SagerNet_Dialog
 
     var currentNightMode = -1
+
     fun getNightMode(): Int {
         if (currentNightMode == -1) {
             currentNightMode = DataStore.nightTheme

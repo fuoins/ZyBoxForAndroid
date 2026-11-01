@@ -73,16 +73,8 @@ class MainActivity : ThemedActivity(),
 
         binding = LayoutMainBinding.inflate(layoutInflater)
         binding.fab.initProgress(binding.fabProgress)
-        if (themeResId !in intArrayOf(
-                R.style.Theme_SagerNet_Black
-            )
-        ) {
-            navigation = binding.navView
-            binding.drawerLayout.removeView(binding.navViewBlack)
-        } else {
-            navigation = binding.navViewBlack
-            binding.drawerLayout.removeView(binding.navView)
-        }
+        // Liquid Glass：只保留一套玻璃抽屉（旧的「纯黑主题专用抽屉」已移除）
+        navigation = binding.navView
         navigation.setNavigationItemSelectedListener(this)
 
         if (savedInstanceState == null) {

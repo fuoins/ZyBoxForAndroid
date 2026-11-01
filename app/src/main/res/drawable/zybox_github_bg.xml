@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox: GitHub 地址链接按钮背景（白底+粉色描边+水波纹） -->
+<!-- Liquid Glass: 链接按钮（玻璃片 + 高光边） -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#22E91E63">
+    android:color="@color/glass_highlight_soft">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#FFFFFF" />
+            <solid android:color="@color/glass_surface_soft" />
             <stroke
-                android:width="1.5dp"
-                android:color="#E91E63" />
+                android:width="1dp"
+                android:color="@color/glass_stroke" />
             <corners android:radius="20dp" />
         </shape>
     </item>

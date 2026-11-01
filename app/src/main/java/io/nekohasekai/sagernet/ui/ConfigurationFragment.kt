@@ -1457,19 +1457,19 @@ class ConfigurationFragment @JvmOverloads constructor(
 
                     1 -> {
                         profileStatusText = getString(R.string.available, profile.ping)
-                        profileStatusColor = context.getColour(R.color.material_green_500)
+                        profileStatusColor = context.getColour(R.color.glass_success)
                     }
 
                     2 -> {
                         profileStatusText = profile.error
-                        profileStatusColor = context.getColour(R.color.material_red_500)
+                        profileStatusColor = context.getColour(R.color.glass_danger)
                     }
 
                     3 -> {
                         val err = profile.error ?: ""
                         val msg = Protocols.genFriendlyMsg(err)
                         profileStatusText = if (msg != err) msg else getString(R.string.unavailable)
-                        profileStatusColor = context.getColour(R.color.material_red_500)
+                        profileStatusColor = context.getColour(R.color.glass_danger)
                     }
                 }
 
@@ -2554,9 +2554,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                     profileStatus.setTextColor(requireContext().getColorAttr(android.R.attr.textColorSecondary))
                 } else if (proxyEntity.status == 1) {
                     profileStatus.text = getString(R.string.available, proxyEntity.ping)
-                    profileStatus.setTextColor(requireContext().getColour(R.color.material_green_500))
+                    profileStatus.setTextColor(requireContext().getColour(R.color.glass_success))
                 } else {
-                    profileStatus.setTextColor(requireContext().getColour(R.color.material_red_500))
+                    profileStatus.setTextColor(requireContext().getColour(R.color.glass_danger))
                     if (proxyEntity.status == 2) {
                         profileStatus.text = proxyEntity.error
                     }
@@ -2629,53 +2629,54 @@ class ConfigurationFragment @JvmOverloads constructor(
                         removeButton.isEnabled = !started
                         // ZyBox: 排序与外观 → 卡片样式（经典=左侧主题色竖条 / 描边=整卡描边）
                         val card = view as com.google.android.material.card.MaterialCardView
+                        val glassCard = view as? io.nekohasekai.sagernet.widget.LiquidGlassCardView
                         val ctx = view.context
                         val selectedBar = view.findViewById<android.view.View>(R.id.profile_selected_bar)
-                        val primary = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.colorPrimary)
+                        // Liquid Glass：强调态使用中性墨玻璃的高光棱边，不再引用任何主题色
+                        val primary = ctx.getColorAttr(io.nekohasekai.sagernet.R.attr.glassAccentColor)
+                        val glassStroke = ctx.getColour(io.nekohasekai.sagernet.R.color.card_stroke)
                         // 先恢复默认背景，避免多选/经典染色残留
                         card.setCardBackgroundColor(defaultCardBg)
+                        glassCard?.setGlassTintColor(0)
                         if (DataStore.profileCardStyle == 1) {
-                            card.strokeWidth = if (selected) dp2px(2) else dp2px(1)
-                            card.strokeColor = if (selected) {
-                                primary
-                            } else {
-                                ctx.getColour(io.nekohasekai.sagernet.R.color.card_stroke)
-                            }
+                            glassCard?.setGlassStroke(
+                                if (selected) primary else glassStroke,
+                                if (selected) dp2px(2) else dp2px(1)
+                            )
                             card.cardElevation = 0f
                             selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         } else {
-                            card.strokeWidth = 0
-                            card.cardElevation = ctx.resources.getDimension(io.nekohasekai.sagernet.R.dimen.profile_card_elevation_classic)
-                            // ZyBox: 经典样式选中时左侧粗竖条（主题色），未选中透明
+                            glassCard?.setGlassStroke(glassStroke, dp2px(1))
+                            card.cardElevation = 0f
+                            // 经典样式选中时左侧显示一条被光照亮的玻璃棱边
                             selectedBar.setBackgroundColor(
                                 if (selected && !pf.multiSelectMode) primary
                                 else android.graphics.Color.TRANSPARENT
                             )
                         }
-                        // ZyBox: 区间选择模式选中态：独立新样式（主题色浅底+主题色描边），区别于经典/描边
+                        // 区间选择：整块玻璃轻微染色 + 高光棱边，和普通选中区分开
                         if (pf.multiSelectMode && pf.multiRangeMode) {
                             val rangeSel = pf.multiSelectedIds.contains(proxyEntity.id)
-                            card.strokeWidth = if (rangeSel) dp2px(2) else 0
-                            card.strokeColor = if (rangeSel) primary else android.graphics.Color.TRANSPARENT
-                            card.cardElevation = 0f
-                            card.setCardBackgroundColor(
-                                if (rangeSel) (primary and 0x00FFFFFF) or (0x14 shl 24) else defaultCardBg
+                            val rangeBg = (primary and 0x00FFFFFF) or (0x16 shl 24)
+                            glassCard?.setGlassStroke(
+                                if (rangeSel) primary else glassStroke,
+                                if (rangeSel) dp2px(2) else dp2px(1)
                             )
+                            glassCard?.setGlassTintColor(if (rangeSel) rangeBg else 0)
+                            card.cardElevation = 0f
                             selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         } else if (pf.multiSelectMode) {
                             val multiSel = pf.multiSelectedIds.contains(proxyEntity.id)
                             if (DataStore.profileCardStyle == 1) {
-                                card.strokeWidth = if (multiSel) dp2px(2) else dp2px(1)
-                                card.strokeColor = if (multiSel) {
-                                    primary
-                                } else {
-                                    ctx.getColour(io.nekohasekai.sagernet.R.color.card_stroke)
-                                }
-                                card.setCardBackgroundColor(defaultCardBg)
+                                glassCard?.setGlassStroke(
+                                    if (multiSel) primary else glassStroke,
+                                    if (multiSel) dp2px(2) else dp2px(1)
+                                )
+                                glassCard?.setGlassTintColor(0)
                                 selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             } else {
-                                card.strokeWidth = 0
-                                card.setCardBackgroundColor(defaultCardBg)
+                                glassCard?.setGlassStroke(glassStroke, dp2px(1))
+                                glassCard?.setGlassTintColor(0)
                                 selectedBar.setBackgroundColor(
                                     if (multiSel) primary else android.graphics.Color.TRANSPARENT
                                 )

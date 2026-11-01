@@ -23,11 +23,10 @@
             android:padding="12dp">
 
             <!-- 应用图标卡 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="2dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -76,29 +75,28 @@
 
                 </LinearLayout>
 
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- 捐赠支持 -->
             <TextView
                 android:id="@+id/zybox_about_donate_button"
                 android:layout_width="match_parent"
                 android:layout_height="44dp"
-                android:layout_margin="4dp"
+    android:layout_margin="6dp"
                 android:background="@drawable/zybox_donate_bg"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/zybox_opt_donate"
-                android:textColor="@color/white"
+                android:textColor="@color/glass_on_accent"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
             <!-- 功能列表卡 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="2dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -110,13 +108,13 @@
                         android:id="@+id/zybox_about_check_update"
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
-                        android:layout_margin="4dp"
+    android:layout_margin="6dp"
                         android:background="@drawable/zybox_donate_bg"
                         android:clickable="true"
                         android:focusable="true"
                         android:gravity="center"
                         android:text="@string/zybox_check_update"
-                        android:textColor="@color/white"
+                        android:textColor="@color/glass_on_accent"
                         android:textSize="15sp"
                         android:textStyle="bold" />
 
@@ -129,7 +127,7 @@
                         android:id="@+id/zybox_about_github"
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
-                        android:layout_margin="4dp"
+    android:layout_margin="6dp"
                         android:background="@drawable/zybox_github_bg"
                         android:clickable="true"
                         android:focusable="true"
@@ -154,14 +152,13 @@
 
                 </LinearLayout>
 
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- 授权协议全文 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="2dp">
+    android:layout_margin="6dp">
 
                 <TextView
                     android:id="@+id/zybox_about_license"
@@ -173,7 +170,7 @@
                     android:textIsSelectable="true"
                     android:textSize="12sp" />
 
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
         </LinearLayout>
 

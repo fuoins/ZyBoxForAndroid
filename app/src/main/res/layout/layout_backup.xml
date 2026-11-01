@@ -5,9 +5,9 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <Button
+    <io.nekohasekai.sagernet.widget.LiquidGlassButton
         android:id="@+id/reset_settings"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/reset_settings"
@@ -38,17 +38,17 @@
         android:text="@string/backup_settings"
         android:textAppearance="?attr/textAppearanceSubtitle2" />
 
-    <Button
+    <io.nekohasekai.sagernet.widget.LiquidGlassButton
         android:id="@+id/action_export"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/action_export"
         android:textColor="?whiteOrTextPrimary" />
 
-    <Button
+    <io.nekohasekai.sagernet.widget.LiquidGlassButton
         android:id="@+id/action_share"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/share"
@@ -61,9 +61,9 @@
         android:text="@string/backup_summary"
         android:textColor="?android:textColorTertiary" />
 
-    <Button
+    <io.nekohasekai.sagernet.widget.LiquidGlassButton
         android:id="@+id/action_import_file"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"

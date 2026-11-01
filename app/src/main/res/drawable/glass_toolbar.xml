@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Liquid Glass · 悬浮工具栏：一块独立玻璃条 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="@color/glass_surface_soft"
+                android:startColor="@color/glass_surface_strong" />
+            <corners android:radius="@dimen/glass_corner_panel" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/glass_stroke" />
+        </shape>
+    </item>
+    <item
+        android:gravity="top"
+        android:left="20dp"
+        android:right="20dp">
+        <shape android:shape="rectangle">
+            <size android:height="1dp" />
+            <gradient
+                android:angle="0"
+                android:centerColor="@color/glass_highlight"
+                android:endColor="@android:color/transparent"
+                android:startColor="@android:color/transparent" />
+        </shape>
+    </item>
+</layer-list>

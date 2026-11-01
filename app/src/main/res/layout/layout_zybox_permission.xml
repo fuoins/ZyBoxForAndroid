@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?android:windowBackground">
+    android:background="@android:color/transparent">
 
     <include
         layout="@layout/layout_appbar"
@@ -38,10 +38,10 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
+    android:layout_margin="6dp"
                 android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialButton
+                <io.nekohasekai.sagernet.widget.LiquidGlassButton
                     android:id="@+id/perm_btn_all_required"
                     style="@style/Widget.MaterialComponents.Button.ZyBox"
                     android:layout_width="0dp"
@@ -54,7 +54,7 @@
                     android:text="@string/zybox_oneclick_required"
                     android:textSize="13sp" />
 
-                <com.google.android.material.button.MaterialButton
+                <io.nekohasekai.sagernet.widget.LiquidGlassButton
                     android:id="@+id/perm_btn_all_optional"
                     style="@style/Widget.MaterialComponents.Button.ZyBox"
                     android:layout_width="0dp"
@@ -69,11 +69,10 @@
             </LinearLayout>
 
             <!-- 自动初始化 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="1dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -112,7 +111,7 @@
                             android:textColor="?android:attr/textColorSecondary" />
                     </LinearLayout>
 
-                    <com.google.android.material.button.MaterialButton
+                    <io.nekohasekai.sagernet.widget.LiquidGlassButton
                         android:id="@+id/perm_btn_auto"
                         style="@style/Widget.MaterialComponents.Button.ZyBox"
                         android:layout_width="wrap_content"
@@ -124,14 +123,13 @@
                         android:text="@string/zybox_init_start"
                         android:textSize="13sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- 通知权限 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="1dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -170,7 +168,7 @@
                             android:textColor="?android:attr/textColorSecondary" />
                     </LinearLayout>
 
-                    <com.google.android.material.button.MaterialButton
+                    <io.nekohasekai.sagernet.widget.LiquidGlassButton
                         android:id="@+id/perm_btn_notif"
                         style="@style/Widget.MaterialComponents.Button.ZyBox"
                         android:layout_width="wrap_content"
@@ -182,14 +180,13 @@
                         android:text="@string/zybox_init_grant"
                         android:textSize="13sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- VPN 权限 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="1dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -228,7 +225,7 @@
                             android:textColor="?android:attr/textColorSecondary" />
                     </LinearLayout>
 
-                    <com.google.android.material.button.MaterialButton
+                    <io.nekohasekai.sagernet.widget.LiquidGlassButton
                         android:id="@+id/perm_btn_vpn"
                         style="@style/Widget.MaterialComponents.Button.ZyBox"
                         android:layout_width="wrap_content"
@@ -240,14 +237,13 @@
                         android:text="@string/zybox_init_grant"
                         android:textSize="13sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- ZyBox: 应用列表权限（分应用代理） -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="1dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -286,7 +282,7 @@
                             android:textColor="?android:attr/textColorSecondary" />
                     </LinearLayout>
 
-                    <com.google.android.material.button.MaterialButton
+                    <io.nekohasekai.sagernet.widget.LiquidGlassButton
                         android:id="@+id/perm_btn_apps"
                         style="@style/Widget.MaterialComponents.Button.ZyBox"
                         android:layout_width="wrap_content"
@@ -298,7 +294,7 @@
                         android:text="@string/zybox_init_grant"
                         android:textSize="13sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- ZyBox: VPN 热点权限分栏标题 -->
             <TextView
@@ -314,11 +310,10 @@
                 android:textColor="?attr/colorPrimary" />
 
             <!-- Root 权限 -->
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                app:cardElevation="1dp">
+    android:layout_margin="6dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -357,7 +352,7 @@
                             android:textColor="?android:attr/textColorSecondary" />
                     </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
             <!-- ZyBox: 可选功能分栏标题 -->
             <TextView
@@ -377,7 +372,7 @@
                 android:id="@+id/perm_btn_route"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
+    android:layout_margin="6dp"
                 android:background="@drawable/zybox_ping_capsule"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
@@ -421,7 +416,7 @@
                 android:id="@+id/perm_btn_apps_import"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
+    android:layout_margin="6dp"
                 android:background="@drawable/zybox_ping_capsule"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"

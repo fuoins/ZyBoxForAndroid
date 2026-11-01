@@ -41,20 +41,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         DataStore.initGlobal()
         addPreferencesFromResource(R.xml.global_preferences)
 
-        val appTheme = findPreference<ColorPickerPreference>(Key.APP_THEME)!!
-        appTheme.setOnPreferenceChangeListener { _, newTheme ->
-            if (DataStore.serviceState.started) {
-                SagerNet.reloadService()
-            }
-            val theme = Theme.getTheme(newTheme as Int)
-            app.setTheme(theme)
-            requireActivity().apply {
-                setTheme(theme)
-                ActivityCompat.recreate(this)
-            }
-            true
-        }
-
+        // Liquid Glass 重构：配色主题已整体移除，应用固定为单一玻璃主题。
+        // 仅保留「夜间模式」切换（系统 / 常亮 / 常暗 / 跟随电量）。
         val nightTheme = findPreference<SimpleMenuPreference>(Key.NIGHT_THEME)!!
         nightTheme.setOnPreferenceChangeListener { _, newTheme ->
             Theme.currentNightMode = (newTheme as String).toInt()

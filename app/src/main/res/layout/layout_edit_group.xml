@@ -48,15 +48,14 @@
                     android:inputType="textNoSuggestions|textMultiLine" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.card.MaterialCardView
+            <io.nekohasekai.sagernet.widget.LiquidGlassCardView
                 android:id="@+id/deduplication_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="4dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginRight="4dp"
-                android:layout_marginBottom="4dp"
-                app:cardElevation="2dp">
+                android:layout_marginBottom="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -80,7 +79,7 @@
 
                 </LinearLayout>
 
-            </com.google.android.material.card.MaterialCardView>
+            </io.nekohasekai.sagernet.widget.LiquidGlassCardView>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

@@ -1,20 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass · 悬浮工具栏
+    不再是贴着屏幕顶部的实色 ActionBar，而是一条独立、带高光的玻璃条，
+    下面露出流动的背景光，滚动时内容从它下方穿过。
+-->
 <com.google.android.material.appbar.AppBarLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/appbar"
     android:layout_width="match_parent"
-    android:layout_height="?attr/actionBarSize"
-    android:background="?attr/colorPrimary"
-    android:elevation="4dp">
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent"
+    android:elevation="0dp"
+    app:liftOnScroll="false">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="?attr/colorPrimary"
-        android:theme="?actionBarTheme"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/glass_toolbar"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
         android:touchscreenBlocksFocus="false"
+        app:navigationIconTint="@color/glass_text_primary"
         app:popupTheme="@style/ThemeOverlay.AppCompat.DayNight"
+        app:subtitleTextColor="@color/glass_text_secondary"
         app:title="@string/app_name"
-        app:titleTextAppearance="@style/ZyBoxToolbarTitle" />
+        app:titleTextAppearance="@style/ZyBoxToolbarTitle"
+        app:titleTextColor="@color/glass_text_primary" />
 </com.google.android.material.appbar.AppBarLayout>

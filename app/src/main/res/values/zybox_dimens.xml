@@ -1,20 +1,31 @@
 <resources>
-    <!-- ZyBox UI 2.0 设计 Token：圆角家族 -->
-    <dimen name="zybox_corner_small">8dp</dimen>
-    <dimen name="zybox_corner">16dp</dimen>
-    <dimen name="zybox_corner_large">20dp</dimen>
-    <dimen name="zybox_corner_extra">24dp</dimen>
+    <!--
+        Liquid Glass 尺寸系统
+        圆角比原 Tide 设计更大：玻璃材质需要更柔的轮廓与更好的光带贴合。
+    -->
+    <dimen name="glass_corner_pill">28dp</dimen>
+    <dimen name="glass_corner_item">18dp</dimen>
+    <dimen name="glass_corner_card">22dp</dimen>
+    <dimen name="glass_corner_panel">26dp</dimen>
+    <dimen name="glass_corner_dialog">30dp</dimen>
 
-    <!-- 卡片间距（用户钦定 4dp） -->
-    <dimen name="zybox_card_gap">4dp</dimen>
+    <dimen name="glass_stroke_width">1dp</dimen>
+    <dimen name="glass_blur_radius">44dp</dimen>
+    <dimen name="glass_elevation_soft">10dp</dimen>
 
-    <!-- 组件高度 -->
+    <!-- 兼容旧命名 -->
+    <dimen name="zybox_corner_small">10dp</dimen>
+    <dimen name="zybox_corner">@dimen/glass_corner_item</dimen>
+    <dimen name="zybox_corner_large">@dimen/glass_corner_card</dimen>
+    <dimen name="zybox_corner_extra">@dimen/glass_corner_panel</dimen>
+
+    <dimen name="zybox_card_gap">6dp</dimen>
+
     <dimen name="zybox_button_height">48dp</dimen>
     <dimen name="zybox_chip_height">36dp</dimen>
     <dimen name="zybox_tab_indicator_height">3dp</dimen>
     <dimen name="zybox_tab_indicator_width">28dp</dimen>
 
-    <!-- 延迟胶囊 -->
     <dimen name="zybox_ping_padding_h">10dp</dimen>
     <dimen name="zybox_ping_padding_v">3dp</dimen>
     <dimen name="zybox_ping_corner">10dp</dimen>

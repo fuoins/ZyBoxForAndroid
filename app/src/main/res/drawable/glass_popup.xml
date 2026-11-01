@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Liquid Glass · 弹出菜单：一块悬浮玻璃，边缘带高光 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="@color/glass_surface"
+                android:startColor="@color/glass_surface_strong" />
+            <corners android:radius="18dp" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/glass_stroke" />
+        </shape>
+    </item>
+    <item
+        android:gravity="top"
+        android:left="16dp"
+        android:right="16dp">
+        <shape android:shape="rectangle">
+            <size android:height="1dp" />
+            <gradient
+                android:angle="0"
+                android:centerColor="@color/glass_highlight"
+                android:endColor="@android:color/transparent"
+                android:startColor="@android:color/transparent" />
+        </shape>
+    </item>
+</layer-list>

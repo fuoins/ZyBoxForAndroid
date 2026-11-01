@@ -13,7 +13,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
-        android:background="@android:color/darker_gray" />
+        android:background="@drawable/glass_divider" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -49,7 +49,7 @@
             android:id="@+id/action_tab"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:background="?primaryOrTextPrimary"
+            android:background="@drawable/glass_key_bg"
             android:padding="8dp"
             android:src="@drawable/baseline_keyboard_tab_24"
             app:tint="?colorOnSurface" />
@@ -58,7 +58,7 @@
             android:id="@+id/extended_keyboard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="?colorSecondaryVariant"
+            android:background="@color/glass_surface_soft"
             android:orientation="horizontal"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:itemCount="6"
@@ -68,7 +68,7 @@
             android:id="@+id/action_undo"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:background="?primaryOrTextPrimary"
+            android:background="@drawable/glass_key_bg"
             android:padding="8dp"
             android:src="@drawable/baseline_undo_24"
             app:tint="?colorOnSurface" />
@@ -77,7 +77,7 @@
             android:id="@+id/action_redo"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:background="?primaryOrTextPrimary"
+            android:background="@drawable/glass_key_bg"
             android:padding="8dp"
             android:src="@drawable/baseline_redo_24"
             app:tint="?colorOnSurface" />
@@ -86,7 +86,7 @@
             android:id="@+id/action_format"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:background="?primaryOrTextPrimary"
+            android:background="@drawable/glass_key_bg"
             android:padding="8dp"
             android:src="@drawable/ic_baseline_format_align_left_24"
             app:tint="?colorOnSurface" />
@@ -94,7 +94,7 @@
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="?primaryOrTextPrimary" />
+            android:background="@drawable/glass_key_bg" />
 
     </LinearLayout>
 

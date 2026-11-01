@@ -1,14 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox: 捐赠按钮渐变背景 -->
+<!-- Liquid Glass: 强调按钮（深墨玻璃 + 顶部反光） -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#33FFFFFF">
+    android:color="@color/glass_highlight_soft">
     <item>
-        <shape android:shape="rectangle">
-            <gradient
-                android:angle="0"
-                android:endColor="#FF6B9D"
-                android:startColor="#FF8FB1" />
-            <corners android:radius="20dp" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <gradient
+                        android:angle="270"
+                        android:endColor="@color/glass_accent_pressed"
+                        android:startColor="@color/glass_accent" />
+                    <corners android:radius="22dp" />
+                </shape>
+            </item>
+            <item android:gravity="top">
+                <shape android:shape="rectangle">
+                    <size android:height="1dp" />
+                    <solid android:color="@color/glass_highlight" />
+                    <corners
+                        android:topLeftRadius="22dp"
+                        android:topRightRadius="22dp" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
 </ripple>

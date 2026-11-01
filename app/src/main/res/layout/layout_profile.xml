@@ -2,16 +2,15 @@
 <!-- ZyBox UI 3.0: 节点卡片全新布局
      第一行: 节点名(大字) + 操作按钮
      第二行: 类型徽章 + 流量 + 延迟胶囊 -->
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<io.nekohasekai.sagernet.widget.LiquidGlassCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
+    android:layout_margin="6dp"
     android:clickable="true"
-    android:focusable="true"
-    app:cardElevation="1dp">
+    android:focusable="true">
 
     <LinearLayout
         android:id="@+id/content_lin"
@@ -193,4 +192,4 @@
 
     </LinearLayout>
 
-</com.google.android.material.card.MaterialCardView>
+</io.nekohasekai.sagernet.widget.LiquidGlassCardView>

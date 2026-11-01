@@ -7,7 +7,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.ViewCompat
-import com.google.android.material.card.MaterialCardView
+import io.nekohasekai.sagernet.widget.LiquidGlassCardView
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.databinding.LayoutZyboxOptimizationBinding
 import io.nekohasekai.sagernet.widget.ListListener
@@ -125,7 +125,7 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
         fun dp2px(v: Int): Int = (v * dp).toInt()
 
         for (group in groups) {
-            // 大标题：粉色渐变胶囊
+            // 大标题：玻璃胶囊
             container.addView(TextView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -135,7 +135,7 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
                 }
                 background = requireContext().getDrawable(R.drawable.zybox_group_bg)
                 text = group.title
-                setTextColor(Color.WHITE)
+                setTextColor(requireContext().getColor(R.color.glass_text_primary))
                 textSize = 15f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -144,15 +144,15 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
 
             // 小项卡片
             for ((subTitle, desc) in group.items) {
-                container.addView(MaterialCardView(requireContext()).apply {
+                container.addView(LiquidGlassCardView(requireContext()).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply {
                         setMargins(dp2px(2), dp2px(4), dp2px(2), dp2px(4))
                     }
-                    radius = dp2px(12).toFloat()
-                    cardElevation = 1f
+                    radius = dp2px(22).toFloat()
+                    cardElevation = 0f
                     setContentPadding(dp2px(4), dp2px(10), dp2px(4), dp2px(10))
                     addView(LinearLayout(requireContext()).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -175,12 +175,12 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
                                 text = subTitle
                                 textSize = 14f
                                 setTypeface(typeface, android.graphics.Typeface.BOLD)
-                                setTextColor(0xFF333333.toInt())
+                                setTextColor(requireContext().getColor(R.color.glass_text_primary))
                             })
                             addView(TextView(requireContext()).apply {
                                 text = desc
                                 textSize = 12f
-                                setTextColor(0xFF777777.toInt())
+                                setTextColor(requireContext().getColor(R.color.glass_text_secondary))
                                 setLineSpacing(0f, 1.15f)
                             })
                         })
@@ -199,7 +199,7 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
             }
             background = requireContext().getDrawable(R.drawable.zybox_github_bg)
             text = "GitHub 开源地址\nhttps://github.com/fuoins/ZyBoxForAndroid"
-            setTextColor(requireContext().getColor(R.color.material_pink_500))
+            setTextColor(requireContext().getColor(R.color.glass_text_primary))
             textSize = 14f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER

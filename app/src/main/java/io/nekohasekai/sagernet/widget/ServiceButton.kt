@@ -1,6 +1,7 @@
 package io.nekohasekai.sagernet.widget
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
@@ -8,6 +9,7 @@ import android.view.PointerIcon
 import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.TooltipCompat
+import androidx.core.content.ContextCompat
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -27,6 +29,22 @@ class ServiceButton @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) :
     FloatingActionButton(context, attrs, defStyleAttr), DynamicAnimation.OnAnimationEndListener {
+
+    init {
+        // Liquid Glass：把 FAB 从「实心主题色圆钮」换成一颗深墨玻璃球，
+        // 保留 Material 的抬升/涟漪/动画能力，只替换材质。
+        backgroundTintList = null
+        background = ContextCompat.getDrawable(context, R.drawable.glass_fab)
+        elevation = resources.displayMetrics.density * 10f
+        imageTintList = ColorStateList.valueOf(
+            context.obtainStyledAttributes(intArrayOf(R.attr.glassOnAccentColor))
+                .let { ta ->
+                    val c = ta.getColor(0, android.graphics.Color.WHITE)
+                    ta.recycle()
+                    c
+                }
+        )
+    }
 
     private val callback = object : Animatable2Compat.AnimationCallback() {
         override fun onAnimationEnd(drawable: Drawable) {

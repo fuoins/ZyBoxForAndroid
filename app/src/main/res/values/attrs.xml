@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <resources>
+    <!-- 旧 ZyBox 语义属性（保留以兼容既有布局引用） -->
     <attr name="colorMaterial100" format="color" />
     <attr name="colorMaterial300" format="color" />
     <attr name="accentOrTextSecondary" format="color" />
@@ -10,4 +11,41 @@
     <attr name="fabColorBackground" format="color" />
     <attr name="selectedColorPrimary" format="color" />
     <attr name="whiteOrTextPrimary" format="color" />
+
+    <!-- ===== Liquid Glass 材质属性 ===== -->
+    <attr name="glassSurfaceColor" format="color" />
+    <attr name="glassSurfaceSoftColor" format="color" />
+    <attr name="glassSurfaceStrongColor" format="color" />
+    <attr name="glassStrokeColor" format="color" />
+    <attr name="glassHighlightColor" format="color" />
+    <attr name="glassAccentColor" format="color" />
+    <attr name="glassOnAccentColor" format="color" />
+    <attr name="glassTextPrimaryColor" format="color" />
+    <attr name="glassTextSecondaryColor" format="color" />
+
+    <attr name="glassCornerRadius" format="dimension" />
+    <attr name="glassStrokeWidth" format="dimension" />
+    <attr name="glassTint" format="color" />
+    <attr name="glassBlurRadius" format="dimension" />
+    <attr name="glassElevationSoft" format="dimension" />
+    <attr name="glassHighlightStrength" format="float" />
+    <attr name="glassRefraction" format="boolean" />
+    <attr name="glassAnimate" format="boolean" />
+
+    <declare-styleable name="LiquidGlassBackdrop">
+        <attr name="glassAnimate" />
+    </declare-styleable>
+
+    <attr name="glassAccent" format="boolean" />
+
+    <declare-styleable name="LiquidGlassButton">
+        <attr name="glassAccent" />
+        <attr name="glassCornerRadius" />
+    </declare-styleable>
+
+    <declare-styleable name="LiquidGlassCardView">
+        <attr name="glassCornerRadius" />
+        <attr name="glassTint" />
+        <attr name="glassRefraction" />
+    </declare-styleable>
 </resources>

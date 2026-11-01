@@ -8,10 +8,7 @@
             app:key="isAutoConnect"
             app:summary="@string/auto_connect_summary"
             app:title="@string/auto_connect" />
-        <moe.matsuri.nb4a.ui.ColorPickerPreference
-            android:title="@string/theme"
-            app:icon="@drawable/ic_baseline_color_lens_24"
-            app:key="appTheme" />
+        <!-- Liquid Glass：配色主题入口已移除，全应用使用统一的液态玻璃材质 -->
         <moe.matsuri.nb4a.ui.SimpleMenuPreference
             app:defaultValue="0"
             app:entries="@array/night_mode"

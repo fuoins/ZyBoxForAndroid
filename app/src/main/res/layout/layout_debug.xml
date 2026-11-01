@@ -5,17 +5,17 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <Button
+    <io.nekohasekai.sagernet.widget.LiquidGlassButton
         android:id="@+id/debug_crash"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Crash From Kt"
         android:textColor="?whiteOrTextPrimary" />
 
-    <Button
+    <io.nekohasekai.sagernet.widget.LiquidGlassButton
         android:id="@+id/reset_settings"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.MaterialComponents.Button.ZyBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Reset Settings"
