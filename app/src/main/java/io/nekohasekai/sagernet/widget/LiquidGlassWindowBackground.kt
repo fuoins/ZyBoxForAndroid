@@ -6,7 +6,7 @@ import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.RadialGradient
-import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
 
@@ -72,10 +72,28 @@ class LiquidGlassWindowBackground(
         if (bitmap.isRecycled) return
         paint.shader = null
         paint.alpha = 255
-        canvas.drawBitmap(bitmap, null, Rect(b), paint)
+        drawPhotoCenterCrop(canvas, bitmap)
         if (photoDim > 0) {
             canvas.drawColor((photoDim * 255 / 100) shl 24)
         }
+    }
+
+    /**
+     * 和 ImageView 的 `scaleType="centerCrop"` 对齐：等比放大到刚好盖满，
+     * 多余部分裁掉。直接 `drawBitmap(..., Rect(bounds))` 会按窗口比例拉伸，
+     * 竖图会被压扁。
+     */
+    private fun drawPhotoCenterCrop(canvas: Canvas, bitmap: Bitmap) {
+        val b = bounds
+        val bw = bitmap.width.toFloat()
+        val bh = bitmap.height.toFloat()
+        if (bw <= 0f || bh <= 0f) return
+        val scale = maxOf(b.width() / bw, b.height() / bh)
+        val dw = bw * scale
+        val dh = bh * scale
+        val left = b.left + (b.width() - dw) / 2f
+        val top = b.top + (b.height() - dh) / 2f
+        canvas.drawBitmap(bitmap, null, RectF(left, top, left + dw, top + dh), paint)
     }
 
     private fun drawGlow(canvas: Canvas, index: Int, cx: Float, cy: Float, radius: Float) {
