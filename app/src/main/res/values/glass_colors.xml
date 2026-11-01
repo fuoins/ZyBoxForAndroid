@@ -60,6 +60,14 @@
     <color name="glass_accent_soft">#1F121A28</color>
     <color name="glass_on_accent">#FFFFFF</color>
 
+    <!--
+        按压水波纹。
+        主题里四处 rippleColor 引用这个颜色，但它一直没被定义 ——
+        解析失败后落到 Material 的默认白色高亮，点设置行会闪一块白方块
+        （分组设置里的「分组类型 / 排序」就是这样）。
+    -->
+    <color name="glass_ripple">#1F0B1220</color>
+
     <!-- 状态色：仅用于语义（延迟 / 连接 / 错误），不参与主题 -->
     <color name="glass_success">#1F9D66</color>
     <color name="glass_warning">#B67B24</color>
