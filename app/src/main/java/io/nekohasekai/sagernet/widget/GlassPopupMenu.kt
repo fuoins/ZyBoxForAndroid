@@ -20,12 +20,15 @@ import io.nekohasekai.sagernet.utils.GlassBlur
  * 的引用计数合并，关闭时不会互相踩掉。
  *
  * Android 11 及以下没有 RenderEffect，退化为高不透明度的磨砂玻璃。
+ *
+ * 注意 `context` 必须自己存一份：AppCompat 的 `PopupMenu` 没有公开
+ * 的 `getContext()`，在类体里写 `context` 会直接编译失败。
  */
 class GlassPopupMenu @JvmOverloads constructor(
-    context: Context,
+    private val hostContext: Context,
     anchor: View,
     gravity: Int = GravityCompat.START,
-) : PopupMenu(context, anchor, gravity) {
+) : PopupMenu(hostContext, anchor, gravity) {
 
     private var dismissListener: PopupMenu.OnDismissListener? = null
 
@@ -56,7 +59,7 @@ class GlassPopupMenu @JvmOverloads constructor(
 
     private fun acquireBlur() {
         if (blurAnchor != null) return
-        val decor = GlassBlur.decorOf(context) ?: return
+        val decor = GlassBlur.decorOf(hostContext) ?: return
         blurAnchor = decor
         GlassBlur.acquire(decor)
     }
