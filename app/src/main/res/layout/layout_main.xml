@@ -48,9 +48,7 @@
             android:id="@+id/fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:elevation="0dp"
             android:nextFocusDown="@+id/stats"
-            app:backgroundTint="@android:color/transparent"
             app:layout_anchor="@id/stats"
             app:pressedTranslationZ="0dp"
             app:srcCompat="@drawable/ic_service_idle" />
@@ -65,8 +63,7 @@
             android:layout_marginBottom="10dp"
             android:nextFocusUp="@+id/fab"
             app:backgroundTint="@android:color/transparent"
-            app:contentInsetStart="0dp"
-            android:elevation="0dp">
+            app:contentInsetStart="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"

@@ -47,6 +47,22 @@ class StatsBar @JvmOverloads constructor(
         elevation = 0f
     }
 
+    /**
+     * BottomAppBar 重写的 setElevation() 直接解引用 materialShapeDrawable，
+     * 而 View 的构造函数在解析 android:elevation 时就会回调它 —— 那时该字段
+     * 还没创建，于是 NPE 崩溃（本项目的 3.0.0 就踩过这个坑）。
+     *
+     * 布局里已经不再写 android:elevation，这里再兜一层，避免样式表、
+     * 主题或以后有人手滑把属性加回来时又把启动流程炸掉。
+     */
+    override fun setElevation(elevation: Float) {
+        try {
+            super.setElevation(elevation)
+        } catch (_: NullPointerException) {
+            // 构造阶段：materialShapeDrawable 尚未初始化，忽略即可（本就无阴影）
+        }
+    }
+
     override fun getBehavior(): YourBehavior {
         if (!this::behavior.isInitialized) behavior = YourBehavior { allowShow }
         return behavior

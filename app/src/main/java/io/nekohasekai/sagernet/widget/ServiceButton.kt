@@ -33,8 +33,22 @@ class ServiceButton @JvmOverloads constructor(
     init {
         // Liquid Glass：把 FAB 从「实心主题色圆钮」换成一颗深墨玻璃球，
         // 保留 Material 的抬升/涟漪/动画能力，只替换材质。
-        backgroundTintList = null
-        background = ContextCompat.getDrawable(context, R.drawable.glass_fab)
+        //
+        // 注意：FloatingActionButton 内部重写了 setBackgroundDrawable()，
+        // 任何自定义 Drawable 都会被直接丢弃（只打印一行
+        // "Setting a custom background is not supported."），所以材质只能
+        // 通过 backgroundTint 交给它自己的 shape drawable，顶光与棱边改由
+        // foreground 叠回来（见 glass_fab_foreground）。
+        backgroundTintList = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf()),
+            intArrayOf(
+                ContextCompat.getColor(context, R.color.glass_accent_pressed),
+                ContextCompat.getColor(context, R.color.glass_accent)
+            )
+        )
+        if (Build.VERSION.SDK_INT >= 23) {
+            foreground = ContextCompat.getDrawable(context, R.drawable.glass_fab_foreground)
+        }
         elevation = resources.displayMetrics.density * 10f
         imageTintList = ColorStateList.valueOf(
             context.obtainStyledAttributes(intArrayOf(R.attr.glassOnAccentColor))
