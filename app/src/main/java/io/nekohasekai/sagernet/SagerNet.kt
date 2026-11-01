@@ -246,6 +246,15 @@ class SagerNet : Application(),
     private fun copyGeoAssetsIfNeeded() {
         val names = arrayOf("geoip.db", "geosite.db")
         val lockFile = File(externalAssets, ".geo.lock")
+        val versionFile = File(externalAssets, ".geo.version")
+        val versionTag = BuildConfig.VERSION_CODE.toString()
+        // 升级到新版本时强制重铺一次：旧版可能留下「长度正常但格式不兼容」的库，
+        // 只看长度是发现不了的，而 sing-box 只会在连接时报 EOF
+        val versionChanged = try {
+            versionFile.readText().trim() != versionTag
+        } catch (e: Exception) {
+            true
+        }
         try {
             java.io.RandomAccessFile(lockFile, "rw").use { raf ->
                 val lock = raf.channel.lock()
@@ -259,8 +268,10 @@ class SagerNet : Application(),
                         } catch (e: Exception) {
                             -1L
                         }
-                        if (expected > MIN_GEO_SIZE && target.length() == expected) continue
-                        if (expected <= MIN_GEO_SIZE && target.length() > MIN_GEO_SIZE) continue
+                        if (!versionChanged) {
+                            if (expected > MIN_GEO_SIZE && target.length() == expected) continue
+                            if (expected <= MIN_GEO_SIZE && target.length() > MIN_GEO_SIZE) continue
+                        }
 
                         val tmp = File(externalAssets, "$name.tmp")
                         if (tmp.exists()) tmp.delete()
@@ -279,6 +290,7 @@ class SagerNet : Application(),
                             tmp.renameTo(target)
                         }
                     }
+                    versionFile.writeText(versionTag)
                 } finally {
                     lock.release()
                 }
