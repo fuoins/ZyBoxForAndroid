@@ -57,20 +57,33 @@ jobs:
           if [ "$VARIANT" = "fdroidRelease" ]; then TASK=:app:assembleFdroidRelease; fi
           if [ "$VARIANT" = "playRelease" ]; then TASK=:app:assemblePlayRelease; fi
           if [ "$VARIANT" = "debug" ]; then TASK=:app:assembleFdroidDebug; fi
-          # 日志落盘：GitHub 的 log API 对 >1MB 的日志会从中间截断，
-          # 失败原因（What went wrong）恰好在末尾，看不到。这里把 Gradle
-          # 输出同时写进文件，失败时只打印关键片段。
+          # -q：D8 的 Kotlin metadata warning 会打出上百行堆栈，把日志撑到 1MB 以上，
+          # 而 GitHub 的 log API 超过 1MB 会从中间截断，正好把失败摘要截没。
+          # 静默模式只留错误，日志能完整返回。
           set -o pipefail
-          ./gradlew $TASK --console=plain --max-workers=2 \
+          ./gradlew $TASK --console=plain -q --max-workers=2 \
             -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" 2>&1 | tee /tmp/build.log
       - name: Report build failure
         if: failure()
         run: |
           echo "===================== FAILURE DETAIL ====================="
-          grep -n -B 2 -A 25 "What went wrong" /tmp/build.log | head -80 || true
+          grep -n -B 2 -A 30 "What went wrong" /tmp/build.log | head -80 || true
           echo "--------------------- last 60 lines ---------------------"
           tail -60 /tmp/build.log || true
           echo "===================== END DETAIL ========================="
+          {
+            echo "=== What went wrong ==="
+            grep -n -A 30 "What went wrong" /tmp/build.log | head -80 || true
+            echo "=== last 120 ==="
+            tail -120 /tmp/build.log || true
+          } > /tmp/failure.txt
+      - name: Upload failure detail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure
+          path: /tmp/failure.txt
+          if-no-files-found: ignore
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
