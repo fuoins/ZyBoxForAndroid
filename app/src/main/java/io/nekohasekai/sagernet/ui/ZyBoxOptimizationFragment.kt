@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import io.nekohasekai.sagernet.widget.LiquidGlassCardView
 import io.nekohasekai.sagernet.R
@@ -135,7 +136,7 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
                 }
                 background = requireContext().getDrawable(R.drawable.zybox_group_bg)
                 text = group.title
-                setTextColor(requireContext().getColor(R.color.glass_text_primary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_primary))
                 textSize = 15f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -175,12 +176,12 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
                                 text = subTitle
                                 textSize = 14f
                                 setTypeface(typeface, android.graphics.Typeface.BOLD)
-                                setTextColor(requireContext().getColor(R.color.glass_text_primary))
+                                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_primary))
                             })
                             addView(TextView(requireContext()).apply {
                                 text = desc
                                 textSize = 12f
-                                setTextColor(requireContext().getColor(R.color.glass_text_secondary))
+                                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_secondary))
                                 setLineSpacing(0f, 1.15f)
                             })
                         })
@@ -199,7 +200,7 @@ class ZyBoxOptimizationFragment : ToolbarFragment(R.layout.layout_zybox_optimiza
             }
             background = requireContext().getDrawable(R.drawable.zybox_github_bg)
             text = "GitHub 开源地址\nhttps://github.com/fuoins/ZyBoxForAndroid"
-            setTextColor(requireContext().getColor(R.color.glass_text_primary))
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_primary))
             textSize = 14f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER

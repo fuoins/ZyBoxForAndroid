@@ -2641,12 +2641,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                         if (DataStore.profileCardStyle == 1) {
                             glassCard?.setGlassStroke(
                                 if (selected) primary else glassStroke,
-                                if (selected) dp2px(2) else dp2px(1)
+                                if (selected) dp2px(2).toFloat() else dp2px(1).toFloat()
                             )
                             card.cardElevation = 0f
                             selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         } else {
-                            glassCard?.setGlassStroke(glassStroke, dp2px(1))
+                            glassCard?.setGlassStroke(glassStroke, dp2px(1).toFloat())
                             card.cardElevation = 0f
                             // 经典样式选中时左侧显示一条被光照亮的玻璃棱边
                             selectedBar.setBackgroundColor(
@@ -2660,7 +2660,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             val rangeBg = (primary and 0x00FFFFFF) or (0x16 shl 24)
                             glassCard?.setGlassStroke(
                                 if (rangeSel) primary else glassStroke,
-                                if (rangeSel) dp2px(2) else dp2px(1)
+                                if (rangeSel) dp2px(2).toFloat() else dp2px(1).toFloat()
                             )
                             glassCard?.setGlassTintColor(if (rangeSel) rangeBg else 0)
                             card.cardElevation = 0f
@@ -2670,12 +2670,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                             if (DataStore.profileCardStyle == 1) {
                                 glassCard?.setGlassStroke(
                                     if (multiSel) primary else glassStroke,
-                                    if (multiSel) dp2px(2) else dp2px(1)
+                                    if (multiSel) dp2px(2).toFloat() else dp2px(1).toFloat()
                                 )
                                 glassCard?.setGlassTintColor(0)
                                 selectedBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             } else {
-                                glassCard?.setGlassStroke(glassStroke, dp2px(1))
+                                glassCard?.setGlassStroke(glassStroke, dp2px(1).toFloat())
                                 glassCard?.setGlassTintColor(0)
                                 selectedBar.setBackgroundColor(
                                     if (multiSel) primary else android.graphics.Color.TRANSPARENT

@@ -13,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.google.android.material.switchmaterial.SwitchMaterial
+import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
@@ -759,7 +760,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                         container.addView(TextView(requireContext()).apply {
                             text = getString(R.string.no_subscriptions)
                             textSize = 14f
-                            setTextColor(requireContext().getColor(R.color.glass_text_tertiary))
+                            setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_tertiary))
                             setPadding(0, dp2px(4), 0, dp2px(16))
                         })
                     } else {
@@ -797,14 +798,14 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
             row.addView(TextView(requireContext()).apply {
                 text = group.displayName()
                 textSize = 15f
-                setTextColor(requireContext().getColor(R.color.glass_text_primary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_primary))
             })
             row.addView(TextView(requireContext()).apply {
                 text = bean.link.orEmpty()
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.MIDDLE
                 textSize = 12f
-                setTextColor(requireContext().getColor(R.color.glass_text_tertiary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_tertiary))
             })
             val lastUpdated = bean.lastUpdated ?: 0
             row.addView(TextView(requireContext()).apply {
@@ -814,7 +815,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     getString(R.string.subscription_never_updated)
                 }
                 textSize = 12f
-                setTextColor(requireContext().getColor(R.color.glass_text_secondary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_secondary))
             })
             row.addView(Button(requireContext()).apply {
                 text = getString(R.string.update_subscription)
@@ -837,14 +838,14 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
             row.addView(TextView(requireContext()).apply {
                 text = entity.displayName()
                 textSize = 15f
-                setTextColor(requireContext().getColor(R.color.glass_text_primary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_primary))
             })
             row.addView(TextView(requireContext()).apply {
                 text = entity.bean?.link.orEmpty()
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.MIDDLE
                 textSize = 12f
-                setTextColor(requireContext().getColor(R.color.glass_text_tertiary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_tertiary))
             })
             val lastUpdated = entity.bean?.lastUpdated ?: 0
             row.addView(TextView(requireContext()).apply {
@@ -854,7 +855,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     getString(R.string.subscription_never_updated)
                 }
                 textSize = 12f
-                setTextColor(requireContext().getColor(R.color.glass_text_secondary))
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.glass_text_secondary))
             })
             val buttons = LinearLayout(requireContext()).apply {
                 orientation = LinearLayout.HORIZONTAL

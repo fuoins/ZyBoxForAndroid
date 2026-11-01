@@ -10,6 +10,7 @@ import android.text.style.ForegroundColorSpan
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
 import androidx.core.view.doOnLayout
@@ -48,7 +49,7 @@ class LogcatFragment : ToolbarFragment(R.layout.layout_logcat),
         var color = ForegroundColorSpan(Color.GRAY)
         when {
             line.contains("INFO[") || line.contains(" [Info]") -> {
-                color = ForegroundColorSpan(context?.getColor(R.color.glass_success) ?: 0xFF86C166.toInt())
+                color = ForegroundColorSpan(context?.let { c -> ContextCompat.getColor(c, R.color.glass_success) } ?: 0xFF86C166.toInt())
             }
 
             line.contains("ERROR[") || line.contains(" [Error]") -> {
