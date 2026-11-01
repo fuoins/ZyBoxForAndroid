@@ -51,9 +51,6 @@
     <color name="glass_accent_soft">#2EEAF0FA</color>
     <color name="glass_on_accent">#0A0F18</color>
 
-    <!-- 按压水波纹：夜间用低透明度白（见 values/glass_colors.xml 同名注释） -->
-    <color name="glass_ripple">#26FFFFFF</color>
-
     <color name="glass_success">#4CD39A</color>
     <color name="glass_warning">#E0AE5A</color>
     <color name="glass_danger">#E86A6E</color>
