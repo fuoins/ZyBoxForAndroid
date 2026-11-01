@@ -21,6 +21,17 @@
     <!-- 夜间同样要给足不透明度，玻璃感交给背景模糊 -->
     <color name="glass_popup_solid">#F70A0F17</color>
 
+    <!--
+        夜间的大块承重面板：不是「白色的低透明度」，而是**深色实底**。
+        半透明白压在纯黑页面上会变成一层灰雾，字看不清、玻璃也没质感；
+        用 92~96% 的深墨色，再由背景模糊提供「透」的感觉。
+    -->
+    <color name="glass_panel">#F00B1018</color>
+    <color name="glass_panel_soft">#E6090D14</color>
+    <color name="glass_dock_top">#F70C1119</color>
+    <color name="glass_dock_bottom">#F20A0E15</color>
+    <color name="glass_dialog_solid">#FA0A0F17</color>
+
     <color name="glass_stroke">#33FFFFFF</color>
     <color name="glass_stroke_outer">#4D000000</color>
     <color name="glass_highlight">#59FFFFFF</color>
@@ -43,6 +54,7 @@
     <color name="glass_danger">#E86A6E</color>
 
     <color name="fab_color_progress">@color/glass_highlight</color>
-    <color name="preference_simple_menu_background">@color/glass_surface_strong</color>
+    <!-- 下拉项透明，露出弹窗自己的玻璃底（见 values/colors.xml 同名注释） -->
+    <color name="preference_simple_menu_background">@android:color/transparent</color>
 
 </resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Liquid Glass · 下拉菜单里的当前选中项。
+    内缩 + 大圆角，让高亮块像一片贴在下拉玻璃上的薄玻璃，
+    而不是一条撑满宽度的实色横条。
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="8dp"
+    android:insetRight="8dp"
+    android:insetTop="3dp"
+    android:insetBottom="3dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/glass_accent_soft" />
+        <corners android:radius="12dp" />
+    </shape>
+</inset>

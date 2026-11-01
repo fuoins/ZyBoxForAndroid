@@ -2,6 +2,8 @@ package io.nekohasekai.sagernet.widget
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import android.text.format.Formatter
 import android.util.AttributeSet
 import android.view.View
@@ -38,13 +40,34 @@ class StatsBar @JvmOverloads constructor(
     private lateinit var geoText: TextView
     private lateinit var behavior: YourBehavior
 
+    /** 圆角玻璃面，由 onDraw 自己画（BottomAppBar 自带的背景见下方说明）。 */
+    private val glassSurface: Drawable? =
+        ContextCompat.getDrawable(context, R.drawable.glass_bottom_dock)
+
     var allowShow = true
 
     init {
-        // Liquid Glass：底部状态坞是一块独立的厚玻璃，而不是贴边的实色底栏
+        /*
+         * Liquid Glass：底部状态坞是一块独立的厚玻璃，而不是贴边的实色底栏。
+         *
+         * 坑：BottomAppBar 在构造时给自己塞了一块 materialShapeDrawable 当背景。
+         * 那是一块**直角矩形**，会垫在圆角玻璃下面 —— 视觉上就是
+         * 「圆角胶囊外面多了一圈方框」。只设 background 有时会被内部
+         * 重新装回去，所以这里直接置空 + setWillNotDraw(false)，
+         * 改由 onDraw 绘制圆角玻璃，彻底没有第二层底。
+         */
+        background = null
         backgroundTintList = null
-        background = ContextCompat.getDrawable(context, R.drawable.glass_bottom_dock)
         elevation = 0f
+        setWillNotDraw(false)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        glassSurface?.let {
+            it.setBounds(0, 0, width, height)
+            it.draw(canvas)
+        }
+        super.onDraw(canvas)
     }
 
     /**

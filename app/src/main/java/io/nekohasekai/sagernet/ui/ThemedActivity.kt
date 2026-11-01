@@ -13,6 +13,7 @@ import androidx.core.view.updatePadding
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.snackbar.Snackbar
 import io.nekohasekai.sagernet.R
+import io.nekohasekai.sagernet.utils.GlassBlur
 import io.nekohasekai.sagernet.utils.GlassUi
 import io.nekohasekai.sagernet.utils.Theme
 
@@ -72,6 +73,62 @@ abstract class ThemedActivity : AppCompatActivity {
         themeResId = resId
     }
 
+    /**
+     * Liquid Glass · 全局弹窗背景模糊。
+     *
+     * 任何**独立窗口**盖在页面上时（PopupMenu、Spinner 下拉、ContextMenu、
+     * AlertDialog、BottomSheet……），Activity 都会失去窗口焦点。这里就以
+     * 「失焦」为信号给 DecorView 挂一层 RenderEffect，弹窗自己不受影响，
+     * 于是出现的是「背景糊掉 + 浮层锐利」的液态玻璃层次。
+     *
+     * 之所以不挨个改造弹窗：AppCompat / Material / Preference 各自创建
+     * 自己的 PopupWindow，没有统一的创建入口，逐个替换必然漏。
+     * 焦点是系统替我们统一发出的唯一信号。
+     *
+     * 例外：下拉通知栏、多任务卡片也会让 Activity 失焦，此时背景会短暂
+     * 虚化一下，属可接受的副作用（本就离开了页面）。
+     * 抽屉（DrawerLayout）不是独立窗口、不失焦，单独在 MainActivity 处理。
+     */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+
+        if (isDialog || !GlassBlur.isSupported) return
+
+        if (hasFocus) {
+            releasePopupBlur()
+        } else {
+            // 焦点变化会先于弹窗真正 attach，等一帧再判断，避免误糊
+            window?.decorView?.postDelayed({
+                if (!hasWindowFocus() && !isFinishing && !isDestroyed) acquirePopupBlur()
+            }, POPUP_BLUR_DELAY)
+        }
+    }
+
+    override fun onPause() {
+        releasePopupBlur()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        releasePopupBlur()
+        GlassBlur.clear(window?.decorView)
+        super.onDestroy()
+    }
+
+    private fun acquirePopupBlur() {
+        if (popupBlurHeld) return
+        popupBlurHeld = true
+        GlassBlur.acquire(window?.decorView)
+    }
+
+    private fun releasePopupBlur() {
+        if (!popupBlurHeld) return
+        popupBlurHeld = false
+        GlassBlur.release(window?.decorView)
+    }
+
+    private var popupBlurHeld = false
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
 
@@ -89,5 +146,10 @@ abstract class ThemedActivity : AppCompatActivity {
     }
 
     internal open fun snackbarInternal(text: CharSequence): Snackbar = throw NotImplementedError()
+
+    private companion object {
+        /** 弹窗弹出动画约 200ms，48ms 后宿主还没拿到焦点就认定「被浮层盖住了」。 */
+        const val POPUP_BLUR_DELAY = 48L
+    }
 
 }

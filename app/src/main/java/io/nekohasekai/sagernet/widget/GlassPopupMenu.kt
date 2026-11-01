@@ -1,28 +1,25 @@
 package io.nekohasekai.sagernet.widget
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
 import android.view.View
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.GravityCompat
+import io.nekohasekai.sagernet.utils.GlassBlur
 
 /**
  * Liquid Glass 弹出菜单。
  *
- * 菜单背景本身由主题的 popupBackground（glass_popup，97% 实底玻璃）负责，
- * 这里只补「高斯模糊」：Android 12+ 给宿主 Activity 的 DecorView 挂 RenderEffect，
- * 菜单是独立窗口不受影响，于是背景被真实模糊、菜单保持锐利，
- * 视觉上就是一块压在磨砂玻璃上的浮层。
+ * 菜单背景由主题的 popupBackground（glass_popup 磨砂玻璃）负责，
+ * 这里补的是「背景高斯模糊」：菜单弹出时把宿主界面虚化，
+ * 菜单是独立窗口不受影响，于是背景糊掉、菜单保持锐利。
  *
- * 没有走 PopupMenu 内部 PopupWindow 的反射：AppCompat 1.6 的菜单是
- * MenuPopupHelper → MenuPopup → StandardMenuPopup/CascadingMenuPopup 三层结构，
- * 子菜单还会分裂成多个窗口，反射拿到的那一个往往不是当前显示的那个。
+ * 真正兜底的是 [io.nekohasekai.sagernet.ui.ThemedActivity] 里的
+ * 全局限焦模糊 —— 它会盖住所有 AppCompat 内部创建的弹窗
+ * （包括 Toolbar 右上角三点）。这里仍然显式申请一次，是为了在
+ * 「弹窗不抢焦点」的设备上也能拿到效果；两条路径由 [GlassBlur]
+ * 的引用计数合并，关闭时不会互相踩掉。
  *
- * Android 11 及以下没有 RenderEffect，退化为高不透明度的磨砂玻璃，仍然保证可读。
+ * Android 11 及以下没有 RenderEffect，退化为高不透明度的磨砂玻璃。
  */
 class GlassPopupMenu @JvmOverloads constructor(
     context: Context,
@@ -30,47 +27,43 @@ class GlassPopupMenu @JvmOverloads constructor(
     gravity: Int = GravityCompat.START,
 ) : PopupMenu(context, anchor, gravity) {
 
-    private val host: Activity? = anchor.context.findActivity()
     private var dismissListener: PopupMenu.OnDismissListener? = null
+
+    /**
+     * 只有「本菜单申请的那一层」需要自己还回去；
+     * 标记存在说明尚未归还，避免 dismiss 被调用两次时多减一次计数。
+     */
+    private var blurAnchor: View? = null
 
     override fun show() {
         // 必须在 super.show() 之前挂上，MenuPopupHelper 只在显示时把监听器下发
         super.setOnDismissListener {
-            setHostBlur(false)
+            releaseBlur()
             dismissListener?.onDismiss(this)
         }
         super.show()
-        setHostBlur(true)
+        acquireBlur()
     }
 
     override fun dismiss() {
         super.dismiss()
-        setHostBlur(false)
+        releaseBlur()
     }
 
     override fun setOnDismissListener(listener: PopupMenu.OnDismissListener?) {
         dismissListener = listener
     }
 
-    private fun setHostBlur(enable: Boolean) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        val decor = host?.window?.decorView ?: return
-        decor.setRenderEffect(
-            if (enable) {
-                val radius = 20f * decor.resources.displayMetrics.density
-                RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
-            } else {
-                null
-            }
-        )
+    private fun acquireBlur() {
+        if (blurAnchor != null) return
+        val decor = GlassBlur.decorOf(context) ?: return
+        blurAnchor = decor
+        GlassBlur.acquire(decor)
     }
-}
 
-private fun Context.findActivity(): Activity? {
-    var ctx: Context? = this
-    while (ctx is ContextWrapper) {
-        if (ctx is Activity) return ctx
-        ctx = ctx.baseContext
+    private fun releaseBlur() {
+        val decor = blurAnchor ?: return
+        blurAnchor = null
+        GlassBlur.release(decor)
     }
-    return null
 }

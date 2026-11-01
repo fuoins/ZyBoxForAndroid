@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Liquid Glass · 底部状态坞：更厚的一块玻璃，托住 FAB -->
+<!--
+    Liquid Glass · 底部状态坞：更厚的一块玻璃，托住 FAB。
+    背景是滚动的节点列表，透明度一高字就互相穿透，所以这里用 90% 以上的
+    玻璃底 + 顶部镜面光 + 底部内阴影，做出「一块实体玻璃板」的厚度。
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="270"
-                android:endColor="@color/glass_surface"
-                android:startColor="@color/glass_surface_strong" />
+                android:endColor="@color/glass_dock_bottom"
+                android:startColor="@color/glass_dock_top" />
             <corners android:radius="@dimen/glass_corner_panel" />
             <stroke
                 android:width="1dp"
                 android:color="@color/glass_stroke" />
         </shape>
     </item>
+    <!-- 顶部镜面光 -->
     <item
         android:gravity="top"
         android:left="24dp"

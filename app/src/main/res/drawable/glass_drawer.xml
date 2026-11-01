@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Liquid Glass · 抽屉面板：右侧大圆角，顶部一条镜面光 -->
+<!--
+    Liquid Glass · 抽屉面板：右侧大圆角，顶部一条镜面光。
+    抽屉比卡片大得多、整块压在页面上，所以底色比卡片「实」：
+    92~94% 的玻璃，模糊交给 MainActivity 在内容层做。
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="315"
-                android:endColor="@color/glass_surface_soft"
-                android:startColor="@color/glass_surface_strong" />
+                android:endColor="@color/glass_panel_soft"
+                android:startColor="@color/glass_panel" />
             <corners
                 android:bottomLeftRadius="6dp"
                 android:bottomRightRadius="@dimen/glass_corner_panel"

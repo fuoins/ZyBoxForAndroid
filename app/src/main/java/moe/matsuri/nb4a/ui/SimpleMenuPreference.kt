@@ -17,16 +17,17 @@
 package moe.matsuri.nb4a.ui
 
 import android.content.Context
+import android.graphics.Color
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Spinner
-import androidx.core.content.ContextCompat
 import androidx.preference.DropDownPreference
 import androidx.preference.PreferenceViewHolder
 import io.nekohasekai.sagernet.R
-import io.nekohasekai.sagernet.ktx.getColorAttr
+import io.nekohasekai.sagernet.utils.GlassBlur
 
 /**
  * Bend [DropDownPreference] to support
@@ -48,6 +49,21 @@ open class SimpleMenuPreference
         super.onBindViewHolder(holder)
         val mSpinner = holder.itemView.findViewById<Spinner>(R.id.spinner)
         mSpinner.layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+
+        /*
+         * Liquid Glass：Spinner 的下拉是 framework 自己开的 PopupWindow，
+         * 而且**不抢焦点** —— Activity 不会收到 onWindowFocusChanged(false)，
+         * 全局限焦模糊对它失效。这里在下拉被触碰时手动盯一会儿：
+         * 一旦 isPopupShowing 为 true 就模糊宿主，收起即撤。
+         * 不拦截事件（返回 false），点击行为保持原样。
+         */
+        mSpinner.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP ->
+                    GlassBlur.watchWhile(GlassBlur.decorOf(v.context)) { mSpinner.isPopupShowing }
+            }
+            false
+        }
     }
 
     override fun createAdapter(): ArrayAdapter<CharSequence?> {
@@ -70,15 +86,15 @@ open class SimpleMenuPreference
 
         override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
             val view: View = super.getDropDownView(position, convertView, parent)
+            /*
+             * 不能用 setBackgroundColor：实色块会把弹窗的玻璃底整片盖住，
+             * 下拉就变成一条白条（旧版就是 #FAFAFA，夜间尤其突兀）。
+             * 普通项透明、当前项贴一片内缩圆角的薄玻璃，玻璃质感才连得上。
+             */
             if (position == currentPosition) {
-                view.setBackgroundColor(context.getColorAttr(R.attr.colorMaterial100))
+                view.setBackgroundResource(R.drawable.glass_menu_item_selected)
             } else {
-                view.setBackgroundColor(
-                    ContextCompat.getColor(
-                        context,
-                        R.color.preference_simple_menu_background
-                    )
-                )
+                view.setBackgroundColor(Color.TRANSPARENT)
             }
             return view
         }

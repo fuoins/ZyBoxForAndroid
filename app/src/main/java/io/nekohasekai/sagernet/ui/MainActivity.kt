@@ -11,11 +11,13 @@ import android.os.Bundle
 import android.os.RemoteException
 import android.view.KeyEvent
 import android.view.MenuItem
+import android.view.View
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.IdRes
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceDataStore
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -55,6 +57,7 @@ import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.parseProxies
 import io.nekohasekai.sagernet.ktx.readableMessage
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
+import io.nekohasekai.sagernet.utils.GlassBlur
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -76,6 +79,8 @@ class MainActivity : ThemedActivity(),
         // Liquid Glass：只保留一套玻璃抽屉（旧的「纯黑主题专用抽屉」已移除）
         navigation = binding.navView
         navigation.setNavigationItemSelectedListener(this)
+
+        setupDrawerGlass()
 
         if (savedInstanceState == null) {
             displayFragmentWithId(R.id.nav_configuration)
@@ -931,6 +936,38 @@ class MainActivity : ThemedActivity(),
         }
         return true
     }
+
+    /**
+     * Liquid Glass · 抽屉背景模糊。
+     *
+     * 抽屉（NavigationView）不是独立窗口，它和内容区是 DrawerLayout 的兄弟节点，
+     * 所以不能糊整个 DecorView（会连抽屉一起糊）。这里只糊内容区那一层
+     * CoordinatorLayout —— 抽屉自己保持锐利，滑出来的过程就是
+     * 「一块玻璃压在糊掉的桌面上」。
+     *
+     * 同时把 scrim 调轻：默认 60% 的黑会把模糊压得看不见，玻璃就没质感了。
+     */
+    private fun setupDrawerGlass() {
+        val drawer = binding.drawerLayout
+        drawer.setScrimColor(ContextCompat.getColor(this, R.color.glass_scrim))
+        drawer.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                setDrawerBlur(slideOffset > 0.001f)
+            }
+
+            override fun onDrawerClosed(drawerView: View) {
+                setDrawerBlur(false)
+            }
+        })
+    }
+
+    private fun setDrawerBlur(enable: Boolean) {
+        if (drawerBlurred == enable) return
+        drawerBlurred = enable
+        if (enable) GlassBlur.acquire(binding.coordinator) else GlassBlur.release(binding.coordinator)
+    }
+
+    private var drawerBlurred = false
 
 
     @SuppressLint("CommitTransaction")
