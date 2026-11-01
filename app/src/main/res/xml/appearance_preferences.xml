@@ -3,7 +3,8 @@
     Liquid Glass · 外观设置
     排序 / 布局 / 卡片样式 + 日间夜间各自独立的背景图。
 -->
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory app:title="@string/appearance_sort_layout">
 
@@ -60,7 +61,7 @@
         <SeekBarPreference
             app:defaultValue="35"
             app:key="appearanceBgDim"
-            app:max="80"
+            android:max="80"
             app:min="0"
             app:showSeekBarValue="true"
             app:title="@string/appearance_bg_dim" />
@@ -68,7 +69,7 @@
         <SeekBarPreference
             app:defaultValue="16"
             app:key="appearanceBgBlur"
-            app:max="40"
+            android:max="40"
             app:min="0"
             app:showSeekBarValue="true"
             app:title="@string/appearance_bg_blur" />
