@@ -36,10 +36,16 @@ object GlassBlur {
     val isSupported: Boolean
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-    /** 申请一层模糊；同一 View 多次申请需要对应次数的 [release]。 */
+    /**
+     * 申请一层模糊；同一 View 多次申请需要对应次数的 [release]。
+     *
+     * 版本判断必须写成内联的 `Build.VERSION.SDK_INT < ...` 而不是封装成
+     * [isSupported]：Android Lint 的 NewApi 检查只认前者，走属性的话
+     * 会在 lintVitalRelease 阶段被判定为「在 API 21 上调用了 API 31」。
+     */
     fun acquire(view: View?) {
         val target = view ?: return
-        if (!isSupported) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         val count = (holders[target] ?: 0) + 1
         holders[target] = count
         if (count == 1) applyEffect(target)
@@ -98,7 +104,7 @@ object GlassBlur {
      */
     fun watchWhile(view: View?, isShowing: () -> Boolean) {
         val target = view ?: return
-        if (!isSupported) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         if (watchers.containsKey(target)) return
         watchers[target] = true
 
@@ -138,6 +144,7 @@ object GlassBlur {
     }
 
     private fun applyEffect(view: View) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         try {
             val radius = RADIUS_DP * view.resources.displayMetrics.density
             view.setRenderEffect(
@@ -150,7 +157,7 @@ object GlassBlur {
     }
 
     private fun clearEffect(view: View) {
-        if (!isSupported) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         try {
             view.setRenderEffect(null)
         } catch (_: Throwable) {
