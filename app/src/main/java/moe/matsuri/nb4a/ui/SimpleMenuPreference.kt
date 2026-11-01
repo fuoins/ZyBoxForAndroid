@@ -72,7 +72,9 @@ open class SimpleMenuPreference
         mSpinner.setPopupBackgroundDrawable(
             ContextCompat.getDrawable(mSpinner.context, R.drawable.glass_popup_menu)
         )
-        holder.itemView.findViewById<View>(androidx.preference.R.id.widget_frame)
+        // preference.xml 里用的是 framework 的 id（@android:id/widget_frame），
+        // 不是 androidx.preference.R.id.widget_frame —— 后者编译期找不到。
+        holder.itemView.findViewById<View>(android.R.id.widget_frame)
             ?.background = null
 
         /*

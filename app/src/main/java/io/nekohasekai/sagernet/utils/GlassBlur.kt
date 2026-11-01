@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.os.SystemClock
 import android.view.View
 import java.util.WeakHashMap
 
@@ -117,13 +118,17 @@ object GlassBlur {
         val poller = object : Runnable {
             private var held = false
             private var waited = 0L
+            private var unfocusedAt = 0L
 
             override fun run() {
                 /*
-                 * 三条退出路径，缺一不可：
+                 * 四条退出路径，缺一不可：
                  * 1. 宿主被 clear() 摘掉登记 —— 用户切了后台/小窗，别再抢回来；
                  * 2. 宿主窗口已经不可见 —— 浮层即使还"开着"也看不见了；
-                 * 3. 浮层自己收起 —— 正常路径。
+                 * 3. 宿主长时间没有焦点 —— 小窗/分屏下本页仍是 RESUMED、仍然
+                 *    可见，onPause 不会执行，前两条都拦不住；但用户其实在
+                 *    别的窗口里操作，本页不该继续糊着；
+                 * 4. 浮层自己收起 —— 正常路径。
                  */
                 if (watchers[target] != true) {
                     if (held) {
@@ -139,6 +144,23 @@ object GlassBlur {
                     }
                     watchers.remove(target)
                     return
+                }
+                /*
+                 * Spinner 的下拉是 focusable=false 的 PopupWindow，不会抢走
+                 * 宿主焦点；所以「持续失焦」只可能是别的应用窗口压了上来。
+                 * 留 [FOCUS_GRACE_MS] 的缓冲，避开个别 ROM 会抢焦点的下拉实现。
+                 */
+                if (target.hasWindowFocus()) {
+                    unfocusedAt = 0L
+                } else {
+                    val now = SystemClock.uptimeMillis()
+                    if (unfocusedAt == 0L) unfocusedAt = now
+                    if (held && now - unfocusedAt > FOCUS_GRACE_MS) {
+                        held = false
+                        release(target)
+                        watchers.remove(target)
+                        return
+                    }
                 }
                 val showing = try {
                     isShowing()
@@ -194,4 +216,7 @@ object GlassBlur {
 
     private const val POLL_STEP_MS = 110L
     private const val GRACE_MS = 1500L
+
+    /** 宿主持续失焦多久就认定「用户不在本页」，撤掉浮层模糊。 */
+    private const val FOCUS_GRACE_MS = 1600L
 }
