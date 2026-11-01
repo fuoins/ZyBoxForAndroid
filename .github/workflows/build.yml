@@ -1,0 +1,66 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: '构建变体'
+        required: true
+        default: 'fdroidRelease'
+        type: choice
+        options:
+          - fdroidRelease
+          - playRelease
+          - debug
+      minify:
+        description: '代码压缩 (minify)'
+        required: true
+        default: 'off'
+        type: choice
+        options:
+          - "off"
+          - "on"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      VARIANT: ${{ github.event.inputs.variant || 'fdroidRelease' }}
+      MINIFY: ${{ github.event.inputs.minify || 'off' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Setup SDK
+        continue-on-error: true
+        run: |
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-googletv-license"
+          curl -sL -o /tmp/p37.zip "https://dl.google.com/android/repository/platform-37.2_r01.zip" || echo "37 zip 下载失败"
+          if [ -s /tmp/p37.zip ]; then
+            unzip -qo /tmp/p37.zip -d "$ANDROID_HOME/platforms" || true
+            [ -d "$ANDROID_HOME/platforms/android-37.2" ] && mv "$ANDROID_HOME/platforms/android-37.2" "$ANDROID_HOME/platforms/android-37"
+            bash scripts/patch_android37.sh "$ANDROID_HOME/platforms" || echo "patch 失败"
+          fi
+          ls "$ANDROID_HOME/platforms" | grep android-37 || true
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+      - name: Build release APK
+        env:
+          nkmr_minify: "${{ env.MINIFY == 'on' && '1' || '0' }}"
+        run: |
+          if [ "$VARIANT" = "fdroidRelease" ]; then TASK=:app:assembleFdroidRelease; fi
+          if [ "$VARIANT" = "playRelease" ]; then TASK=:app:assemblePlayRelease; fi
+          if [ "$VARIANT" = "debug" ]; then TASK=:app:assembleFdroidDebug; fi
+          ./gradlew $TASK --console=plain -Dorg.gradle.jvmargs="-Xmx4g"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zybox-apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
