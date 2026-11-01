@@ -8,7 +8,6 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
@@ -44,45 +43,45 @@ abstract class ThemedActivity : AppCompatActivity {
          * 图片背景/光斑背景必须铺到系统栏后面，否则内容区就是一块被状态栏
          * 和导航栏框起来的矩形 —— 看起来像「主页上有个长方形」。
          *
-         * Android 15 起系统会对 targetSdk 35 强制 edge-to-edge，但更早的版本
-         * 不会；显式关掉 decorFitsSystemWindows 让各版本表现一致。
+         * Android 15 起系统会对 targetSdk 35 强制 edge-to-edge；
+         * 更早的版本保持原先的 fitSystemWindows 行为，避免列表被手势条盖住。
          */
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
         uiMode = resources.configuration.uiMode
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { _, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val top = bars.top
-            findViewById<AppBarLayout>(R.id.appbar)?.apply {
-                updatePadding(top = top)
-            }
-            // Liquid Glass：底部状态坞要浮在手势条之上，不能被系统导航区压住
-            findViewById<android.view.View>(R.id.stats)?.let { stats ->
-                val lp = stats.layoutParams as? android.view.ViewGroup.MarginLayoutParams
-                if (lp != null) {
-                    val margin = bars.bottom + (10 * resources.displayMetrics.density).toInt()
-                    if (lp.bottomMargin != margin) {
-                        lp.bottomMargin = margin
-                        stats.layoutParams = lp
+        if (Build.VERSION.SDK_INT >= 35) {
+            ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { _, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                val top = bars.top
+                findViewById<AppBarLayout>(R.id.appbar)?.apply {
+                    updatePadding(top = top)
+                }
+                // Liquid Glass：底部状态坞要浮在手势条之上，不能被系统导航区压住
+                findViewById<android.view.View>(R.id.stats)?.let { stats ->
+                    val lp = stats.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+                    if (lp != null) {
+                        val margin = bars.bottom + (10 * resources.displayMetrics.density).toInt()
+                        if (lp.bottomMargin != margin) {
+                            lp.bottomMargin = margin
+                            stats.layoutParams = lp
+                        }
                     }
                 }
-            }
-            // 抽屉同样要避开状态栏/导航栏，否则玻璃面板会被系统栏切掉一截
-            findViewById<android.view.View>(R.id.nav_view)?.let { nav ->
-                val lp = nav.layoutParams as? android.view.ViewGroup.MarginLayoutParams
-                if (lp != null) {
-                    val base = (10 * resources.displayMetrics.density).toInt()
-                    val topMargin = bars.top + base
-                    val bottomMargin = bars.bottom + base
-                    if (lp.topMargin != topMargin || lp.bottomMargin != bottomMargin) {
-                        lp.topMargin = topMargin
-                        lp.bottomMargin = bottomMargin
-                        nav.layoutParams = lp
+                // 抽屉同样要避开状态栏/导航栏，否则玻璃面板会被系统栏切掉一截
+                findViewById<android.view.View>(R.id.nav_view)?.let { nav ->
+                    val lp = nav.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+                    if (lp != null) {
+                        val base = (10 * resources.displayMetrics.density).toInt()
+                        val topMargin = bars.top + base
+                        val bottomMargin = bars.bottom + base
+                        if (lp.topMargin != topMargin || lp.bottomMargin != bottomMargin) {
+                            lp.topMargin = topMargin
+                            lp.bottomMargin = bottomMargin
+                            nav.layoutParams = lp
+                        }
                     }
                 }
+                insets
             }
-            insets
         }
     }
 
