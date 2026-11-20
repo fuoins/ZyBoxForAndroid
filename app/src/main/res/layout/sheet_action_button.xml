@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox 6.0: 操作弹窗单个按钮（两列网格项），主标题 + 粉色差异标签 -->
+<!-- ZyBox 6.1: 操作弹窗按钮（两列网格项），仅主标题，差异词在标题内染粉色 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/sheet_btn"
     android:layout_width="match_parent"
@@ -17,24 +17,12 @@
 
     <TextView
         android:id="@+id/sheet_btn_label"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
-        android:maxLines="2"
+        android:maxLines="3"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="?android:attr/textColorPrimary"
         android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/sheet_btn_tag"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:textColor="@color/zybox_pink_ping"
-        android:textStyle="bold"
-        android:visibility="gone" />
 
 </LinearLayout>

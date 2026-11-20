@@ -709,8 +709,15 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     }
 
-    // ===== ZyBox 6.0: 操作弹窗（加号导入 / 三个点菜单）=====
-    data class SheetItem(val id: Int, val label: String, val checked: Boolean = false)
+    // ===== ZyBox 6.1: 操作弹窗（加号导入 / 三个点菜单）=====
+    /** kind: action=直接按钮(点完关闭) / check=开关(复选框,点完不关) / group=一级分组(点开二级) */
+    data class SheetItem(
+        val id: Int,
+        val label: String,
+        val checked: Boolean = false,
+        val kind: String = "action",
+        val children: List<SheetItem> = emptyList()
+    )
 
     /** 把差异词 ping / 新建 / 当前 染成醒目粉色 */
     private fun colorizeSheetLabel(ctx: android.content.Context, text: String): android.text.SpannableStringBuilder {
@@ -739,11 +746,36 @@ class ConfigurationFragment @JvmOverloads constructor(
         return ssb
     }
 
-    /** 通用操作弹窗：标题 + 关闭叉 + 分组两列按钮 */
+    /**
+     * 统一分发菜单动作：先在本 toolbar 与所有分组 toolbar 上找 menuItem 并 invoke()，
+     * 命中各自绑定的 setOnMenuItemClickListener（排序/布局/卡片等）；未命中再走 fragment.onMenuItemClick。
+     */
+    private fun dispatchMenuItem(id: Int): Boolean {
+        val menus = ArrayList<android.view.Menu>()
+        toolbar.menu?.let { menus.add(it) }
+        try {
+            for (gf in adapter.groupFragments.values) {
+                if (gf.isAdded) {
+                    val gt = gf.requireView().findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+                    menus.add(gt.menu)
+                }
+            }
+        } catch (_: Exception) {}
+        for (menu in menus) {
+            val mi = menu.findItem(id) ?: continue
+            val handled = (mi as? androidx.appcompat.view.menu.MenuItemImpl)?.invoke() ?: false
+            if (handled) return true
+        }
+        val own = toolbar.menu.findItem(id)
+        return if (own != null) onMenuItemClick(own) else false
+    }
+
+    /** 通用两列按钮弹窗（加号导入用）：标题 + 关闭叉 + 分组两列按钮，无副标签 */
     private fun showActionSheet(titleText: String, groups: List<Pair<String, List<SheetItem>>>) {
         val ctx = requireContext()
         val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_action_sheet, null)
         view.findViewById<TextView>(R.id.sheet_title).text = titleText
+        view.findViewById<View>(R.id.sheet_back).visibility = View.GONE
         val container = view.findViewById<LinearLayout>(R.id.sheet_container)
         val dialog = MaterialAlertDialogBuilder(ctx).setView(view).create()
         view.findViewById<View>(R.id.sheet_close).setOnClickListener { dialog.dismiss() }
@@ -768,22 +800,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
                 val btn = LayoutInflater.from(ctx).inflate(R.layout.sheet_action_button, row, false)
                 val label = btn.findViewById<TextView>(R.id.sheet_btn_label)
-                val tagView = btn.findViewById<TextView>(R.id.sheet_btn_tag)
-                label.text = if (act.checked) {
-                    colorizeSheetLabel(ctx, "✓ ${act.label}")
-                } else {
-                    colorizeSheetLabel(ctx, act.label)
-                }
-                // 二级差异标签：从 label 中抽 ping / 新建 / 当前 词，醒目粉色单列展示
-                val diffWords = listOf("+ping", "新建分组", "当前分组").filter { act.label.contains(it) }
-                if (diffWords.isNotEmpty()) {
-                    tagView.visibility = View.VISIBLE
-                    tagView.text = diffWords.joinToString(" · ")
-                }
+                label.text = colorizeSheetLabel(ctx, act.label)
                 btn.setOnClickListener {
-                    val menuItem = toolbar.menu.findItem(act.id)
                     dialog.dismiss()
-                    if (menuItem != null) onMenuItemClick(menuItem)
+                    dispatchMenuItem(act.id)
                 }
                 val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 lp.setMargins(4, 4, 4, 4)
@@ -793,7 +813,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         dialog.show()
     }
 
-    /** 加号：导入方式(一级) → 各自二级(+ping/当前/新建)，二级头已去掉，只留差异 */
+    /** 加号：导入方式(一级) → 各自二级(+ping/当前/新建)，差异词在标题内染粉 */
     private fun showAddSheet() {
         fun si(id: Int, label: String) = SheetItem(id, label)
         showActionSheet(getString(R.string.add_profile), listOf(
@@ -830,30 +850,121 @@ class ConfigurationFragment @JvmOverloads constructor(
         ))
     }
 
-    /** 三个点：把原二级菜单全部平铺成两列，不再一级二级嵌套 */
+    /**
+     * 三个点：一级 = 连接自动测速(展开二级) / 排序与外观(展开二级) / 若干直接项与开关
+     * 开关用复选框且点击不关闭弹窗；直接按钮点击关闭；二级点开后带返回箭头
+     */
     private fun showMoreSheet() {
-        fun si(id: Int, label: String, checked: Boolean = false) = SheetItem(id, label, checked)
-        showActionSheet(getString(R.string.sort_and_layout), listOf(
-            "连接与测速" to listOf(
-                si(R.id.action_toggle_auto_test, "连接自动测速", DataStore.autoTestOnConnect),
-                si(R.id.action_auto_test_retry, "首次失败重试", DataStore.autoTestRetry),
-                si(R.id.action_toggle_sync_ping, "测速延迟同步", DataStore.syncPingOnTest),
-                si(R.id.action_toggle_sync_ping_fail, "失败状态同步", DataStore.syncPingFailed),
-                si(R.id.action_connection_tcp_ping, "TCP Ping 全部"),
-                si(R.id.action_connection_url_test, "URL 测速全部"),
-                si(R.id.action_connection_test_clear_results, "清除测速结果"),
-                si(R.id.action_connection_test_delete_unavailable, "删除不可用")
-            ),
-            "管理" to listOf(
-                si(R.id.action_update_subscription, "更新当前订阅"),
-                si(R.id.action_clear_traffic_statistics, "清除流量统计"),
-                si(R.id.action_remove_duplicate, "去除重复"),
-                si(R.id.action_remove_duplicate_strict, "严格去重"),
-                si(R.id.action_global_mode, "全局模式", DataStore.globalMode),
-                si(R.id.action_connection_tcp_ping_untested, "TCP Ping 未测速"),
-                si(R.id.action_connection_url_test_untested, "URL 测速未测速")
-            )
+        val ctx = requireContext()
+        val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_action_sheet, null)
+        val titleView = view.findViewById<TextView>(R.id.sheet_title)
+        val backView = view.findViewById<View>(R.id.sheet_back)
+        val container = view.findViewById<LinearLayout>(R.id.sheet_container)
+        val dialog = MaterialAlertDialogBuilder(ctx).setView(view).create()
+        view.findViewById<View>(R.id.sheet_close).setOnClickListener { dialog.dismiss() }
+
+        fun act(id: Int, label: String) = SheetItem(id, label, kind = "action")
+        fun chk(id: Int, label: String, on: Boolean) = SheetItem(id, label, checked = on, kind = "check")
+
+        val autoTestGroup = SheetItem(-1, getString(R.string.toggle_auto_test), kind = "group", children = listOf(
+            chk(R.id.action_toggle_auto_test, getString(R.string.toggle_auto_test), DataStore.autoTestOnConnect),
+            act(R.id.action_auto_test_delay, getString(R.string.auto_test_delay_format, DataStore.autoTestDelay)),
+            chk(R.id.action_auto_test_retry, getString(R.string.auto_test_retry), DataStore.autoTestRetry)
         ))
+        val sortGroup = SheetItem(-2, getString(R.string.sort_and_layout), kind = "group", children = listOf(
+            act(R.id.action_order_origin, getString(R.string.group_order_origin)),
+            act(R.id.action_order_by_name, getString(R.string.group_order_by_name)),
+            act(R.id.action_order_by_delay, getString(R.string.group_order_by_delay)),
+            act(R.id.action_layout_single, getString(R.string.layout_single_column)),
+            act(R.id.action_layout_double, getString(R.string.layout_double_column)),
+            act(R.id.action_card_style_classic, getString(R.string.card_style_classic)),
+            act(R.id.action_card_style_stroke, getString(R.string.card_style_stroke))
+        ))
+        val topLevel = listOf(
+            autoTestGroup,
+            sortGroup,
+            chk(R.id.action_toggle_sync_ping, getString(R.string.toggle_sync_ping), DataStore.syncPingOnTest),
+            chk(R.id.action_toggle_sync_ping_fail, getString(R.string.toggle_sync_ping_fail), DataStore.syncPingFailed),
+            chk(R.id.action_global_mode, getString(R.string.global_mode), DataStore.globalMode),
+            act(R.id.action_update_subscription, getString(R.string.update_current_subscription)),
+            act(R.id.action_clear_traffic_statistics, getString(R.string.clear_traffic_statistics)),
+            act(R.id.action_remove_duplicate, getString(R.string.remove_duplicate)),
+            act(R.id.action_remove_duplicate_strict, getString(R.string.remove_duplicate_strict)),
+            act(R.id.action_connection_tcp_ping, getString(R.string.connection_test_tcp_ping)),
+            act(R.id.action_connection_url_test, getString(R.string.connection_test_url_test)),
+            act(R.id.action_connection_tcp_ping_untested, getString(R.string.connection_tcp_ping_untested)),
+            act(R.id.action_connection_url_test_untested, getString(R.string.connection_url_test_untested)),
+            act(R.id.action_connection_test_clear_results, getString(R.string.connection_test_clear_results)),
+            act(R.id.action_connection_test_delete_unavailable, getString(R.string.connection_test_delete_unavailable))
+        )
+
+        fun render(entries: List<SheetItem>, levelTitle: String, isSub: Boolean) {
+            container.removeAllViews()
+            titleView.text = levelTitle
+            backView.visibility = if (isSub) View.VISIBLE else View.GONE
+            backView.setOnClickListener { render(topLevel, getString(R.string.sort_and_layout), false) }
+
+            entries.forEach { e ->
+                when (e.kind) {
+                    "group" -> {
+                        val row = LayoutInflater.from(ctx).inflate(R.layout.sheet_action_button, container, false)
+                        row.findViewById<TextView>(R.id.sheet_btn_label).text = e.label
+                        // 右侧三个点表示可展开
+                        val more = TextView(ctx).apply {
+                            text = "⋯"
+                            textSize = 20f
+                            setTextColor(androidx.core.content.ContextCompat.getColor(
+                                ctx, io.nekohasekai.sagernet.R.color.zybox_pink_current))
+                            setPadding(12, 0, 0, 0)
+                        }
+                        (row as LinearLayout).addView(more)
+                        row.setOnClickListener { render(e.children, e.label, true) }
+                        container.addView(row, LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { setMargins(4, 4, 4, 4) })
+                    }
+                    "check" -> {
+                        val row = LayoutInflater.from(ctx).inflate(R.layout.sheet_check_button, container, false)
+                        row.findViewById<TextView>(R.id.sheet_check_label).text = e.label
+                        val box = row.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.sheet_check_box)
+                        box.isChecked = e.checked
+                        row.setOnClickListener {
+                            dispatchMenuItem(e.id)
+                            // 不关闭弹窗，重绘刷新勾选态
+                            val fresh = entries.map { src ->
+                                val on = when (src.id) {
+                                    R.id.action_toggle_auto_test -> DataStore.autoTestOnConnect
+                                    R.id.action_auto_test_retry -> DataStore.autoTestRetry
+                                    R.id.action_toggle_sync_ping -> DataStore.syncPingOnTest
+                                    R.id.action_toggle_sync_ping_fail -> DataStore.syncPingFailed
+                                    R.id.action_global_mode -> DataStore.globalMode
+                                    else -> src.checked
+                                }
+                                src.copy(checked = on)
+                            }
+                            render(fresh, levelTitle, isSub)
+                        }
+                        container.addView(row, LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { setMargins(4, 4, 4, 4) })
+                    }
+                    else -> {
+                        val row = LayoutInflater.from(ctx).inflate(R.layout.sheet_action_button, container, false)
+                        row.findViewById<TextView>(R.id.sheet_btn_label).text = e.label
+                        row.setOnClickListener {
+                            dialog.dismiss()
+                            dispatchMenuItem(e.id)
+                        }
+                        container.addView(row, LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { setMargins(4, 4, 4, 4) })
+                    }
+                }
+            }
+        }
+
+        render(topLevel, getString(R.string.sort_and_layout), false)
+        dialog.show()
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {

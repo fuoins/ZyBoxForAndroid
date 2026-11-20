@@ -7,12 +7,12 @@
     android:orientation="vertical"
     tools:context=".ui.ConfigurationFragment">
 
-    <!-- ZyBox 6.0: 顶栏 + 分组栏 一整块连续渐变（同一个 drawable，视觉上不再割裂） -->
+    <!-- ZyBox 6.2: 顶栏 + 分组栏 同一块纯色（colorPrimary），视觉上连成一体，无渐变无割裂 -->
     <LinearLayout
         android:id="@+id/zy_top_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_brand_gradient"
+        android:background="?attr/colorPrimary"
         android:elevation="4dp"
         android:orientation="vertical">
 
