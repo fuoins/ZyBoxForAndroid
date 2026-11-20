@@ -9,6 +9,9 @@
     <color name="zybox_accent">#6E92FF</color>
     <color name="zybox_bg">#12141C</color>
     <color name="zybox_card">#1E2230</color>
+    <!-- ZyBox UI 5.0: 深色柔白卡片底 -->
+    <color name="zybox_surface">#1C2130</color>
+    <color name="zybox_card_stroke_soft">#1F5B7CFF</color>
     <color name="zybox_text_primary">#E8EAF2</color>
     <color name="zybox_text_secondary">#9AA1B5</color>
     <color name="zybox_ping_bg">#1A6E92FF</color>

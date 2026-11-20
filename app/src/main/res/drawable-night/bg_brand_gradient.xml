@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 5.0: 深色模式整体品牌渐变 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#3E5FD8"
+        android:centerColor="#2C46B4"
+        android:endColor="#1E3188" />
+</shape>
