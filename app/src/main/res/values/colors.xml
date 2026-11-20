@@ -309,4 +309,9 @@
     <color name="card_stroke">#29000000</color>
     <color name="zybox_enter_blue">#1E88E5</color>
 
+    <!-- ZyBox 6.0: 操作弹窗醒目粉色标签（ping=玫红 / 新建=粉紫 / 当前=亮粉） -->
+    <color name="zybox_pink_ping">#E91E63</color>
+    <color name="zybox_pink_new">#C2185B</color>
+    <color name="zybox_pink_current">#EC407A</color>
+
 </resources>

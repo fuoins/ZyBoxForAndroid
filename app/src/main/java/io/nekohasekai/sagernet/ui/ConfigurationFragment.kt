@@ -423,6 +423,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             toolbar.setTitle("")
             toolbar.inflateMenu(R.menu.add_profile_menu)
             toolbar.setOnMenuItemClickListener(this)
+            // ZyBox 6.0: 加号 / 三个点改为自定义两列弹窗（直接给item绑监听，确保拦截子菜单展开）
+            toolbar.menu.findItem(R.id.action_add)?.setOnMenuItemClickListener { showAddSheet(); true }
+            toolbar.menu.findItem(R.id.action_misc)?.setOnMenuItemClickListener { showMoreSheet(); true }
             // ZyBox: 菜单开关项初始勾选状态
             toolbar.menu.findItem(R.id.action_toggle_auto_test)?.isChecked = DataStore.autoTestOnConnect
             toolbar.menu.findItem(R.id.action_toggle_sync_ping)?.isChecked = DataStore.syncPingOnTest
@@ -706,8 +709,158 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     }
 
+    // ===== ZyBox 6.0: 操作弹窗（加号导入 / 三个点菜单）=====
+    data class SheetItem(val id: Int, val label: String, val checked: Boolean = false)
+
+    /** 把差异词 ping / 新建 / 当前 染成醒目粉色 */
+    private fun colorizeSheetLabel(ctx: android.content.Context, text: String): android.text.SpannableStringBuilder {
+        val ssb = android.text.SpannableStringBuilder(text)
+        val rules = arrayOf(
+            "ping" to io.nekohasekai.sagernet.R.color.zybox_pink_ping,
+            "新建" to io.nekohasekai.sagernet.R.color.zybox_pink_new,
+            "当前" to io.nekohasekai.sagernet.R.color.zybox_pink_current
+        )
+        for ((kw, colorRes) in rules) {
+            var from = 0
+            while (true) {
+                val at = text.indexOf(kw, from)
+                if (at < 0) break
+                ssb.setSpan(
+                    ForegroundColorSpan(androidx.core.content.ContextCompat.getColor(ctx, colorRes)),
+                    at, at + kw.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                ssb.setSpan(
+                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                    at, at + kw.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                from = at + kw.length
+            }
+        }
+        return ssb
+    }
+
+    /** 通用操作弹窗：标题 + 关闭叉 + 分组两列按钮 */
+    private fun showActionSheet(titleText: String, groups: List<Pair<String, List<SheetItem>>>) {
+        val ctx = requireContext()
+        val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_action_sheet, null)
+        view.findViewById<TextView>(R.id.sheet_title).text = titleText
+        val container = view.findViewById<LinearLayout>(R.id.sheet_container)
+        val dialog = MaterialAlertDialogBuilder(ctx).setView(view).create()
+        view.findViewById<View>(R.id.sheet_close).setOnClickListener { dialog.dismiss() }
+
+        groups.forEach { (groupName, items) ->
+            if (groupName.isNotEmpty()) {
+                val head = TextView(ctx).apply {
+                    text = groupName
+                    textSize = 13f
+                    setTextColor(androidx.core.content.ContextCompat.getColor(
+                        ctx, io.nekohasekai.sagernet.R.color.zybox_pink_current))
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setPadding(4, 14, 4, 6)
+                }
+                container.addView(head)
+            }
+            var row: LinearLayout? = null
+            items.forEachIndexed { idx, act ->
+                if (idx % 2 == 0) {
+                    row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+                    container.addView(row)
+                }
+                val btn = LayoutInflater.from(ctx).inflate(R.layout.sheet_action_button, row, false)
+                val label = btn.findViewById<TextView>(R.id.sheet_btn_label)
+                val tagView = btn.findViewById<TextView>(R.id.sheet_btn_tag)
+                label.text = if (act.checked) {
+                    colorizeSheetLabel(ctx, "✓ ${act.label}")
+                } else {
+                    colorizeSheetLabel(ctx, act.label)
+                }
+                // 二级差异标签：从 label 中抽 ping / 新建 / 当前 词，醒目粉色单列展示
+                val diffWords = listOf("+ping", "新建分组", "当前分组").filter { act.label.contains(it) }
+                if (diffWords.isNotEmpty()) {
+                    tagView.visibility = View.VISIBLE
+                    tagView.text = diffWords.joinToString(" · ")
+                }
+                btn.setOnClickListener {
+                    val menuItem = toolbar.menu.findItem(act.id)
+                    dialog.dismiss()
+                    if (menuItem != null) onMenuItemClick(menuItem)
+                }
+                val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                lp.setMargins(4, 4, 4, 4)
+                row!!.addView(btn, lp)
+            }
+        }
+        dialog.show()
+    }
+
+    /** 加号：导入方式(一级) → 各自二级(+ping/当前/新建)，二级头已去掉，只留差异 */
+    private fun showAddSheet() {
+        fun si(id: Int, label: String) = SheetItem(id, label)
+        showActionSheet(getString(R.string.add_profile), listOf(
+            "从剪切板导入" to listOf(
+                si(R.id.action_import_clipboard, "导入到当前分组"),
+                si(R.id.action_import_clipboard_ping, "+ping 导入到当前分组"),
+                si(R.id.action_import_clipboard_new_group, "导入到新建分组"),
+                si(R.id.action_import_clipboard_ping_new_group, "+ping 导入到新建分组")
+            ),
+            "从文件导入" to listOf(
+                si(R.id.action_import_file, "导入到当前分组"),
+                si(R.id.action_import_file_ping, "+ping 导入到当前分组"),
+                si(R.id.action_import_file_new_group, "导入到新建分组"),
+                si(R.id.action_import_file_ping_new_group, "+ping 导入到新建分组")
+            ),
+            "扫描二维码" to listOf(
+                si(R.id.action_scan_qr_code, "扫码导入到当前分组"),
+                si(R.id.action_scan_qr_new_group, "扫码导入到新建分组")
+            ),
+            "手动创建节点 · 当前分组" to listOf(
+                si(R.id.action_new_socks, "SOCKS"), si(R.id.action_new_http, "HTTP"),
+                si(R.id.action_new_ss, "Shadowsocks"), si(R.id.action_new_vmess, "VMess"),
+                si(R.id.action_new_vless, "VLESS"), si(R.id.action_new_trojan, "Trojan"),
+                si(R.id.action_new_hysteria, "Hysteria"), si(R.id.action_new_tuic, "TUIC"),
+                si(R.id.action_new_ssh, "SSH"), si(R.id.action_new_wg, "WireGuard")
+            ),
+            "手动创建节点 · 新建分组" to listOf(
+                si(R.id.action_new_socks_new_group, "SOCKS"), si(R.id.action_new_http_new_group, "HTTP"),
+                si(R.id.action_new_ss_new_group, "Shadowsocks"), si(R.id.action_new_vmess_new_group, "VMess"),
+                si(R.id.action_new_vless_new_group, "VLESS"), si(R.id.action_new_trojan_new_group, "Trojan"),
+                si(R.id.action_new_hysteria_new_group, "Hysteria"), si(R.id.action_new_tuic_new_group, "TUIC"),
+                si(R.id.action_new_ssh_new_group, "SSH"), si(R.id.action_new_wg_new_group, "WireGuard")
+            )
+        ))
+    }
+
+    /** 三个点：把原二级菜单全部平铺成两列，不再一级二级嵌套 */
+    private fun showMoreSheet() {
+        fun si(id: Int, label: String, checked: Boolean = false) = SheetItem(id, label, checked)
+        showActionSheet(getString(R.string.sort_and_layout), listOf(
+            "连接与测速" to listOf(
+                si(R.id.action_toggle_auto_test, "连接自动测速", DataStore.autoTestOnConnect),
+                si(R.id.action_auto_test_retry, "首次失败重试", DataStore.autoTestRetry),
+                si(R.id.action_toggle_sync_ping, "测速延迟同步", DataStore.syncPingOnTest),
+                si(R.id.action_toggle_sync_ping_fail, "失败状态同步", DataStore.syncPingFailed),
+                si(R.id.action_connection_tcp_ping, "TCP Ping 全部"),
+                si(R.id.action_connection_url_test, "URL 测速全部"),
+                si(R.id.action_connection_test_clear_results, "清除测速结果"),
+                si(R.id.action_connection_test_delete_unavailable, "删除不可用")
+            ),
+            "管理" to listOf(
+                si(R.id.action_update_subscription, "更新当前订阅"),
+                si(R.id.action_clear_traffic_statistics, "清除流量统计"),
+                si(R.id.action_remove_duplicate, "去除重复"),
+                si(R.id.action_remove_duplicate_strict, "严格去重"),
+                si(R.id.action_global_mode, "全局模式", DataStore.globalMode),
+                si(R.id.action_connection_tcp_ping_untested, "TCP Ping 未测速"),
+                si(R.id.action_connection_url_test_untested, "URL 测速未测速")
+            )
+        ))
+    }
+
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
+            // ZyBox 6.0: 拦截加号/三个点，弹自定义两列弹窗（阻止系统 PopupMenu）
+            R.id.action_add -> { showAddSheet(); return true }
+            R.id.action_misc -> { showMoreSheet(); return true }
             // ===== ZyBox: 多选模式 =====
             R.id.action_multi_select -> {
                 enterMultiSelect()

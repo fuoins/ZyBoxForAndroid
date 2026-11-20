@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox UI 3.0: 协议类型徽章（靛蓝浅底） -->
+<!-- ZyBox 6.0: 协议类型徽章（渐变底 + 淡描边胶囊） -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/zybox_ping_bg" />
-    <corners android:radius="6dp" />
+    <gradient
+        android:type="linear"
+        android:angle="0"
+        android:startColor="#E8EEFF"
+        android:endColor="#DCE6FF" />
+    <stroke
+        android:width="1dp"
+        android:color="#2E3D6BFF" />
+    <corners android:radius="9dp" />
 </shape>

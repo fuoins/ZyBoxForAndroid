@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ZyBox UI 3.0: 节点卡片全新布局
-     第一行: 节点名(大字) + 操作按钮
-     第二行: 类型徽章 + 流量 + 延迟胶囊 -->
+<!-- ZyBox 6.0: 节点卡片全新布局
+     左侧常驻渐变色轨 + 选中态竖条（代码控制）
+     第一行: 节点名(大字) + 地址 + 操作按钮
+     第二行: 协议徽章 + 延迟胶囊 -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
+    android:layout_margin="5dp"
     android:clickable="true"
     android:focusable="true"
     app:cardElevation="1dp">
@@ -20,10 +21,17 @@
         android:focusable="true"
         android:orientation="horizontal">
 
-        <!-- ZyBox: 经典样式选中竖条（主题色，选中时显示） -->
+        <!-- ZyBox 6.0: 常驻渐变色轨（视觉设计元素，代码不引用） -->
+        <View
+            android:id="@+id/zy_profile_rail"
+            android:layout_width="5dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/zybox_profile_rail" />
+
+        <!-- ZyBox: 经典样式选中竖条（主题色，选中时由代码显示） -->
         <View
             android:id="@+id/profile_selected_bar"
-            android:layout_width="4dp"
+            android:layout_width="3dp"
             android:layout_height="match_parent"
             android:background="@android:color/transparent" />
 
@@ -33,7 +41,7 @@
             android:nextFocusRight="@+id/edit"
             android:orientation="vertical">
 
-            <!-- 第一行：节点名 + 操作按钮 -->
+            <!-- 第一行：节点名 + 地址 + 操作按钮 -->
             <LinearLayout
                 android:id="@+id/container"
                 android:layout_width="match_parent"
@@ -47,19 +55,19 @@
                     android:layout_weight="1"
                     android:gravity="center_vertical"
                     android:orientation="vertical"
-                    android:paddingLeft="14dp"
-                    android:paddingTop="10dp"
+                    android:paddingLeft="12dp"
+                    android:paddingTop="12dp"
                     android:paddingBottom="6dp">
 
                     <TextView
                         android:id="@+id/profile_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:maxLines="2"
                         android:ellipsize="end"
                         android:lineBreakStyle="loose"
                         android:lineBreakWordStyle="phrase"
-                        android:textAppearance="?android:attr/textAppearanceSmall"
+                        android:maxLines="2"
+                        android:textAppearance="?android:attr/textAppearanceMedium"
                         android:textColor="?android:attr/textColorPrimary"
                         android:textStyle="bold"
                         tools:text="@string/profile_name" />
@@ -68,7 +76,7 @@
                         android:id="@+id/profile_address"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="3dp"
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/server_address"
@@ -149,14 +157,14 @@
 
             </LinearLayout>
 
-            <!-- 第二行：类型徽章左贴(限长省略) + 延迟胶囊右贴节点框 -->
+            <!-- 第二行：协议徽章左贴 + 延迟胶囊右贴节点框 -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingStart="4dp"
+                android:paddingStart="12dp"
                 android:paddingTop="4dp"
-                android:paddingEnd="4dp"
-                android:paddingBottom="10dp">
+                android:paddingEnd="12dp"
+                android:paddingBottom="12dp">
 
                 <TextView
                     android:id="@+id/profile_type"
@@ -167,12 +175,13 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:maxWidth="150dp"
-                    android:paddingStart="6dp"
-                    android:paddingTop="1dp"
-                    android:paddingEnd="6dp"
-                    android:paddingBottom="1dp"
+                    android:paddingStart="9dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="9dp"
+                    android:paddingBottom="2dp"
                     android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="@color/zybox_ping_text" />
+                    android:textColor="@color/zybox_ping_text"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/profile_status"
@@ -180,12 +189,12 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="end|center_vertical"
                     android:background="@drawable/zybox_ping_capsule"
-                    android:paddingStart="8dp"
+                    android:paddingStart="10dp"
                     android:paddingTop="2dp"
-                    android:paddingEnd="8dp"
+                    android:paddingEnd="10dp"
                     android:paddingBottom="2dp"
                     android:textAppearance="?android:attr/textAppearanceSmall"
-                    android:textColor="@color/zybox_ping_text" />
+                    android:textStyle="bold" />
 
             </FrameLayout>
 
