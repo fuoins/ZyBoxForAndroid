@@ -185,6 +185,12 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var connectionTestConcurrent by configurationStore.int("connectionTestConcurrent") { 5 }
     var alwaysShowAddress by configurationStore.boolean(Key.ALWAYS_SHOW_ADDRESS)
 
+    // ZyBox: WebDAV 分组节点备份配置
+    var webdavUrl by configurationStore.string("webdavUrl") { "" }
+    var webdavUser by configurationStore.string("webdavUser") { "" }
+    var webdavPassword by configurationStore.string("webdavPassword") { "" }
+    var webdavFilename by configurationStore.string("webdavFilename") { "zybox_profiles.txt" }
+
     var tunImplementation by configurationStore.stringToInt(Key.TUN_IMPLEMENTATION) { TunImplementation.GVISOR }
     var profileTrafficStatistics by configurationStore.boolean(Key.PROFILE_TRAFFIC_STATISTICS) { true }
 

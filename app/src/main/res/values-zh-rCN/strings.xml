@@ -665,4 +665,34 @@
     <string name="multi_delete">删除多选节点</string>
     <string name="subscription_added_count">已添加订阅，本组共 %d 个添加订阅</string>
     <string name="zybox_route_no_rules">未找到可开启的路由规则</string>
+    <!-- ZyBox: WebDAV 分组节点备份 -->
+    <string name="webdav_backup">WebDAV 备份</string>
+    <string name="webdav_hint">把某个分组的节点导出到 WebDAV 服务器（普通链接或带 ping 链接），或从服务器下载恢复到现有/新建分组。</string>
+    <string name="webdav_url">WebDAV 地址（如 https://dav.example.com/backup/）</string>
+    <string name="webdav_user">用户名</string>
+    <string name="webdav_password">密码</string>
+    <string name="webdav_filename">远程文件名</string>
+    <string name="webdav_upload_section">备份 / 上传</string>
+    <string name="webdav_download_section">恢复 / 下载</string>
+    <string name="webdav_select_group">要导出的分组</string>
+    <string name="webdav_export_mode">导出格式</string>
+    <string name="webdav_import_target">导入到</string>
+    <string name="webdav_newgroup_name">新分组名称</string>
+    <string name="webdav_target_new">＋ 新建分组</string>
+    <string name="webdav_default_newgroup">WebDAV 恢复</string>
+    <string name="webdav_upload">上传备份</string>
+    <string name="webdav_download">下载并恢复</string>
+    <string name="webdav_uploading">正在上传…</string>
+    <string name="webdav_downloading">正在下载…</string>
+    <string name="webdav_upload_done">已上传 %d 个节点</string>
+    <string name="webdav_download_done">已导入 %d 个节点</string>
+    <string name="webdav_err_url">地址必须以 http:// 或 https:// 开头</string>
+    <string name="webdav_err_http">服务器返回 HTTP %d</string>
+    <string name="webdav_err_empty">远程文件为空</string>
+    <string name="webdav_err_parse">未找到有效节点链接</string>
+    <string name="webdav_err_no_group">没有可导出的分组</string>
+    <string-array name="webdav_export_modes">
+        <item>普通链接</item>
+        <item>普通链接 + ping</item>
+    </string-array>
 </resources>

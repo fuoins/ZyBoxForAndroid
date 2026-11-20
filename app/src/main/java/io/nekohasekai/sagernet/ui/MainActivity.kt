@@ -337,6 +337,8 @@ class MainActivity : ThemedActivity(),
         DataStore.individual = packages
         // ZyBox: 分应用代理开关默认关闭，一键导入后打开
         DataStore.proxyApps = true
+        // ZyBox: 预设为绕过模式(true)，列表内应用全部走直连；确保一键导入后开关真实生效
+        DataStore.bypass = true
         snackbar(R.string.zybox_apps_import_done).show()
         initDialog?.let { d -> refreshInitDialog(d) }
     }
@@ -344,7 +346,6 @@ class MainActivity : ThemedActivity(),
     companion object {
         // ZyBox: 内置分应用代理绕过配置（首行 true 为开关标记，已剔除；包名换行分隔）
         const val BUILTIN_BYPASS_PACKAGES = "com.mfcloudcalculate.networkdisk\n" +
-                "cn.cj.pe\n" +
                 "com.fiveplay\n" +
                 "com.android.purebilibili\n" +
                 "com.moonshot.kimichat\n" +
@@ -383,7 +384,6 @@ class MainActivity : ThemedActivity(),
                 "com.shanbay.kaoyan\n" +
                 "com.ss.android.ugc.aweme\n" +
                 "com.ss.android.ugc.livelite\n" +
-                "com.ss.android.yumme.video\n" +
                 "cmb.pb\n" +
                 "com.xunmeng.pinduoduo\n" +
                 "com.sohu.inputmethod.sogou.xiaomi\n" +
@@ -394,7 +394,6 @@ class MainActivity : ThemedActivity(),
                 "com.taobao.litetao\n" +
                 "me.ele\n" +
                 "com.sdu.didi.psnger\n" +
-                "com.tencent.gamehelper.smoba\n" +
                 "com.plan.kot32.tomatotime\n" +
                 "com.dragon.read\n" +
                 "com.baidu.netdisk\n" +
@@ -410,7 +409,35 @@ class MainActivity : ThemedActivity(),
                 "com.MobileTicket\n" +
                 "com.taobao.idlefish\n" +
                 "io.legado.app.release\n" +
-                "com.jxedt"
+                "com.jxedt\n" +
+                "com.wuba\n" +
+                "info.muge.appshare\n" +
+                "moe.astralsight.astrobox\n" +
+                "com.lerist.autocmd\n" +
+                "com.tencent.workbuddy.app\n" +
+                "com.smzdm.client.android\n" +
+                "cn.ulearning.yxy\n" +
+                "com.cib.cibmb\n" +
+                "com.aliyun.tongyi\n" +
+                "com.tmall.wireless\n" +
+                "com.chaoxing.mobile\n" +
+                "cn.com.chsi.chsiapp\n" +
+                "com.mi.health\n" +
+                "com.xingin.xhs\n" +
+                "com.ccb.longjiLife\n" +
+                "com.sina.weibo\n" +
+                "com.kuaiduizuoye.scan\n" +
+                "com.star.minesweeping\n" +
+                "com.ss.android.ugc.aweme.lite\n" +
+                "com.phoenix.read\n" +
+                "com.mystyle.purelive\n" +
+                "com.mybank.android.phone\n" +
+                "com.sankuai.meituan\n" +
+                "com.hupu.games\n" +
+                "com.lion.market\n" +
+                "com.huanchengfly.tieba.post\n" +
+                "com.klcxkj.zqxy\n" +
+                "com.leisu.sports"
     }
 
     fun runAutoInit() {
@@ -964,6 +991,7 @@ class MainActivity : ThemedActivity(),
             }
 
             R.id.nav_group -> displayFragment(GroupFragment())
+            R.id.nav_webdav_backup -> displayFragment(WebDavBackupFragment())
             R.id.nav_route -> displayFragment(RouteFragment())
             R.id.nav_settings -> displayFragment(SettingsFragment())
             R.id.nav_traffic -> displayFragment(WebviewFragment())

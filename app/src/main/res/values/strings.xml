@@ -769,4 +769,34 @@
     <string name="no_duplicate_strict">No duplicate nodes (zy)</string>
     <string name="multi_delete">Delete selected</string>
     <string name="subscription_added_count">Subscription added, %d added in this group</string>
+    <!-- ZyBox: WebDAV group node backup -->
+    <string name="webdav_backup">WebDAV Backup</string>
+    <string name="webdav_hint">Back up nodes of one group to a WebDAV server (plain links or links with ping), or restore them into an existing/new group.</string>
+    <string name="webdav_url">WebDAV URL (e.g. https://dav.example.com/backup/)</string>
+    <string name="webdav_user">Username</string>
+    <string name="webdav_password">Password</string>
+    <string name="webdav_filename">Remote file name</string>
+    <string name="webdav_upload_section">Backup / Upload</string>
+    <string name="webdav_download_section">Restore / Download</string>
+    <string name="webdav_select_group">Group to export</string>
+    <string name="webdav_export_mode">Export mode</string>
+    <string name="webdav_import_target">Import into</string>
+    <string name="webdav_newgroup_name">New group name</string>
+    <string name="webdav_target_new">+ New group</string>
+    <string name="webdav_default_newgroup">WebDAV Restore</string>
+    <string name="webdav_upload">Upload backup</string>
+    <string name="webdav_download">Download &amp; restore</string>
+    <string name="webdav_uploading">Uploading…</string>
+    <string name="webdav_downloading">Downloading…</string>
+    <string name="webdav_upload_done">Uploaded %d nodes</string>
+    <string name="webdav_download_done">Imported %d nodes</string>
+    <string name="webdav_err_url">URL must start with http:// or https://</string>
+    <string name="webdav_err_http">Server returned HTTP %d</string>
+    <string name="webdav_err_empty">Remote file is empty</string>
+    <string name="webdav_err_parse">No valid node links found</string>
+    <string name="webdav_err_no_group">No group available to export</string>
+    <string-array name="webdav_export_modes">
+        <item>Standard links</item>
+        <item>Standard links + ping</item>
+    </string-array>
 </resources>
