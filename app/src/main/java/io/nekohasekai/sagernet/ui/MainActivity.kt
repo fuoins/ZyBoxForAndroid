@@ -73,16 +73,9 @@ class MainActivity : ThemedActivity(),
 
         binding = LayoutMainBinding.inflate(layoutInflater)
         binding.fab.initProgress(binding.fabProgress)
-        if (themeResId !in intArrayOf(
-                R.style.Theme_SagerNet_Black
-            )
-        ) {
-            navigation = binding.navView
-            binding.drawerLayout.removeView(binding.navViewBlack)
-        } else {
-            navigation = binding.navViewBlack
-            binding.drawerLayout.removeView(binding.navView)
-        }
+        // ZyBox One Theme: 黑主题已移除，固定使用普通抽屉；黑抽屉保留在布局中仅作兼容不挂载。
+        navigation = binding.navView
+        binding.drawerLayout.removeView(binding.navViewBlack)
         navigation.setNavigationItemSelectedListener(this)
 
         if (savedInstanceState == null) {

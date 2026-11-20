@@ -7,7 +7,7 @@
 
     <Button
         android:id="@+id/reset_settings"
-        style="@style/Widget.AppCompat.Button.Colored"
+        style="@style/Widget.ZyBox.Button.Danger"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/reset_settings"
