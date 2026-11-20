@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 4.0: Fragment 入场 —— 右侧淡入 + 轻微上移 -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/decelerate_quad">
+    <translate
+        android:duration="260"
+        android:fromXDelta="24"
+        android:toXDelta="0" />
+    <alpha
+        android:duration="220"
+        android:fromAlpha="0"
+        android:toAlpha="1" />
+</set>

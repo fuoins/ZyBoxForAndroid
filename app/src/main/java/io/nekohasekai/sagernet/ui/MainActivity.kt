@@ -972,6 +972,12 @@ class MainActivity : ThemedActivity(),
             binding.fab.hide()
         }
         supportFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.zy_slide_in_right,
+                R.anim.zy_slide_out_left,
+                R.anim.zy_slide_in_left,
+                R.anim.zy_slide_out_right
+            )
             .replace(R.id.fragment_holder, fragment)
             .commitAllowingStateLoss()
         binding.drawerLayout.closeDrawers()

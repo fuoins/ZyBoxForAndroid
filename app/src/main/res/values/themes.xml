@@ -2,7 +2,7 @@
     <!-- Base application theme. -->
     <style name="Theme.SagerNet" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- ZyBox UI 3.0：柔和浅色背景 -->
-        <item name="android:windowBackground">@color/zybox_bg</item>
+        <item name="android:windowBackground">@drawable/bg_gradient_mesh</item>
         <item name="android:colorBackground">@color/zybox_bg</item>
         <item name="android:statusBarColor">?attr/colorPrimary</item>
         <!-- ZyBox UI 3.0: 沉浸细节 —— 隐藏滚动条 / 去分隔线 / 去边缘光晕 -->
@@ -13,12 +13,12 @@
         <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
         <item name="colorButtonNormal">?colorAccent</item>
         <item name="android:navigationBarColor">@color/zybox_bg</item>
-        <item name="colorPrimary">@color/material_teal_700</item>
-        <item name="colorPrimaryDark">@color/material_teal_900</item>
-        <item name="colorAccent">@color/material_teal_accent_400</item>
+        <item name="colorPrimary">@color/zybox_primary</item>
+        <item name="colorPrimaryDark">@color/zybox_primary_dark</item>
+        <item name="colorAccent">@color/material_blue_accent_400</item>
 
-        <item name="colorMaterial100">@color/material_teal_100</item>
-        <item name="colorMaterial300">@color/material_teal_300</item>
+        <item name="colorMaterial100">@color/material_blue_100</item>
+        <item name="colorMaterial300">@color/material_blue_300</item>
 
         <item name="accentOrTextSecondary">?colorAccent</item>
         <item name="accentOrTextPrimary">?colorAccent</item>
@@ -35,6 +35,7 @@
         <item name="whiteOrTextPrimary">@color/white</item>
 
         <item name="windowActionModeOverlay">true</item>
+        <item name="android:windowAnimationStyle">@style/ZyBoxWindowAnimation</item>
 
         <!-- Remove ActionBar but keep styles and themes -->
         <item name="windowActionBar">false</item>
@@ -63,12 +64,12 @@
         <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
         <item name="colorButtonNormal">?colorAccent</item>
         <item name="android:navigationBarColor">@color/zybox_bg</item>
-        <item name="colorPrimary">@color/material_teal_700</item>
-        <item name="colorPrimaryDark">@color/material_teal_900</item>
-        <item name="colorAccent">@color/material_teal_accent_400</item>
+        <item name="colorPrimary">@color/zybox_primary</item>
+        <item name="colorPrimaryDark">@color/zybox_primary_dark</item>
+        <item name="colorAccent">@color/material_blue_accent_400</item>
 
-        <item name="colorMaterial100">@color/material_teal_100</item>
-        <item name="colorMaterial300">@color/material_teal_300</item>
+        <item name="colorMaterial100">@color/material_blue_100</item>
+        <item name="colorMaterial300">@color/material_blue_300</item>
 
         <item name="accentOrTextSecondary">?colorAccent</item>
         <item name="accentOrTextPrimary">?colorAccent</item>
@@ -85,6 +86,7 @@
         <item name="whiteOrTextPrimary">@color/white</item>
 
         <item name="windowActionModeOverlay">true</item>
+        <item name="android:windowAnimationStyle">@style/ZyBoxWindowAnimation</item>
 
         <!-- Remove ActionBar but keep styles and themes -->
         <item name="windowActionBar">false</item>
@@ -110,6 +112,14 @@
 
     </style>
 
+    <!-- ZyBox UI 4.0: 全局 Activity 过渡动画 -->
+    <style name="ZyBoxWindowAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/zy_activity_open_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/zy_activity_open_exit</item>
+        <item name="android:activityCloseEnterAnimation">@anim/zy_activity_close_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/zy_activity_close_exit</item>
+    </style>
+
     <style name="ShapeAppearance.SagerNet.Medium" parent="ShapeAppearance.MaterialComponents.MediumComponent">
         <item name="cornerSize">16dp</item>
     </style>
@@ -129,8 +139,8 @@
         <item name="cornerRadius">16dp</item>
         <item name="android:minHeight">44dp</item>
         <item name="android:textSize">13sp</item>
-        <item name="strokeColor">@color/material_teal_700</item>
-        <item name="android:textColor">@color/material_teal_700</item>
+        <item name="strokeColor">@color/zybox_primary</item>
+        <item name="android:textColor">@color/zybox_primary</item>
     </style>
 
     <!-- ZyBox: 紧凑按钮（单字/短标签，保证最小点击区 48dp） -->

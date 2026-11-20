@@ -20,6 +20,7 @@
             android:layout_height="match_parent"
             android:padding="8dp"
             android:scrollbarSize="0dp"
+            android:layoutAnimation="@anim/zy_list_layout"
             app:fastScrollAutoHide="true"
             app:fastScrollThumbColor="?colorPrimary"
             app:fastScrollThumbInactiveColor="?colorPrimary">

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 4.0: 卡片高光渐变描边底 —— 左侧品牌色高光 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="0"
+        android:startColor="#12007BF0"
+        android:centerColor="#05007BF0"
+        android:endColor="#00007BF0" />
+    <corners android:radius="18dp" />
+</shape>

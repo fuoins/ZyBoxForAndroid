@@ -12,6 +12,7 @@
     android:paddingRight="8dp"
     android:paddingBottom="48dp"
     android:scrollbarSize="0dp"
+    android:layoutAnimation="@anim/zy_list_layout"
     app:fastScrollAutoHide="true"
     app:fastScrollThumbColor="?colorPrimary"
     app:fastScrollThumbInactiveColor="?colorPrimary"

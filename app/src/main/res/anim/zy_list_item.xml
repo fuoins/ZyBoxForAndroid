@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 4.0: 列表项逐条入场动画 -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/decelerate_quad">
+    <translate
+        android:duration="320"
+        android:fromYDelta="18"
+        android:toYDelta="0" />
+    <alpha
+        android:duration="320"
+        android:fromAlpha="0"
+        android:toAlpha="1" />
+</set>

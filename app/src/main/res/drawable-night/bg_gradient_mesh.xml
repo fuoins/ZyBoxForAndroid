@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 4.0: 深色页面背景渐变 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#182038"
+        android:centerColor="#141828"
+        android:endColor="#12141C" />
+</shape>

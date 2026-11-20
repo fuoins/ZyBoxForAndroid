@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZyBox UI 4.0: 列表布局动画控制器 —— 逐项延迟入场 -->
+<layoutAnimation xmlns:android="http://schemas.android.com/apk/res/android"
+    android:animation="@anim/zy_list_item"
+    android:animationOrder="normal"
+    android:delay="0.08" />
