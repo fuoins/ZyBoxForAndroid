@@ -104,22 +104,41 @@ fun String.decodeBase64UrlSafe(): String {
 class SubscriptionFoundException(val link: String) : RuntimeException()
 
 suspend fun parseProxies(text: String): List<AbstractBean> {
-    // ZyBox: carry speed-test results exported with "|ping=123" suffix.
-    // Strip the marker before parsing, then write ping back onto beans
-    // in encounter order (ZyBox exports one link per line, so order matches).
-    val importedPings = mutableListOf<Int>()
-    val cleaned = text.replace(Regex("\\|ping=(-?\\d+)"), {
-        importedPings.add(it.groupValues[1].toInt())
-        ""
-    })
+    // ZyBox 4.0: 逐链接绑定 ping —— 每条链接携带自己的 |ping= 值。
+    // 旧实现把全文 ping 收成扁平列表再按实体索引回写，未测速节点（无后缀）会让列表整体错位，
+    // 表现为「某个节点的延迟顶掉别的节点」。这里把 (链接, ping) 配对，杜绝错位。
+    val pingRegex = Regex("\\|ping=(-?\\d+)")
 
-    val links = cleaned.split('\n').flatMap { it.trim().split(' ') }
-    val linksByLine = cleaned.split('\n').map { it.trim() }
+    // 把一段文本按链接 token 拆开，每个 token 带上它自己行内的 ping（无标记则为 null）。
+    data class LinkPiece(val url: String, val ping: Int?)
+    fun splitPieces(raw: String): List<LinkPiece> = raw.split('\n').flatMap { line ->
+        val trimmed = line.trim()
+        if (trimmed.isEmpty()) return@flatMap emptyList()
+        val linePing = pingRegex.find(trimmed)?.groupValues?.get(1)?.toIntOrNull()
+        val cleanedLine = pingRegex.replace(trimmed, "")
+        cleanedLine.split(' ').filter { it.isNotEmpty() }.map { LinkPiece(it, linePing) }
+    }
+    // 按行版本：一整行视为一条链接（兼容 base64 里含空格的情况）。
+    fun splitPiecesByLine(raw: String): List<LinkPiece> = raw.split('\n').map { line ->
+        val trimmed = line.trim()
+        val linePing = pingRegex.find(trimmed)?.groupValues?.get(1)?.toIntOrNull()
+        LinkPiece(pingRegex.replace(trimmed, ""), linePing)
+    }
+
+    val pieces = splitPieces(text)
+    val piecesByLine = splitPiecesByLine(text)
 
     val entities = ArrayList<AbstractBean>()
     val entitiesByLine = ArrayList<AbstractBean>()
 
-    fun String.parseLink(entities: ArrayList<AbstractBean>) {
+    fun String.parseLink(entities: ArrayList<AbstractBean>, currentPing: Int? = null) {
+        fun addBean(bean: AbstractBean) {
+            if (currentPing != null) {
+                bean.ping = currentPing
+                bean.importedPing = true
+            }
+            entities.add(bean)
+        }
         if (startsWith("clash://install-config?") || startsWith("sn://subscription?")) {
             throw SubscriptionFoundException(this)
         }
@@ -127,7 +146,7 @@ suspend fun parseProxies(text: String): List<AbstractBean> {
         if (startsWith("sn://")) {
             Logs.d("Try parse universal link: $this")
             runCatching {
-                entities.add(parseUniversal(this))
+                addBean(parseUniversal(this))
             }.onFailure {
                 Logs.w(it)
             }
@@ -137,14 +156,14 @@ suspend fun parseProxies(text: String): List<AbstractBean> {
         ) {
             Logs.d("Try parse socks link: $this")
             runCatching {
-                entities.add(parseSOCKS(this))
+                addBean(parseSOCKS(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (matches("(http|https)://.*".toRegex())) {
             Logs.d("Try parse http link: $this")
             runCatching {
-                entities.add(parseHttp(this))
+                addBean(parseHttp(this))
             }.onFailure {
                 Logs.w(it)
                 val clashUrl = HttpUrl.Builder()
@@ -159,81 +178,82 @@ suspend fun parseProxies(text: String): List<AbstractBean> {
         } else if (startsWith("vmess://")) {
             Logs.d("Try parse v2ray link: $this")
             runCatching {
-                entities.add(parseV2Ray(this))
+                addBean(parseV2Ray(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("vless://")) {
             Logs.d("Try parse vless link: $this")
             runCatching {
-                entities.add(parseV2Ray(this))
+                addBean(parseV2Ray(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("trojan://")) {
             Logs.d("Try parse trojan link: $this")
             runCatching {
-                entities.add(parseTrojan(this))
+                addBean(parseTrojan(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("trojan-go://")) {
             Logs.d("Try parse trojan-go link: $this")
             runCatching {
-                entities.add(parseTrojanGo(this))
+                addBean(parseTrojanGo(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("ss://")) {
             Logs.d("Try parse shadowsocks link: $this")
             runCatching {
-                entities.add(parseShadowsocks(this))
+                addBean(parseShadowsocks(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("naive+")) {
             Logs.d("Try parse naive link: $this")
             runCatching {
-                entities.add(parseNaive(this))
+                addBean(parseNaive(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("hysteria://")) {
             Logs.d("Try parse hysteria1 link: $this")
             runCatching {
-                entities.add(parseHysteria1(this))
+                addBean(parseHysteria1(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("hysteria2://") || startsWith("hy2://")) {
             Logs.d("Try parse hysteria2 link: $this")
             runCatching {
-                entities.add(parseHysteria2(this))
+                addBean(parseHysteria2(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("tuic://")) {
             Logs.d("Try parse TUIC link: $this")
             runCatching {
-                entities.add(parseTuic(this))
+                addBean(parseTuic(this))
             }.onFailure {
                 Logs.w(it)
             }
         } else if (startsWith("anytls://")) {
             Logs.d("Try parse anytls link: $this")
             runCatching {
-                entities.add(parseAnytls(this))
+                addBean(parseAnytls(this))
             }.onFailure {
                 Logs.w(it)
             }
         }
     }
 
-    for (link in links) {
-        link.parseLink(entities)
+    // 每条链接解析时把自己行内的 ping 传进去，ping 与链接强绑定，不再按索引错位回写。
+    for (piece in pieces) {
+        piece.url.parseLink(entities, piece.ping)
     }
-    for (link in linksByLine) {
-        link.parseLink(entitiesByLine)
+    for (piece in piecesByLine) {
+        piece.url.parseLink(entitiesByLine, piece.ping)
     }
 //    var isBadLink = false
     if (entities.onEach { it.initializeDefaultValues() }.size == entitiesByLine.onEach { it.initializeDefaultValues() }.size) run test@{
@@ -245,17 +265,8 @@ suspend fun parseProxies(text: String): List<AbstractBean> {
             }
         }
     }
-    return if (entities.size > entitiesByLine.size) entities else entitiesByLine.also { list ->
-        // ZyBox: apply imported ping values (best effort, in order)
-        if (importedPings.isNotEmpty()) {
-            list.forEachIndexed { index, bean ->
-                if (index < importedPings.size) {
-                    bean.ping = importedPings[index]
-                    bean.importedPing = true
-                }
-            }
-        }
-    }
+    // ZyBox 4.0: ping 已在 addBean 时逐链接绑定，无需再按索引回写。
+    return if (entities.size > entitiesByLine.size) entities else entitiesByLine
 }
 
 fun <T : Serializable> T.applyDefaultValues(): T {

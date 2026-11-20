@@ -464,9 +464,13 @@ data class ProxyEntity(
         return this
     }
 
-    // ZyBox: 导出带 ping 后缀——成功节点带实际延迟；失败节点(超时/不可用/连接重置)带 |ping=0
-    fun pingExportSuffix(): String =
-        if (ping > 0 || status == 2 || status == 3) "|ping=$ping" else ""
+    // ZyBox 4.0: 导出带 ping 后缀——仅成功节点(status=1)带实际延迟；
+    // 失败/超时节点(status=2/3)一律导出 |ping=0，避免残留正数延迟被误读为成功
+    fun pingExportSuffix(): String = when {
+        status == 2 || status == 3 -> "|ping=0"
+        ping > 0 -> "|ping=$ping"
+        else -> ""
+    }
 
     fun settingIntent(ctx: Context, isSubscription: Boolean): Intent {
         return Intent(
