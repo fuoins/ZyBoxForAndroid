@@ -23,6 +23,7 @@ import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -110,14 +111,47 @@ class WebDavBackupFragment : ToolbarFragment(R.layout.layout_webdav_backup) {
                 getString(R.string.webdav_err_url)
             }
             val name = etFile.text?.toString()?.trim().orEmpty().ifBlank { "zybox_profiles.txt" }
-            if (!url.endsWith("/")) url += "/"
-            return url + name
+            var httpUrl = url.toHttpUrl()
+            // 坚果云 /dav/ 是虚拟根、不可直接写文件（PUT 会 404 ObjectNotFound），
+            // 自动落到 zybox 子目录（ensureParentDir 会 MKCOL 按需创建）。
+            // 其他 WebDAV 服务或用户已带子目录的路径不受影响。
+            val segs = httpUrl.pathSegments.filter { it.isNotEmpty() }
+            if (segs.size == 1 && segs[0].equals("dav", ignoreCase = true)) {
+                httpUrl = httpUrl.newBuilder().addPathSegment("zybox").build()
+            }
+            return httpUrl.newBuilder().addPathSegment(name).build().toString()
         }
 
         fun authHeader(): String {
             val user = etUser.text?.toString()?.trim().orEmpty()
             val pass = etPass.text?.toString().orEmpty()
             return Credentials.basic(user, pass)
+        }
+
+        // 上传前确保父目录存在：逐级 MKCOL。
+        // 坚果云 WebDAV 的 /dav/ 下必须落在已存在的同步文件夹里，
+        // 且不会自动创建多级父目录，直接 PUT 到 /dav/xxx.txt 会 404 ObjectNotFound。
+        fun ensureParentDir(url: String, auth: String) {
+            val httpUrl = url.toHttpUrl()
+            val segments = httpUrl.pathSegments.filter { it.isNotEmpty() }
+            if (segments.size < 2) return // 仅 /dav/xxx.txt：根下的文件，坚果云不允许，交由 PUT 报错
+            var current = httpUrl.newBuilder().encodedPath("/").build()
+            // 逐级重建目录路径：/dav/ -> /dav/seg1/ -> /dav/seg1/seg2/ ...（不含最后的文件名）
+            for (seg in segments.dropLast(1)) {
+                current = current.newBuilder().addPathSegment(seg).build()
+                val req = Request.Builder()
+                    .url(current)
+                    .header("Authorization", auth)
+                    .method("MKCOL", null)
+                    .build()
+                client.newCall(req).execute().use { resp ->
+                    // 201 Created = 新建成功；405 Method Not Allowed = 目录已存在；二者都算 OK。
+                    // 坚果云偶尔对已存在目录返回 409/403，也宽松放过，最终以 PUT 结果为准。
+                    if (resp.code !in setOf(201, 405, 409, 403)) {
+                        Logs.w("MKCOL ${current} -> ${resp.code}")
+                    }
+                }
+            }
         }
 
         // ---------- 备份：导出分组节点 -> PUT ----------
@@ -132,6 +166,7 @@ class WebDavBackupFragment : ToolbarFragment(R.layout.layout_webdav_backup) {
                 try {
                     val url = withContext(Dispatchers.Main) { buildUrl() }
                     val auth = withContext(Dispatchers.Main) { authHeader() }
+                    ensureParentDir(url, auth)
                     val pos = withContext(Dispatchers.Main) { spGroup.selectedItemPosition }
                     val withPing = withContext(Dispatchers.Main) { spMode.selectedItemPosition == 1 }
                     val group = groups[pos]
